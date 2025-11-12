@@ -1,0 +1,46 @@
+
+<!doctype html><html lang="ру"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Akylman Quiz Bowl</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@400;600;700&family=Russo+One&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css"/></head><body>
+<div class="status-bar"><div id="badges" class="status-inner"><span class="badge" data-i18n="status.reg_open">Регистрация открыта</span><span class="badge" data-i18n="status.practice">Практический тест доступен</span><span class="badge" data-i18n="status.ceremony">Церемония награждения в APS</span></div></div>
+<header class="site-header container"><a href="index.html"><img src="images/logo.png" class="logo img-fluid" style="height:56px"/></a><nav class="nav d-flex flex-wrap align-items-center"><a href="index.html" data-i18n="nav.home">Главная</a><a href="pages/register.html" data-i18n="nav.register">Зарегистрироваться</a><a href="pages/login.html" data-i18n="nav.login">Войти</a><a href="pages/admin.html" data-i18n="nav.admin">Админ</a></nav><div class="lang-switch d-flex gap-2"><button data-lang="ru">RU</button> <button data-lang="ky">KY</button></div></header>
+<main>
+<section class="hero container fade-up text-center"><h1 data-i18n="hero.title1" class="grad-text">Akylman Presidential School</h1><h2 data-i18n="hero.title2">Quiz Bowl</h2><p data-i18n="hero.subtitle">Для учеников средней и старшей школы</p><div class="d-flex justify-content-center gap-2 flex-wrap"><a class="cta" href="pages/register.html" data-i18n="hero.cta">Зарегистрироваться</a> <a class="btn-secondary" href="#cats" data-i18n="cats.title">Категории</a></div></section>
+<section id="about" class="info container fade-up"><h3 data-i18n="about.title">О соревновании</h3><div class="cards"><div class="card"><h4 data-i18n="about.prelim">Предварительный раунд</h4><p data-i18n="about.prelim.desc">Онлайн-тест: множественный выбор и короткий ответ.</p></div><div class="card"><h4 data-i18n="about.semi">Полуфинал</h4><p data-i18n="about.semi.desc">Живые блиц-вопросы онлайн (без бузера для нас).</p></div><div class="card"><h4 data-i18n="about.final">Финал</h4><p data-i18n="about.final.desc">Оффлайн в APS. Итоги и награждение.</p></div></div></section>
+<section class="features container fade-up"><h3 class="d-flex align-items-center"><span class="icon-sm"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2l3 6 6 .9-4.5 4.2 1 6.7L12 16l-5.5 3.8 1-6.7L3 8.9 9 8l3-6z" fill="#2b6df6"/></svg></span><span data-i18n="how.title">Как это работает</span></h3><div class="cards"><div class="card"><h4 class="d-flex align-items-center"><span class="icon-sm"><svg viewBox="0 0 24 24" fill="none"><path d="M4 11h16M7 7h10M6 15h12" stroke="#2dd36f" stroke-width="2" stroke-linecap="round"/></svg></span><span data-i18n="how.team">Размер команды</span></h4><p data-i18n="how.team.desc">3–6 человек из одной школы.</p></div><div class="card"><h4 class="d-flex align-items-center"><span class="icon-sm"><svg viewBox="0 0 24 24" fill="none"><circle cx="6" cy="12" r="3" fill="#f63б3б"/><circle cx="12" cy="12" r="3" fill="#2b6df6"/><circle cx="18" cy="12" r="3" fill="#2dd36f"/></svg></span><span data-i18n="how.cats">Категории</span></h4><div class="chips"><span class="chip"><svg viewBox="0 0 16 16" fill="#2dd36f"><circle cx="8" cy="8" r="7"/></svg><span data-i18n="cat.kg">Кыргызстан</span></span><span class="chip"><svg viewBox="0 0 16 16" fill="#2b6df6"><rect x="3" y="3" width="10" height="10" rx="2"/></svg><span data-i18n="cat.history">Тарых/History</span></span><span class="chip"><svg viewBox="0 0 16 16" fill="#f63b3b"><path d="M3 13l10-10" stroke="#f63b3b" stroke-width="2"/></svg><span data-i18n="cat.stem">Илим/STEM</span></span><span class="chip"><svg viewBox="0 0 16 16" fill="#ff8a00"><path d="M8 2l3 12-3-2-3 2 3-12з"/></svg><span data-i18n="cat.lit">Адабият</span></span><span class="chip"><svg viewBox="0 0 16 16" fill="#9c27b0"><circle cx="5" cy="8" r="3"/><circle cx="11" cy="8" r="3"/></svg><span data-i18n="cat.art">Өнөр & Спорт</span></span></div><p class="small-muted" data-i18n="cat.kg.desc">Знания о Кыргызстане...</p><p class="small-muted" data-i18n="cat.history.desc">История Кыргызстана...</p><p class="small-muted" data-i18n="cat.stem.desc">Науки и технологии...</p><p class="small-muted" data-i18n="cat.lit.desc">Язык и литература...</p><p class="small-muted" data-i18n="cat.art.desc">Спорт и искусство...</p></div><div class="card"><h4 class="d-flex align-items-center"><span class="icon-sm"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#2b6df6" stroke-width="2"/><path d="M12 7v6л4 2" stroke="#2b6df6" stroke-width="2" stroke-linecap="round"/></svg></span><span data-i18n="how.time">Время</span></h4><p data-i18n="how.time.desc">60 минут. Окно доступа задается организатором.</p></div></div></section>
+<section class="features container fade-up"><h3 data-i18n="timeline.title">Таймлайн</h3><div class="tl" id="timeline"><div class="tli"><div class="date" id="d1">День 1</div><div>Онлайн тест</div></div><div class="tli"><div class="date" id="d2">День 2</div><div>Онлайн тест</div></div><div class="tli"><div class="date" id="d3">День 3</div><div>Онлайн тест</div></div><div class="tli"><div class="date" data-i18n="timeline.final">Финал</div><div id="finalPlace">APS оффлайн</div></div></div></section>
+<section id="cats" class="features container fade-up"><h3 data-i18n="cats.title">Категории</h3><div class="cats" id="catsGrid"></div></section>
+<section class="features container fade-up"><h3>Галерея лицея</h3><div class="gallery"><figure><img src="images/akylman-1.jpg" alt="Akylman campus"/><figcaption>Akylman — кампус</figcaption></figure><figure><img src="images/akylman-2.jpg" alt="Akylman visitors"/><figcaption>Akylman — визит</figcaption></figure><figure><img src="images/akylman-3.jpg" alt="Akylman opening"/><figcaption>Akylman — ачылыш / открытие</figcaption></figure></div></section>
+</main><footer class="site-footer container"><p>© Akylman Presidential School</p></footer><script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDзOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script><script src="js/i18n.js"></script><script>
+AkylI18n.initSwitcher();
+async function renderSettings(){
+  try{
+    const s = await (await fetch('/api/settings')).json();
+    const lang = AkylI18n.getLang();
+    const b = document.getElementById('badges');
+    if(s){
+      b.innerHTML = '';
+      const texts = [ lang==='ky'?s.badge1_ky:s.badge1_ru, lang==='ky'?s.badge2_ky:s.badge2_ru, lang==='ky'?s.badge3_ky:s.badge3_ru ].filter(Boolean);
+      texts.concat(texts).forEach(t=>{ const span=document.createElement('span'); span.className='badge'; span.textContent=t; b.appendChild(span); });
+      if(s.day1_date) document.getElementById('d1').textContent = s.day1_date;
+      if(s.day2_date) document.getElementById('d2').textContent = s.day2_date;
+      if(s.day3_date) document.getElementById('d3').textContent = s.day3_date;
+      if(s.final_place_ru||s.final_place_ky) document.getElementById('finalPlace').textContent = lang==='ky'? (s.final_place_ky||'') : (s.final_place_ru||'');
+    }
+  }catch(e){ console.warn('settings load failed', e); }
+}
+renderSettings();
+async function renderCategories(){
+  try{
+    const res = await fetch('/api/categories');
+    const cats = await res.json();
+    const grid = document.getElementById('catsGrid');
+    const lang = AkylI18n.getLang();
+    grid.innerHTML = cats.map(c=>{
+      const title = lang==='ky' ? (c.name_ky||'') : (c.name_ru||'');
+      const desc = lang==='ky' ? (c.desc_ky||'') : (c.desc_ru||'');
+      return `<div class=\"cat\"><div style=\"font-weight:800;margin-bottom:6px\">${title}</div><div class=\"small-muted\" style=\"line-height:1.35\">${desc}</div></div>`;
+    }).join('');
+  }catch(e){ console.warn('categories load failed', e); }
+}
+renderCategories();
+window.addEventListener('akyl-langchange', ()=>{ AkylI18n.applyI18n(AkylI18n.getLang()); renderSettings(); renderCategories(); });
+</script></body></html>

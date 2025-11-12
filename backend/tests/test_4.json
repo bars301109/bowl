@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "test_id": 4,
+    "ordinal": 1,
+    "text": "123456",
+    "options": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "correct": "0",
+    "points": 1,
+    "lang": "ru",
+    "category_id": 5
+  }
+]

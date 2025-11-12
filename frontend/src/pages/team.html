@@ -1,0 +1,79 @@
+
+<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title data-i18n="team.title">Кабинет</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous"><link rel="stylesheet" href="../css/style.css"/></head><body class="admin-panel">
+<div class="container"><div class="lang-switch text-end"><button data-lang="ru">RU</button> <button data-lang="ky">KY</button></div><a href="../index.html"><img src="../images/logo.png" class="logo-center img-fluid"/></a>
+<div class="topbar d-flex justify-content-end gap-2 flex-wrap"><a class="link-pill outline" href="/index.html" data-i18n="nav.home">Главная</a><a class="link-pill outline" href="/pages/profile.html">Профиль</a><a class="link-pill" href="#" id="logout">Выйти</a></div>
+<div class="form-card"><h2 data-i18n="team.title">Кабинет команды</h2><div id="teamInfo"></div>
+<div class="team-tabs"><button id="tabHome" class="tab-btn active" data-i18n="team.tab.home">Главная</button> <button id="tabTests" class="tab-btn" data-i18n="team.tab.tests">Тесты</button> <button id="tabResults" class="tab-btn" data-i18n="team.tab.results">Результаты</button> <button id="tabSettings" class="tab-btn" data-i18n="team.tab.settings">Настройки</button> <button id="tabPractice" class="tab-btn" data-i18n="team.tab.practice">Практика</button> <button id="tabRules" class="tab-btn" data-i18n="team.tab.rules">Правила</button></div><hr/><div id="tabContent"></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script><script src="../js/i18n.js"></script><script>AkylI18n.initSwitcher();</script>
+<script>
+const token = localStorage.getItem('akylman_token'); if(!token) location.href='/pages/login.html';
+async function load(){ const res = await fetch('/api/me',{headers:{'Authorization':'Bearer '+token}}); const j=await res.json(); if(!j.ok){ localStorage.removeItem('akylman_token'); location.href='/pages/login.html'; } document.getElementById('teamInfo').innerHTML=`<p>${j.team.team_name} — ${j.team.captain_name}</p>`; }
+load();
+document.getElementById('logout').onclick = ()=>{ localStorage.removeItem('akylman_token'); localStorage.removeItem('team'); location.href='/index.html'; };
+
+function setActiveTab(btn){ document.querySelectorAll('.tab-btn').forEach(b=> b.classList.remove('active')); btn.classList.add('active'); }
+document.getElementById('tabHome').onclick = (e)=>{ setActiveTab(e.currentTarget); document.getElementById('tabContent').innerHTML='<p>Welcome</p>'; AkylI18n.applyI18n(AkylI18n.getLang(), document.getElementById('tabContent')); };
+document.getElementById('tabRules').onclick = (e)=>{ setActiveTab(e.currentTarget); document.getElementById('tabContent').innerHTML='<h3 data-i18n="team.tab.rules">Правила</h3><p data-i18n="team.rules.hidden_note">Правила доступны здесь.</p><iframe src="../pages/rules.pdf" style="width:100%;height:480px;border:1px solid #eef4fb;border-radius:10px"></iframe>'; AkylI18n.applyI18n(AkylI18n.getLang(), document.getElementById('tabContent')); };
+
+document.getElementById('tabPractice').onclick = (e)=>{ setActiveTab(e.currentTarget);
+  const out = document.getElementById('tabContent');
+  out.innerHTML = `
+    <h3 data-i18n="team.tab.practice">Практика</h3>
+    <div class="info" style="margin-top:8px">
+      <h4>Кыргызстан таануу — үлгү суроолор</h4>
+      <ol>
+        <li>Кыргызстандын борбору кайсы? — <strong>Бишкек</strong></li>
+        <li>Ысык-Көл кайсы дубанда жайгашкан? — <strong>Ысык-Көл облусу</strong></li>
+        <li>Кыргызстандын мамлекеттик тили? — <strong>Кыргыз тили</strong></li>
+      </ol>
+      <h4 style="margin-top:12px">Адабият — үлгү суроолор</h4>
+      <ol>
+        <li>«Манас» эпосунун башкы каарманы ким? — <strong>Манас</strong></li>
+        <li>А. Пушкиндин кайсы чыгармасында Татьяна бар? — <strong>Евгений Онегин</strong></li>
+        <li>«Ысык-Көлдүн кулагы» чыгарма кайсы жанрда? — <strong>Повесть/эссе (контексттик кабыл)</strong></li>
+      </ol>
+      <p class="small-muted">Бул үлгүлөр формат менен тааныштыруу үчүн гана.</p>
+    </div>
+  `;
+};
+
+document.getElementById('tabTests').onclick = async (e)=>{ setActiveTab(e.currentTarget);
+  const out=document.getElementById('tabContent'); out.innerHTML='Loading...'; AkylI18n.applyI18n(AkylI18n.getLang(), out);
+  const res=await fetch('/api/tests'); const tests=await res.json(); if(!tests.length){ out.innerHTML='<p>Нет тестов</p>'; return; }
+  out.innerHTML = '<ul>'+tests.map(t=>`<li><strong>${t.title}</strong> — ${t.description||''} ${renderWindow(t)} <button data-id="${t.id}" class="take">Пройти</button></li>`).join('')+'</ul>';
+  document.querySelectorAll('.take').forEach(b=> b.onclick = ()=> startTest(b.dataset.id));
+};
+function renderWindow(t){ if(t.window_start && t.window_end){ return `<span class="small-muted">(${t.window_start} → ${t.window_end})</span>`;} return ''; }
+
+document.getElementById('tabResults').onclick = async (e)=>{ setActiveTab(e.currentTarget); const out=document.getElementById('tabContent'); out.innerHTML='Загрузка результатов...'; const res=await fetch('/api/me/results',{headers:{'Authorization':'Bearer '+token}}); const rows=await res.json(); if(!rows.length){ out.innerHTML='<p>Результатов нет</p>'; return; } out.innerHTML = '<table class="table"><tr><th>Тест</th><th>Баллы</th><th>Дата</th></tr>' + rows.map(r=>`<tr><td>${r.title}</td><td>${r.score}</td><td>${r.taken_at}</td></tr>`).join('') + '</table>'; };
+document.getElementById('tabSettings').onclick = (e)=>{ setActiveTab(e.currentTarget); document.getElementById('tabContent').innerHTML = '<p>Настройки аккаунта</p>'; };
+
+async function startTest(id){
+  const out=document.getElementById('tabContent');
+  out.innerHTML='Загрузка вопросов...';
+  const res=await fetch('/api/tests/'+id);
+  if(res.status===403){ out.innerHTML='<p>Тест сейчас недоступен</p>'; return; }
+  const qs=await res.json(); if(!qs.length){ out.innerHTML='<p>Пустой тест</p>'; return; }
+  let remainingSec = 0;
+  const testMeta = (await (await fetch('/api/tests',{headers:{}})).json()).find(x=> String(x.id)===String(id));
+  const durMins = (testMeta && testMeta.duration_minutes) ? testMeta.duration_minutes : 60;
+  remainingSec = durMins*60;
+  const timerDiv = document.createElement('div'); timerDiv.className='small-muted'; timerDiv.style.margin='8px 0';
+  const interval = setInterval(()=>{ remainingSec--; timerDiv.textContent = `${t('team.timer')}: `+fmt(remainingSec); if(remainingSec<=0){ clearInterval(interval); finish(); } },1000);
+
+  let idx=0; const answers={};
+  function show(){ const q=qs[idx]; out.innerHTML = '';
+    out.appendChild(timerDiv);
+    const block = document.createElement('div');
+    block.innerHTML = `<h4>Вопрос ${idx+1}/${qs.length}</h4><p>${q.text}</p>` + (q.options && q.options.length ? q.options.map((o,i)=>`<div><label><input type=\"radio\" name=\"opt\" value=\"${i}\"/> ${o}</label></div>`).join('') : `<div><input id=\"txt\" placeholder=\"Ответ\"/></div>`) + '<div style="margin-top:12px"><button id="prev">'+t('team.prev')+'</button> <button id="next" class="primary">'+t('team.next')+'</button></div>';
+    out.appendChild(block);
+    document.getElementById('prev').onclick = ()=>{ if(idx>0) idx--; show(); };
+    document.getElementById('next').onclick = ()=>{ if(q.options && q.options.length){ const sel = document.querySelector('input[name=\"opt\"]:checked'); answers[q.id] = sel ? sel.value : null; } else { answers[q.id] = document.getElementById('txt').value; } idx++; if(idx>=qs.length) finish(); else show(); };
+  }
+  async function finish(){ out.innerHTML=t('team.submitting'); clearInterval(interval); const resp = await fetch('/api/tests/'+id+'/submit',{method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify({answers})}); const j = await resp.json(); if(!j.ok){ out.innerHTML='<p>Ошибка</p>'; return; } out.innerHTML = `<h3>Готово — ${j.score}</h3>`; }
+  function fmt(s){ if(s<0) s=0; const m=Math.floor(s/60), ss=String(s%60).padStart(2,'0'); return `${m}:${ss}`; }
+  show();
+}
+
+document.getElementById('tabHome').click();
+</script></body></html>

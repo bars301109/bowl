@@ -1,0 +1,714 @@
+
+<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Admin Panel - Akylman Quiz</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous"><link rel="stylesheet" href="../css/style.css"/></head><body class="admin-panel">
+<div class="container">
+  <div class="admin-header">
+    <a href="../index.html"><img src="../images/logo.png" class="logo-center img-fluid"/></a>
+    <h2>🎯 Админ-панель Akylman Quiz</h2>
+    <div class="small-muted">Управляйте тестами, вопросами, категориями и отслеживайте результаты команд</div>
+    
+    <div class="admin-token-section">
+      <div class="form-row" style="margin-top:10px">
+        <label>🔑 Admin Token<input id="admin_token" class="admin-input" placeholder="super-secret-token"/></label>
+        <label style="flex:0 0 auto"><button class="admin-button success" id="saveToken">💾 Сохранить</button></label>
+      </div>
+    </div>
+    
+    <div class="admin-nav">
+      <button id="tabTests" class="admin-button">📝 Тесты</button>
+      <button id="tabQuestions" class="admin-button">❓ Вопросы</button>
+      <button id="tabCategories" class="admin-button">📂 Категории</button>
+      <button id="tabTeams" class="admin-button">👥 Команды</button>
+      <button id="tabResults" class="admin-button">📊 Результаты</button>
+      <button id="tabSettings" class="admin-button">⚙️ Настройки</button>
+    </div>
+  </div>
+  
+  <div class="admin-content">
+    <div id="content"></div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script>
+const tokenInput = document.getElementById('admin_token');
+const saved = localStorage.getItem('akylman_admin_token');
+if(saved) tokenInput.value = saved;
+document.getElementById('saveToken').onclick = ()=>{ 
+  localStorage.setItem('akylman_admin_token', tokenInput.value.trim()); 
+  showAlert('Токен сохранен!', 'success');
+};
+function aHeaders(){ return { 'Content-Type':'application/json', 'X-ADMIN-TOKEN': (localStorage.getItem('akylman_admin_token')||'').trim() }; }
+const content = document.getElementById('content');
+
+// Helper functions for better UI
+function showAlert(message, type = 'info') {
+  const alertDiv = document.createElement('div');
+  alertDiv.className = `admin-alert ${type}`;
+  alertDiv.textContent = message;
+  content.insertBefore(alertDiv, content.firstChild);
+  setTimeout(() => alertDiv.remove(), 3000);
+}
+
+function showLoading(message = 'Загрузка...') {
+  content.innerHTML = `<div class="admin-loading">${message}</div>`;
+}
+
+function setActiveTab(activeButton) {
+  document.querySelectorAll('.admin-nav button').forEach(btn => btn.classList.remove('active'));
+  activeButton.classList.add('active');
+}
+
+function toDatetimeLocalValue(iso){
+  if(!iso) return '';
+  try{
+    const d = new Date(iso);
+    if(isNaN(d.getTime())) return '';
+    const pad = (n)=> String(n).padStart(2,'0');
+    const yyyy = d.getFullYear();
+    const mm = pad(d.getMonth()+1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mi = pad(d.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+  }catch{ return ''; }
+}
+
+// Settings Tab
+async function renderSettings(){
+  setActiveTab(document.getElementById('tabSettings'));
+  showLoading('Загрузка настроек...');
+  const s = await (await fetch('/api/settings')).json();
+  content.innerHTML = `
+    <div class="admin-form">
+      <h3>⚙️ Настройки (бейджи и таймлайн)</h3>
+      <div class="form-row"><label>🏷️ Бейдж 1 RU<input id="b1ru" class="admin-input" value="${esc(s?.badge1_ru||'')}"/></label><label>🏷️ Бейдж 1 KY<input id="b1ky" class="admin-input" value="${esc(s?.badge1_ky||'')}"/></label></div>
+      <div class="form-row"><label>🏷️ Бейдж 2 RU<input id="b2ru" class="admin-input" value="${esc(s?.badge2_ru||'')}"/></label><label>🏷️ Бейдж 2 KY<input id="b2ky" class="admin-input" value="${esc(s?.badge2_ky||'')}"/></label></div>
+      <div class="form-row"><label>🏷️ Бейдж 3 RU<input id="b3ru" class="admin-input" value="${esc(s?.badge3_ru||'')}"/></label><label>🏷️ Бейдж 3 KY<input id="b3ky" class="admin-input" value="${esc(s?.badge3_ky||'')}"/></label></div>
+      <div class="form-row"><label>📅 День 1 (YYYY-MM-DD)<input id="d1" class="admin-input" value="${esc(s?.day1_date||'')}"/></label><label>📅 День 2<input id="d2" class="admin-input" value="${esc(s?.day2_date||'')}"/></label></div>
+      <div class="form-row"><label>📅 День 3<input id="d3" class="admin-input" value="${esc(s?.day3_date||'')}"/></label><label>🏆 Финал RU (место)<input id="fpru" class="admin-input" value="${esc(s?.final_place_ru||'')}"/></label></div>
+      <div class="form-row"><label>🏆 Финал KY (орду)<input id="fpky" class="admin-input" value="${esc(s?.final_place_ky||'')}"/></label></div>
+      <div class="mt-2"><button class="admin-button success" id="save">💾 Сохранить</button></div>
+    </div>
+  `;
+  document.getElementById('save').onclick = async ()=>{
+    const body = { badge1_ru:val('b1ru'),badge1_ky:val('b1ky'),badge2_ru:val('b2ru'),badge2_ky:val('b2ky'),badge3_ru:val('b3ru'),badge3_ky:val('b3ky'),day1_date:val('d1'),day2_date:val('d2'),day3_date:val('d3'),final_place_ru:val('fpru'),final_place_ky:val('fpky') };
+    const r = await fetch('/api/admin/settings',{ method:'PUT', headers:aHeaders(), body: JSON.stringify(body) });
+    if(!r.ok){ showAlert('Ошибка сохранения', 'error'); return; }
+    showAlert('Настройки сохранены!', 'success');
+  };
+}
+
+// Tests Tab
+async function renderTests(){
+  setActiveTab(document.getElementById('tabTests'));
+  showLoading('Загрузка тестов...');
+  const res = await fetch('/api/admin/tests',{ headers: aHeaders() });
+  if(!res.ok){ showAlert('Нет доступа. Проверьте токен.', 'error'); return; }
+  const tests = await res.json();
+  content.innerHTML = `
+    <div class="admin-form">
+      <h3>📝 Управление тестами</h3>
+      <div class="form-row">
+        <label>📝 Название<input id="t_title" class="admin-input"/></label>
+        <label>📄 Описание<input id="t_desc" class="admin-input"/></label>
+      </div>
+      <div class="form-row">
+        <label>🌐 Язык<select id="t_lang" class="admin-input"><option value="ru">🇷🇺 RU</option><option value="ky">🇰🇬 KY</option></select></label>
+        <label>⏱️ Длительность (мин)<input id="t_dur" class="admin-input" type="number" value="60"/></label>
+      </div>
+      <div class="form-row">
+        <label>🕐 Начало окна<input id="t_start" class="admin-input" type="datetime-local"/></label>
+        <label>🕐 Конец окна<input id="t_end" class="admin-input" type="datetime-local"/></label>
+      </div>
+      <div style="margin-top:8px"><button class="admin-button success" id="addTest">➕ Создать тест</button></div>
+    </div>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Язык</th>
+            <th>Длит.</th>
+            <th>Окно</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tests.length > 0 ? tests.map(t=>`<tr>
+            <td>${t.id}</td>
+            <td>${esc(t.title||'')}</td>
+            <td>${esc(t.lang||'ru')}</td>
+            <td>${t.duration_minutes||60} мин</td>
+            <td>${esc(t.window_start||'-')} → ${esc(t.window_end||'-')}</td>
+            <td>
+              <div class="admin-table-actions">
+                <button data-id="${t.id}" class="admin-button secondary edit">✏️ Редакт.</button>
+                <button data-id="${t.id}" class="admin-button danger del">🗑️ Удалить</button>
+                <button data-id="${t.id}" class="admin-button qs">❓ Вопросы</button>
+              </div>
+            </td>
+          </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:32px;color:#718096">Нет тестов</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('addTest').onclick = async ()=>{
+    const titleV = val('t_title');
+    if(!titleV){ showAlert('Введите название теста', 'error'); return; }
+    const body = { title: titleV, description: val('t_desc'), lang: val('t_lang'), duration_minutes: num('t_dur'), window_start: val('t_start')||null, window_end: val('t_end')||null };
+    const r = await fetch('/api/admin/tests',{ method:'POST', headers: aHeaders(), body: JSON.stringify(body) });
+    if(!r.ok){ let msg=''; try{ msg = await r.text(); }catch{} showAlert('Ошибка создания'+(msg?': '+msg:''), 'error'); return; }
+    showAlert('Тест создан!', 'success');
+    renderTests();
+  };
+  content.querySelectorAll('button.edit').forEach(b=> b.onclick = ()=> editTest(b.dataset.id));
+  content.querySelectorAll('button.del').forEach(b=> b.onclick = ()=> deleteTest(b.dataset.id));
+  content.querySelectorAll('button.qs').forEach(b=> b.onclick = ()=> renderQuestions(parseInt(b.dataset.id,10)));
+}
+async function editTest(id){
+  const res = await fetch('/api/admin/tests',{ headers: aHeaders() });
+  const tests = await res.json();
+  const t = tests.find(x=> x.id==id);
+  if(!t){ showAlert('Тест не найден', 'error'); return; }
+  content.innerHTML = `
+    <div class="admin-form">
+      <h3>✏️ Редактирование теста #${t.id}</h3>
+      <div class="form-row"><label>📝 Название<input id="t_title" class="admin-input" value="${esc(t.title)}"/></label><label>📄 Описание<input id="t_desc" class="admin-input" value="${esc(t.description||'')}"/></label></div>
+      <div class="form-row"><label>🌐 Язык<select id="t_lang" class="admin-input"><option value="ru" ${t.lang==='ru'?'selected':''}>🇷🇺 RU</option><option value="ky" ${t.lang==='ky'?'selected':''}>🇰🇬 KY</option></select></label><label>⏱️ Длительность<input id="t_dur" class="admin-input" type="number" value="${t.duration_minutes}"/></label></div>
+      <div class="form-row"><label>🕐 Начало окна<input id="t_start" class="admin-input" type="datetime-local" value="${toDatetimeLocalValue(t.window_start)}"/></label><label>🕐 Конец окна<input id="t_end" class="admin-input" type="datetime-local" value="${toDatetimeLocalValue(t.window_end)}"/></label></div>
+      <div style="margin-top:8px"><button class="admin-button success" id="save">💾 Сохранить</button> <button class="admin-button secondary" id="back">⬅️ Назад</button></div>
+    </div>
+  `;
+  document.getElementById('back').onclick = renderTests;
+  document.getElementById('save').onclick = async ()=>{
+    const titleV = val('t_title');
+    if(!titleV){ showAlert('Введите название теста', 'error'); return; }
+    const body = { title: titleV, description: val('t_desc'), lang: val('t_lang'), duration_minutes: num('t_dur'), window_start: val('t_start')||null, window_end: val('t_end')||null };
+    const r = await fetch('/api/admin/tests/'+id,{ method:'PUT', headers: aHeaders(), body: JSON.stringify(body) });
+    if(!r.ok){ let msg=''; try{ msg = await r.text(); }catch{} showAlert('Ошибка сохранения'+(msg?': '+msg:''), 'error'); return; }
+    showAlert('Тест обновлен!', 'success');
+    renderTests();
+  };
+}
+async function deleteTest(id){ 
+  if(!confirm('🗑️ Удалить тест? Это действие нельзя отменить!')) return; 
+  const r=await fetch('/api/admin/tests/'+id,{ method:'DELETE', headers: aHeaders() }); 
+  if(!r.ok){ showAlert('Ошибка удаления', 'error'); return; } 
+  showAlert('Тест удален!', 'success');
+  renderTests(); 
+}
+
+// Categories Tab
+async function renderCategories(){
+  setActiveTab(document.getElementById('tabCategories'));
+  showLoading('Загрузка категорий...');
+  const res = await fetch('/api/admin/categories',{ headers: aHeaders() });
+  if(!res.ok){ showAlert('Нет доступа', 'error'); return; }
+  const cats = await res.json();
+  content.innerHTML = `
+    <div class="admin-form">
+      <h3>📂 Управление категориями</h3>
+      <div class="form-row"><label>🇷🇺 Название RU<input id="c_ru" class="admin-input"/></label><label>🇰🇬 Название KY<input id="c_ky" class="admin-input"/></label></div>
+      <div class="form-row"><label>🇷🇺 Описание RU<textarea id="c_dru" class="admin-input" rows="2"></textarea></label><label>🇰🇬 Описание KY<textarea id="c_dky" class="admin-input" rows="2"></textarea></label></div>
+      <div style="margin-top:8px"><button class="admin-button success" id="addCat">➕ Добавить</button></div>
+    </div>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>🇷🇺 RU</th>
+            <th>🇰🇬 KY</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${cats.length > 0 ? cats.map(c=>`<tr><td>${c.id}</td><td><div style="font-weight:600;margin-bottom:4px">${esc(c.name_ru||'')}</div><div class="small-muted" style="font-size:13px;line-height:1.4">${esc((c.desc_ru||'').slice(0,120))}</div></td><td><div style="font-weight:600;margin-bottom:4px">${esc(c.name_ky||'')}</div><div class="small-muted" style="font-size:13px;line-height:1.4">${esc((c.desc_ky||'').slice(0,120))}</div></td><td><div class="admin-table-actions"><button class="admin-button secondary cedit" data-id="${c.id}">✏️ Редакт.</button> <button class="admin-button danger cdel" data-id="${c.id}">🗑️ Удалить</button></div></td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center;padding:32px;color:#718096">Нет категорий</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('addCat').onclick = async ()=>{ 
+    const body={ name_ru: val('c_ru'), name_ky: val('c_ky'), desc_ru: document.getElementById('c_dru').value.trim(), desc_ky: document.getElementById('c_dky').value.trim() }; 
+    const r=await fetch('/api/admin/categories',{ method:'POST', headers:aHeaders(), body: JSON.stringify(body)}); 
+    if(!r.ok){ showAlert('Ошибка создания', 'error'); return; } 
+    showAlert('Категория добавлена!', 'success');
+    renderCategories(); 
+  };
+  content.querySelectorAll('.cedit').forEach(b=> b.onclick = ()=> editCategory(b.dataset.id));
+  content.querySelectorAll('.cdel').forEach(b=> b.onclick = ()=> deleteCategory(b.dataset.id));
+}
+async function editCategory(id){
+  const res = await fetch('/api/admin/categories',{ headers: aHeaders() });
+  const cats = await res.json();
+  const c = cats.find(x=> x.id==id);
+  content.innerHTML = `
+    <div class="admin-form">
+      <h3>✏️ Редактировать категорию #${c.id}</h3>
+      <div class="form-row"><label>🇷🇺 RU<input id="c_ru" class="admin-input" value="${esc(c.name_ru)}"/></label><label>🇰🇬 KY<input id="c_ky" class="admin-input" value="${esc(c.name_ky)}"/></label></div>
+      <div class="form-row"><label>🇷🇺 Описание RU<textarea id="c_dru" class="admin-input" rows="3">${esc(c.desc_ru||'')}</textarea></label><label>🇰🇬 Описание KY<textarea id="c_dky" class="admin-input" rows="3">${esc(c.desc_ky||'')}</textarea></label></div>
+      <div style="margin-top:8px"><button class="admin-button success" id="save">💾 Сохранить</button> <button class="admin-button secondary" id="back">⬅️ Назад</button></div>
+    </div>
+  `;
+  document.getElementById('back').onclick = renderCategories;
+  document.getElementById('save').onclick = async ()=>{ 
+    const body={ name_ru: val('c_ru'), name_ky: val('c_ky'), desc_ru: document.getElementById('c_dru').value.trim(), desc_ky: document.getElementById('c_dky').value.trim() }; 
+    const r=await fetch('/api/admin/categories/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify(body)}); 
+    if(!r.ok){ showAlert('Ошибка сохранения', 'error'); return; } 
+    showAlert('Категория обновлена!', 'success');
+    renderCategories(); 
+  };
+}
+async function deleteCategory(id){ 
+  if(!confirm('🗑️ Удалить категорию? Это действие нельзя отменить!')) return; 
+  const r=await fetch('/api/admin/categories/'+id,{ method:'DELETE', headers:aHeaders() }); 
+  if(!r.ok){ showAlert('Ошибка удаления', 'error'); return; } 
+  showAlert('Категория удалена!', 'success');
+  renderCategories(); 
+}
+
+// Questions Tab
+let currentTestId = null;
+async function renderQuestions(testId){
+  if(testId) currentTestId = testId;
+  if(!currentTestId){
+    // prompt to pick test
+    const tr = await fetch('/api/admin/tests',{ headers: aHeaders() });
+    if(!tr.ok){ content.innerHTML='Нет доступа'; return; }
+    const tests = await tr.json();
+    content.innerHTML = '<h3>Выберите тест</h3>' + tests.map(t=>`<button class="primary m-1" data-id="${t.id}">${t.title}</button>`).join('');
+    content.querySelectorAll('button').forEach(b=> b.onclick = ()=> renderQuestions(parseInt(b.dataset.id,10)));
+    return;
+  }
+  content.innerHTML = 'Загрузка вопросов...';
+  const res = await fetch('/api/admin/tests/'+currentTestId+'/questions',{ headers: aHeaders() });
+  const qs = res.ok ? await res.json() : [];
+  const cs = await (await fetch('/api/admin/categories',{ headers: aHeaders() })).json();
+  content.innerHTML = `
+    <h3>Вопросы — тест #${currentTestId}</h3>
+    <div class="admin-form">
+      <div class="form-row">
+        <button id="backTests" class="admin-button secondary">⬅️ К тестам</button>
+        <button id="exportCsv" class="admin-button">Экспорт CSV</button>
+        <label class="small-muted" style="margin-left:8px">Импорт CSV: <input id="csvFile" type="file" accept=".csv"/></label>
+        <button id="importCsv" class="admin-button">Импорт</button>
+        <button id="addBlank" class="admin-button success" style="margin-left:auto">➕ Добавить вопрос</button>
+      </div>
+    </div>
+    <div id="qList" class="q-list" style="display:flex;flex-direction:column;gap:12px;margin-top:12px"></div>
+  `;
+  document.getElementById('backTests').onclick = renderTests;
+  document.getElementById('exportCsv').onclick = ()=>{ window.location = '/api/admin/tests/'+currentTestId+'/questions/export-csv'; };
+  document.getElementById('importCsv').onclick = async ()=>{
+    const f = document.getElementById('csvFile').files[0]; if(!f){ alert('Выберите файл'); return; }
+    const form = new FormData(); form.append('file', f);
+    const r = await fetch('/api/admin/tests/'+currentTestId+'/questions/import-csv',{ method:'POST', headers:{ 'X-ADMIN-TOKEN': (localStorage.getItem('akylman_admin_token')||'').trim() }, body: form });
+    if(!r.ok){ alert('Ошибка импорта'); return; }
+    renderQuestions(currentTestId);
+  };
+
+  const qList = document.getElementById('qList');
+
+  function createOptionRow(initialValue='', groupName, isChecked=false){
+    const row = document.createElement('div');
+    row.className = 'form-row';
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        <input type="radio" class="q-correct-radio" name="${groupName}" ${isChecked?'checked':''} title="Правильный"/>
+        <input class="admin-input opt" placeholder="Вариант ответа" value="${esc(initialValue)}" style="flex:1; min-width:720px; max-width:100%"/>
+        <button class="admin-button danger opt-del" title="Удалить вариант" style="padding:8px 10px">✖</button>
+      </div>
+    `;
+    const input = row.querySelector('input.opt');
+    const delBtn = row.querySelector('.opt-del');
+    delBtn.onclick = (e)=>{ e.preventDefault(); row.remove(); };
+    input.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        const parent = row.parentElement; // .opts
+        const newRow = createOptionRow('', groupName, false);
+        parent.insertBefore(newRow, row.nextSibling);
+        newRow.querySelector('input.opt').focus();
+      } else if(e.key==='Backspace' && input.value===''){
+        const parent = row.parentElement;
+        const siblings = Array.from(parent.querySelectorAll('.form-row'));
+        if(siblings.length>1){ // не оставляем пустой контейнер
+          e.preventDefault();
+          const prev = row.previousElementSibling || row.nextElementSibling;
+          row.remove();
+          if(prev) prev.querySelector('input.opt')?.focus();
+        }
+      }
+    });
+    return row;
+  }
+
+  function collectOptionsFrom(container){
+    const rows = Array.from(container.querySelectorAll('.form-row'));
+    const options = [];
+    let correctIdx = '';
+    for(const r of rows){
+      const val = (r.querySelector('input.opt')?.value||'').trim();
+      const checked = !!r.querySelector('input.q-correct-radio')?.checked;
+      if(val){
+        if(checked && correctIdx===''){ correctIdx = String(options.length); }
+        options.push(val);
+      }
+    }
+    return { options, correct: correctIdx };
+  }
+
+  async function saveNewQuestion(blank){
+    const type = blank.querySelector('.q-type').value;
+    const text = blank.querySelector('.q-text').value.trim();
+    const points = parseInt(blank.querySelector('.q-points').value||'1',10)||1;
+    const category_id = parseInt(blank.querySelector('.q-cat').value,10)||null;
+    let options = null; let correct = '';
+    if(type==='mcq'){
+      const res = collectOptionsFrom(blank.querySelector('.opts'));
+      options = res.options;
+      correct = res.correct;
+      if(options.length===0){ showAlert('Добавьте хотя бы один вариант', 'error'); return; }
+    } else {
+      correct = (blank.querySelector('.q-correct-text').value||'').trim();
+      if(!text){ showAlert('Введите текст вопроса', 'error'); return; }
+    }
+    const payload = { ordinal: (qs.length+1), text, options, correct, points, category_id };
+    if(Array.isArray(payload.options) && payload.options.length===0){ payload.options = null; }
+    const r = await fetch('/api/admin/tests/'+currentTestId+'/questions',{ method:'POST', headers: aHeaders(), body: JSON.stringify(payload) });
+    if(!r.ok){ try{ const msg = await r.text(); }catch(e){} showAlert('Ошибка сохранения вопроса', 'error'); return; }
+    renderQuestions(currentTestId);
+  }
+
+  function renderCard(q){
+    const card = document.createElement('div');
+    card.className = 'card p-3';
+    card.draggable = true;
+    card.dataset.qid = q.id;
+    card.innerHTML = `
+      <div class="d-flex align-items-center" style="gap:8px">
+        <span class="drag-handle" title="Перетащить" style="cursor:grab">≡</span>
+        <span class="text-muted">#${q.ordinal}</span>
+        <select class="admin-input q-type" style="width:220px">
+          <option value="mcq" ${Array.isArray(q.options)?'selected':''}>Закрытый (варианты)</option>
+          <option value="text" ${Array.isArray(q.options)?'':'selected'}>Открытый</option>
+        </select>
+        <div style="margin-left:auto; display:flex; gap:6px">
+          <button class="admin-button secondary q-dup">Дублировать</button>
+          <button class="admin-button danger q-del">Удалить</button>
+        </div>
+      </div>
+      <div class="mt-2">
+        <textarea class="admin-input q-text" rows="3" placeholder="Вопрос">${esc(q.text||'')}</textarea>
+      </div>
+      <div class="q-options mt-2" ${Array.isArray(q.options)?'':'style=\"display:none\"'}>
+        <div class="opts"></div>
+        <div class="d-flex align-items-center mt-1" style="gap:8px">
+          <button class="admin-button secondary add-opt">Добавить вариант</button>
+          <span class="small-muted">Отметьте кружком правильный вариант</span>
+        </div>
+      </div>
+      <div class="q-answer-text mt-2" ${Array.isArray(q.options)?'style="display:none"':''}>
+        <label>Правильный ответ (текст)<input class="admin-input q-correct-text" value="${!Array.isArray(q.options)?esc(q.correct||''):''}"/></label>
+      </div>
+      <div class="d-flex align-items-center mt-2" style="gap:12px">
+        <label>Баллы<input class="admin-input q-points" type="number" value="${q.points||1}" style="width:80px"/></label>
+        <label>Категория<select class="admin-input q-cat">${cs.map(c=>`<option value="${c.id}" ${q.category_id===c.id?'selected':''}>${c.name_ru}</option>`).join('')}</select></label>
+      </div>
+      <div class="mt-2 d-flex" style="gap:8px">
+        <button class="admin-button success q-save">💾 Сохранить</button>
+      </div>
+    `;
+    const optsWrap = card.querySelector('.opts');
+    const groupName = 'g'+Math.random().toString(36).slice(2);
+    if(Array.isArray(q.options)){
+      const corrIdx = /^[0-9]+$/.test(String(q.correct||'')) ? parseInt(q.correct,10) : -1;
+      q.options.forEach((o,idx)=> optsWrap.appendChild(createOptionRow(o, groupName, idx===corrIdx)));
+      if(q.options.length===0){ optsWrap.appendChild(createOptionRow('', groupName, false)); }
+    }
+    const typeSel = card.querySelector('.q-type');
+    const optBlock = card.querySelector('.q-options');
+    const textBlock = card.querySelector('.q-answer-text');
+    typeSel.onchange = ()=>{
+      const isText = typeSel.value==='text';
+      optBlock.style.display = isText ? 'none' : '';
+      textBlock.style.display = isText ? '' : 'none';
+    };
+    card.querySelector('.add-opt').onclick = (e)=>{ e.preventDefault(); optsWrap.appendChild(createOptionRow('', groupName, false)); };
+    card.querySelector('.q-del').onclick = async ()=>{ if(!confirm('Удалить вопрос?')) return; const r=await fetch('/api/admin/questions/'+q.id,{ method:'DELETE', headers:aHeaders() }); if(!r.ok){ showAlert('Ошибка удаления', 'error'); return; } renderQuestions(currentTestId); };
+    card.querySelector('.q-dup').onclick = async ()=>{
+      const type = typeSel.value;
+      const text = card.querySelector('.q-text').value.trim();
+      const points = parseInt(card.querySelector('.q-points').value||'1',10)||1;
+      const category_id = parseInt(card.querySelector('.q-cat').value,10)||null;
+      let options = null; let correct = '';
+      if(type==='mcq'){
+        const res = collectOptionsFrom(optsWrap);
+        options = res.options;
+        correct = res.correct;
+      } else {
+        correct = (card.querySelector('.q-correct-text').value||'').trim();
+      }
+      const payload = { ordinal: qs.length+1, text, options, correct, points, category_id };
+      const r = await fetch('/api/admin/tests/'+currentTestId+'/questions',{ method:'POST', headers:aHeaders(), body: JSON.stringify(payload) });
+      if(!r.ok){ showAlert('Ошибка дублирования', 'error'); return; }
+      renderQuestions(currentTestId);
+    };
+    card.querySelector('.q-save').onclick = async ()=>{
+      const type = typeSel.value;
+      const text = card.querySelector('.q-text').value.trim();
+      const points = parseInt(card.querySelector('.q-points').value||'1',10)||1;
+      const category_id = parseInt(card.querySelector('.q-cat').value,10)||null;
+      let options = null; let correct = '';
+      if(type==='mcq'){
+        const res = collectOptionsFrom(optsWrap);
+        options = res.options;
+        correct = res.correct;
+      } else {
+        correct = (card.querySelector('.q-correct-text').value||'').trim();
+      }
+      const payload = { ordinal: q.ordinal, text, options, correct, points, category_id };
+      const r = await fetch('/api/admin/questions/'+q.id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
+      if(!r.ok){ showAlert('Ошибка сохранения', 'error'); return; }
+      showAlert('Вопрос сохранен', 'success');
+      renderQuestions(currentTestId);
+    };
+
+    // Drag & drop reorder
+    card.addEventListener('dragstart', (e)=>{ card.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    card.addEventListener('dragend', async ()=>{
+      card.classList.remove('dragging');
+      // recompute ordinals
+      const items = Array.from(qList.children);
+      for (let i=0;i<items.length;i++){
+        const id = items[i].dataset.qid;
+        const newOrd = i+1;
+        const qq = qs.find(x=> String(x.id)===String(id));
+        if(qq && qq.ordinal !== newOrd){
+          try{ await fetch('/api/admin/questions/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify({ ordinal:newOrd, text: qq.text, options: qq.options, correct: qq.correct, points: qq.points, category_id: qq.category_id }) }); }catch{}
+        }
+      }
+      renderQuestions(currentTestId);
+    });
+    qList.addEventListener('dragover', (e)=>{
+      e.preventDefault();
+      const dragging = qList.querySelector('.dragging');
+      const siblings = Array.from(qList.querySelectorAll('.card:not(.dragging)'));
+      const nextSibling = siblings.find(sib=> e.clientY <= sib.getBoundingClientRect().top + sib.offsetHeight/2);
+      qList.insertBefore(dragging, nextSibling||null);
+    });
+
+    return card;
+  }
+
+  function renderBlankCard(){
+    const card = document.createElement('div');
+    card.className = 'card p-3';
+    card.innerHTML = `
+      <div class="d-flex align-items-center" style="gap:8px">
+        <span class="text-muted">Новый вопрос</span>
+        <select class="admin-input q-type" style="width:220px; margin-left:8px">
+          <option value="mcq" selected>Закрытый (варианты)</option>
+          <option value="text">Открытый</option>
+        </select>
+      </div>
+      <div class="mt-2">
+        <textarea class="admin-input q-text" rows="3" placeholder="Вопрос"></textarea>
+      </div>
+      <div class="q-options mt-2">
+        <div class="opts"></div>
+        <div class="d-flex align-items-center mt-1" style="gap:8px">
+          <button class="admin-button secondary add-opt">Добавить вариант</button>
+          <span class="small-muted">Отметьте кружком правильный вариант</span>
+        </div>
+      </div>
+      <div class="q-answer-text mt-2" style="display:none">
+        <label>Правильный ответ (текст)<input class="admin-input q-correct-text"/></label>
+      </div>
+      <div class="d-flex align-items-center mt-2" style="gap:12px">
+        <label>Баллы<input class="admin-input q-points" type="number" value="1" style="width:80px"/></label>
+        <label>Категория<select class="admin-input q-cat">${cs.map(c=>`<option value="${c.id}">${c.name_ru}</option>`).join('')}</select></label>
+      </div>
+      <div class="mt-2 d-flex" style="gap:8px">
+        <button class="admin-button success q-create">Добавить</button>
+        <button class="admin-button secondary q-cancel">Отмена</button>
+      </div>
+    `;
+    const typeSel = card.querySelector('.q-type');
+    const optBlock = card.querySelector('.q-options');
+    const textBlock = card.querySelector('.q-answer-text');
+    typeSel.onchange = ()=>{
+      const isText = typeSel.value==='text';
+      optBlock.style.display = isText ? 'none' : '';
+      textBlock.style.display = isText ? '' : 'none';
+    };
+    const optsWrap = card.querySelector('.opts');
+    const groupName = 'g'+Math.random().toString(36).slice(2);
+    const addOptBtn = card.querySelector('.add-opt');
+    addOptBtn.onclick = (e)=>{ e.preventDefault(); optsWrap.appendChild(createOptionRow('', groupName, false)); };
+    // initial two options
+    optsWrap.appendChild(createOptionRow('', groupName, false));
+    optsWrap.appendChild(createOptionRow('', groupName, false));
+
+    card.querySelector('.q-create').onclick = ()=> saveNewQuestion(card);
+    card.querySelector('.q-cancel').onclick = ()=> card.remove();
+    return card;
+  }
+
+  // Render list
+  qs.sort((a,b)=> a.ordinal-b.ordinal).forEach(q=> qList.appendChild(renderCard(q)));
+
+  document.getElementById('addBlank').onclick = ()=>{
+    const blank = renderBlankCard();
+    qList.appendChild(blank);
+    blank.scrollIntoView({ behavior:'smooth', block:'center' });
+  };
+}
+function editQuestion(id, qs, cs){
+  const q = qs.find(x=> x.id==id);
+  content.innerHTML = `
+    <h3>Редактировать вопрос #${q.id}</h3>
+    <div class="form-row"><label>#<input id="q_ord" type="number" value="${q.ordinal}"/></label><label>Текст<textarea id="q_text" rows="3">${esc(q.text||'')}</textarea></label></div>
+    <div class="form-row"><label>Опции<input id="q_opts" value="${Array.isArray(q.options)?q.options.join(' | '):(q.options||'')}"/></label><label>Ответ<input id="q_correct" value="${esc(q.correct||'')}"/></label></div>
+    <div class="form-row"><label>Баллы<input id="q_points" type="number" value="${q.points||1}"/></label><label>Категория<select id="q_cat">${cs.map(c=>`<option value="${c.id}" ${q.category_id===c.id?'selected':''}>${c.name_ru}</option>`).join('')}</select></label></div>
+    <div style="margin-top:8px"><button class="primary" id="save">Сохранить</button> <button id="back">Назад</button></div>
+  `;
+  document.getElementById('back').onclick = ()=> renderQuestions(currentTestId);
+  document.getElementById('save').onclick = async ()=>{
+    const payload = { ordinal: num('q_ord'), text: document.getElementById('q_text').value.trim(), options: (val('q_opts')? val('q_opts').split('|').map(s=>s.trim()).filter(Boolean) : null), correct: val('q_correct'), points: num('q_points'), category_id: parseInt(val('q_cat'),10)||null };
+    const r = await fetch('/api/admin/questions/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
+    if(!r.ok){ alert('Ошибка'); return; }
+    renderQuestions(currentTestId);
+  };
+}
+
+// Teams Tab
+async function renderTeams(){
+  setActiveTab(document.getElementById('tabTeams'));
+  showLoading('Загрузка команд...');
+  const r = await fetch('/api/admin/teams',{ headers: aHeaders() });
+  if(!r.ok){ showAlert('Нет доступа', 'error'); return; }
+  const rows = await r.json();
+  content.innerHTML = `
+    <div class="admin-form">
+      <h3>👥 Зарегистрированные команды (${rows.length})</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button id="exportTeams" class="admin-button success">📥 Экспорт CSV</button>
+        <button id="wipeTeams" class="admin-button danger">🗑️ Очистить команды и результаты</button>
+      </div>
+    </div>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Команда</th>
+            <th>Капитан</th>
+            <th>Email</th>
+            <th>Школа</th>
+            <th>Город</th>
+            <th>Создан</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.length > 0 ? rows.map(t=>`<tr><td>${t.id}</td><td>${esc(t.team_name||'')}</td><td>${esc(t.captain_name||'')}</td><td>${esc(t.captain_email||'')}</td><td>${esc(t.school||'')}</td><td>${esc(t.city||'')}</td><td>${esc(t.created_at||'')}</td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;padding:32px;color:#718096">Нет зарегистрированных команд</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('exportTeams').onclick = async ()=>{
+    try{
+      const res = await fetch('/api/admin/teams/export-csv', { headers: aHeaders() });
+      if(!res.ok){ showAlert('Ошибка экспорта', 'error'); return; }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'teams_export.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      showAlert('Экспорт завершен!', 'success');
+    }catch(e){
+      showAlert('Ошибка экспорта: ' + e.message, 'error');
+    }
+  };
+  document.getElementById('wipeTeams').onclick = async ()=>{ if(!confirm('Удалить все команды и результаты?')) return; const res=await fetch('/api/admin/reset-teams',{ method:'POST', headers:aHeaders() }); if(!res.ok){ showAlert('Ошибка очистки', 'error'); return; } showAlert('Все команды и результаты удалены', 'success'); renderTeams(); };
+}
+
+// Results Tab
+async function renderResults(){
+  setActiveTab(document.getElementById('tabResults'));
+  showLoading('Загрузка результатов...');
+  const r = await fetch('/api/admin/results',{ headers: aHeaders() });
+  if(!r.ok){ showAlert('Нет доступа', 'error'); return; }
+  const rows = await r.json();
+  content.innerHTML = `
+    <div class="admin-form">
+      <h3>📊 Результаты тестирования (${rows.length} записей)</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button id="exportResults" class="admin-button success">📥 Экспорт CSV</button>
+      </div>
+    </div>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Тест</th>
+            <th>Команда</th>
+            <th>Баллы</th>
+            <th>Время</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.length > 0 ? rows.map(x=>`<tr><td>${x.id}</td><td>${esc(x.title||'')}</td><td>${esc(x.team_name||'')}</td><td><strong>${x.score || 0}</strong></td><td>${esc(x.taken_at||'')}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:32px;color:#718096">Нет результатов тестирования</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('exportResults').onclick = async ()=>{
+    try{
+      const res = await fetch('/api/admin/results/export-csv', { headers: aHeaders() });
+      if(!res.ok){ showAlert('Ошибка экспорта', 'error'); return; }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'results_export.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      showAlert('Экспорт завершен!', 'success');
+    }catch(e){
+      showAlert('Ошибка экспорта: ' + e.message, 'error');
+    }
+  };
+}
+
+// Helpers
+function val(id){ return (document.getElementById(id).value||'').trim(); }
+function num(id){ return parseInt(val(id)||'0',10)||0; }
+function esc(s){ return String(s||'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+
+// Tab bindings
+const bTests = document.getElementById('tabTests');
+const bQuestions = document.getElementById('tabQuestions');
+const bCats = document.getElementById('tabCategories');
+const bTeams = document.getElementById('tabTeams');
+const bResults = document.getElementById('tabResults');
+const bSettings = document.getElementById('tabSettings');
+
+bTests.onclick = renderTests;
+bQuestions.onclick = ()=> renderQuestions(null);
+bCats.onclick = renderCategories;
+bTeams.onclick = renderTeams;
+bResults.onclick = renderResults;
+bSettings.onclick = renderSettings;
+
+// default
+renderTests();
+</script>
+</body></html>
