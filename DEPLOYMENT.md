@@ -76,25 +76,30 @@ To backup persistent data from Render:
 
 ## Render Dashboard Setup
 
-To ensure persistent storage works, follow these steps in Render Dashboard:
+**IMPORTANT:** Persistent storage requires a persistent disk to be created in Render Dashboard.
 
-1. Go to your service settings
-2. Look for "Disks" section
-3. Create a disk with these settings:
-   - **Name**: `data` (matches `disk.name` in render.yaml)
-   - **Mount Path**: `/var/data` (matches `disk.mountPath` in render.yaml)
-   - **Size**: 1 GB or more (adjust as needed)
-4. Save and redeploy
+See quick setup: [RENDER_SETUP_QUICK.md](RENDER_SETUP_QUICK.md)
 
-After redeploy, the startup logs should show:
+See detailed guide: [RENDER_DISK_SETUP.md](RENDER_DISK_SETUP.md)
+
+### Quick Summary:
+1. Go to Render Dashboard → Service Settings → Disks
+2. Create Disk:
+   - **Name**: `data`
+   - **Mount Path**: `/var/data`
+   - **Size**: 1 GB+
+3. Click Save
+4. Click Manual Deploy
+
+After successful redeploy, logs will show:
 ```
 ✅ Akylman Quiz Bowl Server Started
 🌍 Environment: production
+📁 Data Directory: /var/data
 🗄️  Database: /var/data/db.sqlite ✓ exists
 📝 Tests: /var/data/tests ✓ exists
 ⚠️  PRODUCTION MODE - Data persistence required!
 ✓ Data stored in: /var/data
-✓ Ensure Render persistent disk is mounted
 ```
 
 ## Troubleshooting

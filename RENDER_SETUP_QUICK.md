@@ -2,29 +2,36 @@
 
 ## Problem
 Data (teams, tests, results) gets lost after every redeploy.
+```
+❌ Failed to create directory: /var/data EACCES
+```
 
 ## Solution
-You need to activate a **persistent disk** on Render.
+You need to create a **persistent disk** on Render.
 
-## Steps
+## 4 Steps
 
-### 1. Go to Render Dashboard
-https://dashboard.render.com → Select your service → Settings
+### 1️⃣ Go to Render Dashboard
+https://dashboard.render.com → Select **akylman-quiz** service
 
-### 2. Scroll to "Disks"
+### 2️⃣ Go to Settings → Disks
+Scroll down on the Settings page until you see **"Disks"** section
 
-### 3. Create Persistent Disk
+### 3️⃣ Create Disk
+- Click **"Create Disk"**
 - **Name**: `data`
 - **Mount Path**: `/var/data`  
-- **Size**: 1 GB or more
-- Click **Add**
+- **Size**: 1 GB
+- Click **"Save"**
 
-### 4. Redeploy Service
-- Click **Manual Deploy** or push to GitHub
-- Wait for deployment to complete
+### 4️⃣ Redeploy
+- Click **"Manual Deploy"** on service page
+- OR: `git push origin main`
+- Wait for build to complete
 
-### 5. Verify in Logs
-After redeploy, logs should show:
+## ✅ Verify Success
+
+After redeploy, check Logs tab. You should see:
 ```
 📁 Data Directory: /var/data
 🗄️  Database: /var/data/db.sqlite ✓ exists
@@ -32,13 +39,11 @@ After redeploy, logs should show:
 ⚠️  PRODUCTION MODE - Data persistence required!
 ```
 
-## ✅ Done!
-Data will now persist across redeploys.
+## 📖 Detailed Guide
+For more detailed instructions with screenshots, see: [RENDER_DISK_SETUP.md](RENDER_DISK_SETUP.md)
 
-## Troubleshooting
-If you still see data loss:
-1. Dashboard → Service → Disks
-2. Verify disk named `data` exists at `/var/data`
-3. If missing, create it again
-4. Click **Redeploy**
-5. Check logs to confirm `/var/data` is being used
+## ❌ Still not working?
+1. Delete old disk in Settings → Disks → Delete
+2. Create new disk as shown above
+3. Manual Deploy
+4. Check the detailed guide

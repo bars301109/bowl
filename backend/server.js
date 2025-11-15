@@ -24,7 +24,7 @@ const ensureDirectory = (dir) => {
       console.log('✓ Created directory:', dir);
       return true;
     }catch(e){
-      console.error('✗ Failed to create directory:', dir, e.code);
+      console.error(`✗ Failed to create directory: ${dir} ${e.code}`);
       return false;
     }
   }
@@ -33,9 +33,20 @@ const ensureDirectory = (dir) => {
 
 if(!ensureDirectory(DATA_DIR)){
   if(process.env.NODE_ENV === 'production'){
-    console.error('❌ FATAL: Cannot write to /var/data in production!');
-    console.error('❌ Persistent disk is not mounted properly in Render dashboard.');
-    console.error('❌ Check Render service settings and redeploy.');
+    console.error('');
+    console.error('❌ FATAL: Cannot write to persistent storage');
+    console.error('❌ Path: ' + DATA_DIR);
+    console.error('');
+    console.error('SOLUTION - On Render Dashboard:');
+    console.error('1. Go to Dashboard → akylman-quiz service');
+    console.error('2. Click "Settings" → Scroll to "Disks"');
+    console.error('3. Click "Create Disk"');
+    console.error('   - Name: data');
+    console.error('   - Mount path: /var/data');
+    console.error('   - Size: 1 GB');
+    console.error('4. Click "Save"');
+    console.error('5. Redeploy: Click "Manual Deploy" or push to GitHub');
+    console.error('');
     process.exit(1);
   }
 }
