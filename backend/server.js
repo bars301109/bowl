@@ -33,12 +33,10 @@ const ensureDirectory = (dir) => {
 
 if(!ensureDirectory(DATA_DIR)){
   if(process.env.NODE_ENV === 'production'){
-    console.warn('⚠ Cannot write to /var/data. Ensure persistent disk is mounted in Render dashboard.');
-    console.warn('⚠ Falling back to temporary storage (data will be lost on redeploy).');
-    DATA_DIR = '/tmp/akylman-data';
-    DB_FILE = path.join(DATA_DIR, 'db.sqlite');
-    TESTS_DIR = path.join(DATA_DIR, 'tests');
-    ensureDirectory(DATA_DIR);
+    console.error('❌ FATAL: Cannot write to /var/data in production!');
+    console.error('❌ Persistent disk is not mounted properly in Render dashboard.');
+    console.error('❌ Check Render service settings and redeploy.');
+    process.exit(1);
   }
 }
 
@@ -77,6 +75,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/', express.static(path.join(__dirname, '..', 'frontend', 'src')));
 const db = new Database(DB_FILE);
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
 function runAsync(sql, params = []) {
   return new Promise((resolve, reject) => {
     try {
@@ -230,7 +230,11 @@ function writeQuestionsFile(testId, questions){
   try{
     const fp = testFilePath(testId);
     fs.writeFileSync(fp, JSON.stringify(questions, null, 2), 'utf8');
-  }catch(e){ console.error('Failed to write test file', testId, e); throw e; }
+    const fd = fs.openSync(fp, 'r');
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    if(process.env.DEBUG) console.log(`✓ Saved ${questions.length} questions to test_${testId}.json`);
+  }catch(e){ console.error(`✗ Failed to write test file ${testId}:`, e.message); throw e; }
 }
 function nextQuestionId(questions){
   let maxId = 0;
@@ -265,12 +269,13 @@ app.post('/api/register', async (req,res)=>{
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if(email && !emailOk) return res.status(400).json({ error:'Invalid email' });
     const pw = data.password || '';
-    if(!(pw.length>=8 && /[A-Z]/.test(pw))) return res.status(400).json({ error:'Weak password' });
+    if(!(pw.length>=8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /\d/.test(pw))) return res.status(400).json({ error:'Weak password: must have 8+ chars, uppercase, lowercase, and number' });
     const exists = await getAsync('SELECT id FROM teams WHERE login = ?', [data.login]);
     if (exists) return res.status(400).json({ error:'Login exists' });
     const hashed = await bcrypt.hash(data.password, 10);
     const members_json = JSON.stringify(data.members || []);
     await runAsync('INSERT INTO teams (team_name, login, password, captain_name, captain_email, captain_phone, members, school, city, created_at) VALUES (?,?,?,?,?,?,?,?,?,datetime(\'now\'))',[data.team_name, data.login, hashed, data.captain_name, data.captain_email, data.captain_phone, members_json, data.school, data.city]);
+    console.log(`✓ Team registered: ${data.team_name} (${data.login})`);
     res.json({ ok:true });
   }catch(e){ console.error(e); res.status(500).json({ error:e.message }); }
 });
@@ -317,6 +322,7 @@ app.post('/api/tests/:id/submit', teamAuth, async (req,res)=>{
       answersArr.push({ question_id: q.id, given, correct });
     }
     await runAsync('INSERT INTO results (team_id, test_id, score, answers, taken_at) VALUES (?,?,?,?,datetime(\'now\'))',[req.team.id, testId, score, JSON.stringify(answersArr)]);
+    console.log(`✓ Test submitted: team_id=${req.team.id}, test_id=${testId}, score=${score}`);
     res.json({ ok:true, score });
   }catch(e){ res.status(500).json({ error:e.message }); }
 });
@@ -709,16 +715,33 @@ app.put('/api/admin/settings', adminAuth, async (req,res)=>{
   }catch(e){ res.status(500).json({ error:e.message }); }
 });
 ensureSchema().then(() => {
+  const dbExists = fs.existsSync(DB_FILE);
+  const testsDirExists = fs.existsSync(TESTS_DIR);
+  
+  setInterval(() => {
+    try {
+      db.exec('PRAGMA wal_checkpoint(PASSIVE)');
+    } catch (e) {
+      console.warn('WAL checkpoint warning:', e.message);
+    }
+  }, 60000);
+  
   app.listen(PORT, () => {
     console.log('');
     console.log('✅ Akylman Quiz Bowl Server Started');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`📍 Port: ${PORT}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📁 Data Directory: ${DATA_DIR}`);
-    console.log(`🗄️  Database: ${DB_FILE}`);
-    console.log(`📝 Tests: ${TESTS_DIR}`);
-    console.log(`🌍 URL: http://localhost:${PORT}`);
+    console.log(`🗄️  Database: ${DB_FILE} ${dbExists ? '✓ exists' : '✗ new'}`);
+    console.log(`📝 Tests: ${TESTS_DIR} ${testsDirExists ? '✓ exists' : '✗ new'}`);
+    console.log(`🔗 URL: http://localhost:${PORT}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    if(process.env.NODE_ENV === 'production'){
+      console.log('⚠️  PRODUCTION MODE - Data persistence required!');
+      console.log(`✓ Data stored in: ${DATA_DIR}`);
+      console.log('✓ Ensure Render persistent disk is mounted');
+    }
     console.log('');
   });
 }).catch(err => {

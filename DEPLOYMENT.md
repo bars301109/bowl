@@ -74,21 +74,54 @@ To backup persistent data from Render:
    - `db.sqlite` - Full database backup
    - `tests/` - All test configurations
 
+## Render Dashboard Setup
+
+To ensure persistent storage works, follow these steps in Render Dashboard:
+
+1. Go to your service settings
+2. Look for "Disks" section
+3. Create a disk with these settings:
+   - **Name**: `data` (matches `disk.name` in render.yaml)
+   - **Mount Path**: `/var/data` (matches `disk.mountPath` in render.yaml)
+   - **Size**: 1 GB or more (adjust as needed)
+4. Save and redeploy
+
+After redeploy, the startup logs should show:
+```
+✅ Akylman Quiz Bowl Server Started
+🌍 Environment: production
+🗄️  Database: /var/data/db.sqlite ✓ exists
+📝 Tests: /var/data/tests ✓ exists
+⚠️  PRODUCTION MODE - Data persistence required!
+✓ Data stored in: /var/data
+✓ Ensure Render persistent disk is mounted
+```
+
 ## Troubleshooting
 
-### "No such table: teams" error
-- Volume might not be mounted or writable
-- Check Render volume configuration in dashboard
-- Verify database initialization ran successfully
+### "No such table: teams" error after redeploy
+1. **First check**: Render Dashboard → Service → Disks
+2. **Is the disk mounted?** Should show `data` disk at `/var/data`
+3. **If disk is missing**: Create new disk with name `data`, mount `/var/data`
+4. **Redeploy** the service
+5. **Check logs** for startup messages
 
-### Missing test results after redeploy
-- Likely using ephemeral storage
-- Verify `render.yaml` is in root directory
-- Trigger a redeploy to apply volume configuration
+### Server exits with "Cannot write to /var/data"
+- Persistent disk is not mounted properly
+- Go to Render Dashboard → Service Settings → Disks
+- Verify disk `data` is mounted at `/var/data`
+- Click "Redeploy" to apply changes
+
+### Missing test results/settings after redeploy
+- **Most likely cause**: Persistent disk not activated on Render
+- Data is being stored in temporary storage that gets wiped
+- Follow "Render Dashboard Setup" steps above
+- Redeploy to activate persistent storage
 
 ### Data appearing after redeploy
 - Migration worked! Old data was transferred to persistent storage
 - Legacy files in `backend/` are no longer used
+- Disk is properly mounted and persistent
 
 ## Local Development
 
