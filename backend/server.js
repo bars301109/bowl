@@ -246,7 +246,30 @@ app.get('/api/tests/:id', async (req,res)=>{
 app.get('/api/categories', async (req,res)=>{ try{ const rows = await allAsync('SELECT id, name_ru, name_ky, desc_ru, desc_ky FROM categories ORDER BY id'); res.json(rows); }catch(e){ res.status(500).json({ error:e.message }); } });
 function teamAuth(req,res,next){ const auth = req.headers['authorization'] || ''; if (!auth.startsWith('Bearer ')) return res.status(401).json({ error:'Missing token' }); const token = auth.slice(7); try{ const payload = jwt.verify(token, JWT_SECRET); req.team = payload; next(); }catch(e){ return res.status(401).json({ error:'Invalid token' }); } }
 app.post('/api/tests/:id/submit', teamAuth, async (req,res)=>{
-  try{ const testId = req.params.id; const answers = req.body.answers || {}; const qs = await allAsync('SELECT id, correct, points FROM questions WHERE test_id=?',[testId]); let score = 0; const answersArr = []; for (const q of qs){ const given = answers[q.id] !== undefined ? answers[q.id] : null; const correct = q.correct; let qok = false; if (correct===null||correct===undefined){ qok=false; } else if (String(correct).match(/^\\d+$/)){ if (String(given) === String(correct)) qok=true; } else { if (String(given||'').trim().toLowerCase() === String(correct).trim().toLowerCase()) qok=true; } if (qok) score += (q.points||1); answersArr.push({ question_id: q.id, given, correct }); } await runAsync('INSERT INTO results (team_id, test_id, score, answers, taken_at) VALUES (?,?,?,?,datetime(\'now\'))',[req.team.id, testId, score, JSON.stringify(answersArr)]); res.json({ ok:true, score }); }catch(e){ res.status(500).json({ error:e.message }); } });
+  try{
+    const testId = req.params.id;
+    const answers = req.body.answers || {};
+    const qs = readQuestionsFile(testId);
+    let score = 0;
+    const answersArr = [];
+    for (const q of qs){
+      const given = answers[q.id] !== undefined ? answers[q.id] : null;
+      const correct = q.correct;
+      let qok = false;
+      if (correct===null||correct===undefined){
+        qok=false;
+      } else if (String(correct).match(/^\d+$/)){
+        if (String(given) === String(correct)) qok=true;
+      } else {
+        if (String(given||'').trim().toLowerCase() === String(correct).trim().toLowerCase()) qok=true;
+      }
+      if (qok) score += (q.points||1);
+      answersArr.push({ question_id: q.id, given, correct });
+    }
+    await runAsync('INSERT INTO results (team_id, test_id, score, answers, taken_at) VALUES (?,?,?,?,datetime(\'now\'))',[req.team.id, testId, score, JSON.stringify(answersArr)]);
+    res.json({ ok:true, score });
+  }catch(e){ res.status(500).json({ error:e.message }); }
+});
 app.get('/api/me', teamAuth, async (req,res)=>{ try{ const t = await getAsync('SELECT id, team_name, login, captain_name, captain_email, school, city FROM teams WHERE id=?',[req.team.id]); if (!t) return res.status(404).json({ error:'Team not found' }); res.json({ ok:true, team: t }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.get('/api/me/results', teamAuth, async (req,res)=>{ try{ const rows = await allAsync('SELECT r.id, r.test_id, r.score, r.taken_at, t.title FROM results r LEFT JOIN tests t ON t.id = r.test_id WHERE r.team_id = ? ORDER BY r.taken_at DESC',[req.team.id]); res.json(rows);}catch(e){ res.status(500).json({ error:e.message }); } });
 app.get('/api/admin/tests', adminAuth, async (req,res)=>{ try{ const tests = await allAsync('SELECT * FROM tests ORDER BY id DESC'); res.json(tests);}catch(e){ res.status(500).json({ error:e.message }); } });
