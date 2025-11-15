@@ -27,9 +27,41 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/', express.static(path.join(__dirname, '..', 'frontend', 'src')));
 const db = new Database(DB_FILE);
-function runAsync(sql, params=[]){ return new Promise((res, rej)=>{ db.run(sql, params, function(err){ if(err) rej(err); else res(this); }); }); }
-function allAsync(sql, params=[]){ return new Promise((res, rej)=>{ db.all(sql, params, (err, rows)=>{ if(err) rej(err); else res(rows); }); }); }
-function getAsync(sql, params=[]){ return new Promise((res, rej)=>{ db.get(sql, params, (err, row)=>{ if(err) rej(err); else res(row); }); }); }
+function runAsync(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    try {
+      const stmt = db.prepare(sql);
+      const result = stmt.run(params);
+      resolve(result);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function allAsync(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    try {
+      const stmt = db.prepare(sql);
+      const rows = stmt.all(params);
+      resolve(rows);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function getAsync(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    try {
+      const stmt = db.prepare(sql);
+      const row = stmt.get(params);
+      resolve(row);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
 async function ensureSchema(){
   try{
     await runAsync(`CREATE TABLE IF NOT EXISTS teams (
