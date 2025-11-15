@@ -138,7 +138,7 @@ header.header .container {
 }
 
 .hero {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.8) 0%, rgba(30, 58, 138, 0.8) 100%), url('images/campus-online.png') center/cover;
   color: white;
   padding: 120px 0;
   text-align: center;
