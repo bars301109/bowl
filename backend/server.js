@@ -5,7 +5,7 @@ const betterSqlite3 = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const bcryptjs = require('bcryptjs');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const upload = multer({ dest: path.join(__dirname, 'uploads') });
 const app = express();
@@ -186,14 +186,14 @@ app.post('/api/register', async (req,res)=>{
     if(!(pw.length>=8 && /[A-Z]/.test(pw))) return res.status(400).json({ error:'Weak password' });
     const exists = await getAsync('SELECT id FROM teams WHERE login = ?', [data.login]);
     if (exists) return res.status(400).json({ error:'Login exists' });
-    const hashed = await bcryptjs.hash(data.password, 10);
+    const hashed = await bcrypt.hash(data.password, 10);
     const members_json = JSON.stringify(data.members || []);
     await runAsync('INSERT INTO teams (team_name, login, password, captain_name, captain_email, captain_phone, members, school, city, created_at) VALUES (?,?,?,?,?,?,?,?,?,datetime("now"))',[data.team_name, data.login, hashed, data.captain_name, data.captain_email, data.captain_phone, members_json, data.school, data.city]);
     res.json({ ok:true });
   }catch(e){ console.error(e); res.status(500).json({ error:e.message }); }
 });
 app.post('/api/login', async (req,res)=>{
-  try{ const { login, password } = req.body; const team = await getAsync('SELECT id, team_name, login, password, captain_name, captain_email FROM teams WHERE login = ?', [login]); if (!team) return res.status(401).json({ error:'Invalid' }); const ok = await bcryptjs.compare(password, team.password); if (!ok) return res.status(401).json({ error:'Invalid' }); const token = signTeamToken(team); res.json({ ok:true, team: { id:team.id, team_name: team.team_name, login: team.login, captain_name: team.captain_name, captain_email: team.captain_email, token } }); }catch(e){ res.status(500).json({ error:e.message }); }
+  try{ const { login, password } = req.body; const team = await getAsync('SELECT id, team_name, login, password, captain_name, captain_email FROM teams WHERE login = ?', [login]); if (!team) return res.status(401).json({ error:'Invalid' }); const ok = await bcrypt.compare(password, team.password); if (!ok) return res.status(401).json({ error:'Invalid' }); const token = signTeamToken(team); res.json({ ok:true, team: { id:team.id, team_name: team.team_name, login: team.login, captain_name: team.captain_name, captain_email: team.captain_email, token } }); }catch(e){ res.status(500).json({ error:e.message }); }
 });
 function adminAuth(req,res,next){ const token = req.headers['x-admin-token'] || ''; if (token !== ADMIN_TOKEN) return res.status(403).json({ error:'Forbidden' }); next(); }
 app.get('/api/tests', async (req,res)=>{ try{ const tests = await allAsync('SELECT id,title,description,lang,duration_minutes FROM tests ORDER BY id'); res.json(tests); }catch(e){ res.status(500).json({ error:e.message }); } });
