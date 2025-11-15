@@ -20,11 +20,13 @@
 body{
   font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
   margin:0;
+  padding:0;
   background:var(--bg);
   color:var(--ink);
   line-height:1.6;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
+  overflow-x:hidden;
 }
 .container{
   max-width:1200px;
@@ -118,35 +120,39 @@ body{
   pointer-events:none;
 }
 .hero h1{
-  font-size:clamp(32px,5vw,48px);
-  margin:0 0 12px 0;
-  letter-spacing:-0.02em;
+  font-size:clamp(36px,6vw,56px);
+  margin:0 0 16px 0;
+  letter-spacing:-0.03em;
   font-family:'Russo One',system-ui,Arial,sans-serif;
-  font-weight:700;
-  text-shadow:0 2px 4px rgba(0,0,0,0.1);
+  font-weight:900;
+  text-shadow:0 4px 12px rgba(0,0,0,0.25);
   position:relative;
   z-index:1;
+  line-height:1.1;
+  font-style:italic;
 }
 .hero h2{
-  font-size:clamp(24px,4vw,36px);
-  margin:0 0 16px 0;
-  font-weight:700;
+  font-size:clamp(28px,5vw,44px);
+  margin:0 0 20px 0;
+  font-weight:800;
   font-family:'Russo One',system-ui,Arial,sans-serif;
-  opacity:0.95;
+  opacity:1;
   position:relative;
   z-index:1;
+  letter-spacing:-0.01em;
 }
 .hero p{
-  font-size:clamp(16px,2vw,20px);
-  margin:0 0 24px 0;
-  opacity:0.9;
+  font-size:clamp(17px,2.5vw,22px);
+  margin:0 0 28px 0;
+  opacity:0.95;
   font-family:'Inter',system-ui,Arial,sans-serif;
-  font-weight:400;
+  font-weight:500;
   max-width:600px;
   margin-left:auto;
   margin-right:auto;
   position:relative;
   z-index:1;
+  letter-spacing:0.3px;
 }
 .cta{
   display:inline-block;
