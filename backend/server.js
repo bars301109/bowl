@@ -1,7 +1,7 @@
 
 /* Complete backend for Akylman Quiz Bowl */
 const express = require('express');
-const betterSqlite3 = require('better-sqlite3');
+const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
@@ -26,7 +26,7 @@ if(!fs.existsSync(TESTS_DIR)){
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/', express.static(path.join(__dirname, '..', 'frontend', 'src')));
-const db = new betterSqlite3.Database(DB_FILE, (err)=>{ if(err) return console.error(err); console.log('DB opened:', DB_FILE); ensureSchema(); });
+const db = new Database(DB_FILE);
 function runAsync(sql, params=[]){ return new Promise((res, rej)=>{ db.run(sql, params, function(err){ if(err) rej(err); else res(this); }); }); }
 function allAsync(sql, params=[]){ return new Promise((res, rej)=>{ db.all(sql, params, (err, rows)=>{ if(err) rej(err); else res(rows); }); }); }
 function getAsync(sql, params=[]){ return new Promise((res, rej)=>{ db.get(sql, params, (err, row)=>{ if(err) rej(err); else res(row); }); }); }
