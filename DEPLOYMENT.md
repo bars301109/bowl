@@ -74,59 +74,95 @@ To backup persistent data from Render:
    - `db.sqlite` - Full database backup
    - `tests/` - All test configurations
 
-## Render Dashboard Setup
+## Render Deployment Options
 
-**IMPORTANT:** Persistent storage requires a persistent disk to be created in Render Dashboard.
+### ⚠️ Problem: Free Plan Can't Store Data
 
-See quick setup: [RENDER_SETUP_QUICK.md](RENDER_SETUP_QUICK.md)
+Free Render plan **does NOT support persistent disks**.
+Data is lost on every redeploy.
 
-See detailed guide: [RENDER_DISK_SETUP.md](RENDER_DISK_SETUP.md)
+### ✅ Solutions
 
-### Quick Summary:
-1. Go to Render Dashboard → Service Settings → Disks
-2. Create Disk:
-   - **Name**: `data`
-   - **Mount Path**: `/var/data`
-   - **Size**: 1 GB+
-3. Click Save
-4. Click Manual Deploy
+| Option | Cost | Setup | Data Persists | Link |
+|--------|------|-------|--------------|------|
+| **PostgreSQL** | FREE | 10 min | ✅ | [RENDER_POSTGRES.md](RENDER_POSTGRES.md) ⭐ |
+| **Paid Plan** | $7-15/mo | 5 min | ✅ | [RENDER_SETUP_QUICK.md](RENDER_SETUP_QUICK.md) |
+| **Free (temp)** | FREE | 0 min | ❌ | (current) |
 
-After successful redeploy, logs will show:
+### **Recommended: Use PostgreSQL (Free + Persistent)**
+
+See: [RENDER_POSTGRES.md](RENDER_POSTGRES.md)
+
+- ✅ Completely FREE
+- ✅ Data persists across redeploys
+- ✅ Production-ready
+- Takes 10 minutes to set up
+
+### Alternative: Upgrade to Paid Plan
+
+See: [RENDER_SETUP_QUICK.md](RENDER_SETUP_QUICK.md)
+
+Steps:
+1. Upgrade Render to paid plan ($7-15/month)
+2. Create persistent disk
+3. Redeploy
+
+### Current Status (Free Plan, No Setup)
+
+App works but data is temporary:
 ```
-✅ Akylman Quiz Bowl Server Started
-🌍 Environment: production
-📁 Data Directory: /var/data
-🗄️  Database: /var/data/db.sqlite ✓ exists
-📝 Tests: /var/data/tests ✓ exists
-⚠️  PRODUCTION MODE - Data persistence required!
-✓ Data stored in: /var/data
+⚠️  TEMPORARY STORAGE MODE
+⚠️  Data will be LOST when service restarts!
 ```
+
+See: [FREE_VS_PAID.md](FREE_VS_PAID.md) for all options.
 
 ## Troubleshooting
 
-### "No such table: teams" error after redeploy
-1. **First check**: Render Dashboard → Service → Disks
-2. **Is the disk mounted?** Should show `data` disk at `/var/data`
-3. **If disk is missing**: Create new disk with name `data`, mount `/var/data`
-4. **Redeploy** the service
-5. **Check logs** for startup messages
+### Data Lost After Redeploy
 
-### Server exits with "Cannot write to /var/data"
-- Persistent disk is not mounted properly
-- Go to Render Dashboard → Service Settings → Disks
-- Verify disk `data` is mounted at `/var/data`
-- Click "Redeploy" to apply changes
+**Cause**: Using free Render plan without PostgreSQL setup
 
-### Missing test results/settings after redeploy
-- **Most likely cause**: Persistent disk not activated on Render
-- Data is being stored in temporary storage that gets wiped
-- Follow "Render Dashboard Setup" steps above
-- Redeploy to activate persistent storage
+**Solutions**:
+1. **Add PostgreSQL** (recommended): [RENDER_POSTGRES.md](RENDER_POSTGRES.md)
+2. **Upgrade to paid plan**: [RENDER_SETUP_QUICK.md](RENDER_SETUP_QUICK.md)
+3. **Accept temporary storage**: Data will reset on redeploy
 
-### Data appearing after redeploy
-- Migration worked! Old data was transferred to persistent storage
-- Legacy files in `backend/` are no longer used
-- Disk is properly mounted and persistent
+### "TEMPORARY STORAGE MODE" in logs
+
+**Meaning**: Running on free plan without persistent storage
+
+**Fix**:
+- See: [FREE_VS_PAID.md](FREE_VS_PAID.md)
+- Choose PostgreSQL or upgrade plan
+
+### "No such table: teams" error
+
+**If using free plan (no setup)**:
+- This is expected - data is temporary
+- See [FREE_VS_PAID.md](FREE_VS_PAID.md) for solutions
+
+**If using paid plan with persistent disk**:
+1. Check: Render Dashboard → Service → Settings → Disks
+2. Is disk named `data` at `/var/data` showing?
+3. If missing: Create new disk and redeploy
+4. If present but error persists: Redeploy again
+
+### "Cannot write to /var/data" error
+
+**On free plan**: Normal - no persistent storage available. See [FREE_VS_PAID.md](FREE_VS_PAID.md)
+
+**On paid plan**: 
+- Persistent disk not properly mounted
+- Go to Settings → Disks
+- Verify disk exists at `/var/data`
+- Redeploy
+
+### "Database pool error" (PostgreSQL)
+
+- PostgreSQL might still be starting
+- Wait 2-3 minutes and try again
+- Check DATABASE_URL environment variable is correct
 
 ## Local Development
 

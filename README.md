@@ -2,22 +2,32 @@
 
 Международное соревнование по знаниям для студентов.
 
-## 🚀 Deployment on Render
+## 🚀 Deployment Issues?
 
-If deploying to Render and data keeps getting lost after redeploy:
+**Data getting lost after redeploy on Render?**
 
-**👉 See: [RENDER_SETUP_QUICK.md](RENDER_SETUP_QUICK.md)**
+👉 **[START HERE: QUICK_START.md](QUICK_START.md)** (2 minute guide)
 
-Quick fix:
-1. Render Dashboard → Service → Settings → Disks
-2. Create Disk: Name=`data`, Mount Path=`/var/data`, Size=1GB
-3. Manual Deploy
+Then choose your path:
+- **Free persistent storage**: [RENDER_POSTGRES.md](RENDER_POSTGRES.md) ⭐
+- **Paid persistent storage**: [RENDER_SETUP_QUICK.md](RENDER_SETUP_QUICK.md)
 
 ## 📚 Documentation
 
-- **[RENDER_SETUP_QUICK.md](RENDER_SETUP_QUICK.md)** - Quick setup for Render persistent storage
-- **[RENDER_DISK_SETUP.md](RENDER_DISK_SETUP.md)** - Detailed Render setup guide with troubleshooting
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Complete deployment guide
+**Quickest Path:**
+- [QUICK_START.md](QUICK_START.md) - What to do about data storage
+
+**Understanding Options:**
+- [FREE_VS_PAID.md](FREE_VS_PAID.md) - Compare all storage solutions
+- [DOCS_INDEX.md](DOCS_INDEX.md) - Full documentation index
+
+**Setup Guides:**
+- [RENDER_POSTGRES.md](RENDER_POSTGRES.md) - Free persistent storage (recommended)
+- [RENDER_SETUP_QUICK.md](RENDER_SETUP_QUICK.md) - Paid plan setup
+- [RENDER_DISK_SETUP.md](RENDER_DISK_SETUP.md) - Paid plan detailed guide
+
+**General:**
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Complete deployment guide
 
 ## 🛠️ Local Development
 

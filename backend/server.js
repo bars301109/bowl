@@ -33,21 +33,24 @@ const ensureDirectory = (dir) => {
 
 if(!ensureDirectory(DATA_DIR)){
   if(process.env.NODE_ENV === 'production'){
-    console.error('');
-    console.error('❌ FATAL: Cannot write to persistent storage');
-    console.error('❌ Path: ' + DATA_DIR);
-    console.error('');
-    console.error('SOLUTION - On Render Dashboard:');
-    console.error('1. Go to Dashboard → akylman-quiz service');
-    console.error('2. Click "Settings" → Scroll to "Disks"');
-    console.error('3. Click "Create Disk"');
-    console.error('   - Name: data');
-    console.error('   - Mount path: /var/data');
-    console.error('   - Size: 1 GB');
-    console.error('4. Click "Save"');
-    console.error('5. Redeploy: Click "Manual Deploy" or push to GitHub');
-    console.error('');
-    process.exit(1);
+    console.warn('');
+    console.warn('⚠️  NOTICE: Cannot access /var/data (persistent disk not available)');
+    console.warn('⚠️  Possible reasons:');
+    console.warn('   1. Using Render FREE plan (persistent disks require paid plan)');
+    console.warn('   2. Persistent disk not created in Render Dashboard');
+    console.warn('');
+    console.warn('📋 OPTIONS:');
+    console.warn('   Option 1: Upgrade to Render PAID plan to enable persistent disks');
+    console.warn('   Option 2: Use free PostgreSQL on Render instead');
+    console.warn('   Option 3: Data will be temporary (lost on redeploy)');
+    console.warn('');
+    console.warn('Using temporary storage at /tmp instead...');
+    console.warn('⚠️  WARNING: All data will be LOST when service restarts!');
+    console.warn('');
+    DATA_DIR = '/tmp/akylman-data';
+    DB_FILE = path.join(DATA_DIR, 'db.sqlite');
+    TESTS_DIR = path.join(DATA_DIR, 'tests');
+    ensureDirectory(DATA_DIR);
   }
 }
 
@@ -749,9 +752,17 @@ ensureSchema().then(() => {
     console.log(`🔗 URL: http://localhost:${PORT}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     if(process.env.NODE_ENV === 'production'){
-      console.log('⚠️  PRODUCTION MODE - Data persistence required!');
-      console.log(`✓ Data stored in: ${DATA_DIR}`);
-      console.log('✓ Ensure Render persistent disk is mounted');
+      if(DATA_DIR.includes('/tmp')){
+        console.log('⚠️  TEMPORARY STORAGE MODE');
+        console.log('⚠️  Data will be LOST when service restarts!');
+        console.log('⚠️  To enable persistent storage:');
+        console.log('   1. Upgrade to Render PAID plan, OR');
+        console.log('   2. Switch to PostgreSQL (see RENDER_POSTGRES.md)');
+      } else {
+        console.log('✅ PERSISTENT STORAGE MODE');
+        console.log(`✓ Data stored in: ${DATA_DIR}`);
+        console.log('✓ Data will persist across redeploys');
+      }
     }
     console.log('');
   });
