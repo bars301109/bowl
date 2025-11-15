@@ -6,11 +6,8 @@
     <h2>🎯 Админ-панель Akylman Quiz</h2>
     <div class="small-muted">Управляйте тестами, вопросами, категориями и отслеживайте результаты команд</div>
     
-    <div class="admin-token-section">
-      <div class="form-row" style="margin-top:10px">
-        <label>🔑 Admin Token<input id="admin_token" class="admin-input" placeholder="super-secret-token"/></label>
-        <label style="flex:0 0 auto"><button class="admin-button success" id="saveToken">💾 Сохранить</button></label>
-      </div>
+    <div class="admin-nav" style="margin-top: 20px;">
+      <button class="admin-button" onclick="logoutAdmin()" style="background: linear-gradient(135deg, #f093fb, #f5576c);">🚪 Выход</button>
     </div>
     
     <div class="admin-nav">
@@ -29,14 +26,19 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script>
-const tokenInput = document.getElementById('admin_token');
-const saved = localStorage.getItem('akylman_admin_token');
-if(saved) tokenInput.value = saved;
-document.getElementById('saveToken').onclick = ()=>{ 
-  localStorage.setItem('akylman_admin_token', tokenInput.value.trim()); 
-  showAlert('Токен сохранен!', 'success');
-};
-function aHeaders(){ return { 'Content-Type':'application/json', 'X-ADMIN-TOKEN': (localStorage.getItem('akylman_admin_token')||'').trim() }; }
+const adminToken = localStorage.getItem('akylman_admin_token');
+if (!adminToken) {
+  window.location.href = './admin-login.html';
+}
+
+function logoutAdmin() {
+  if (confirm('Вы уверены, что хотите выйти?')) {
+    localStorage.removeItem('akylman_admin_token');
+    window.location.href = './admin-login.html';
+  }
+}
+
+function aHeaders(){ return { 'Content-Type':'application/json', 'X-Admin-Token': localStorage.getItem('akylman_admin_token') || '' }; }
 const content = document.getElementById('content');
 
 // Helper functions for better UI

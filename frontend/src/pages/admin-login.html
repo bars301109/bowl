@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход администратора</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .auth-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+      padding: 20px;
+    }
+    .auth-card {
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .auth-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .auth-header img {
+      height: 60px;
+      margin-bottom: 16px;
+    }
+    .auth-header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #1f2937;
+    }
+    .auth-header p {
+      color: #6b7280;
+      font-size: 14px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #1f2937;
+      font-size: 14px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #1e40af;
+      box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.3);
+    }
+    .error {
+      color: #dc2626;
+      font-size: 13px;
+      margin-top: 8px;
+      text-align: center;
+    }
+    .success {
+      color: #16a34a;
+      font-size: 13px;
+      margin-top: 8px;
+      text-align: center;
+    }
+    .back-link {
+      text-align: center;
+      margin-top: 16px;
+    }
+    .back-link a {
+      color: #1e40af;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <img src="../images/logo.png" alt="Logo">
+        <h1>Администратор</h1>
+        <p>Вход в панель управления</p>
+      </div>
+      
+      <form id="adminLoginForm">
+        <div class="form-group">
+          <label for="username">Логин администратора</label>
+          <input type="text" id="username" name="username" required autofocus>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Пароль</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+        
+        <button type="submit" class="submit-btn">Войти</button>
+        
+        <div id="message"></div>
+      </form>
+      
+      <div class="back-link">
+        <a href="../index.html">← Вернуться на главную</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ADMIN_USERNAME = 'adminside3011';
+    const ADMIN_PASSWORD = '879105666555fish';
+    
+    document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const messageDiv = document.getElementById('message');
+      
+      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        messageDiv.className = 'success';
+        messageDiv.textContent = 'Вход успешен...';
+        localStorage.setItem('akylman_admin_token', 'admin-' + Date.now());
+        setTimeout(() => {
+          window.location.href = './admin.html';
+        }, 600);
+      } else {
+        messageDiv.className = 'error';
+        messageDiv.textContent = 'Неверный логин или пароль';
+        document.getElementById('password').value = '';
+      }
+    });
+  </script>
+</body>
+</html>

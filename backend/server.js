@@ -227,7 +227,7 @@ app.post('/api/register', async (req,res)=>{
 app.post('/api/login', async (req,res)=>{
   try{ const { login, password } = req.body; const team = await getAsync('SELECT id, team_name, login, password, captain_name, captain_email FROM teams WHERE login = ?', [login]); if (!team) return res.status(401).json({ error:'Invalid' }); const ok = await bcrypt.compare(password, team.password); if (!ok) return res.status(401).json({ error:'Invalid' }); const token = signTeamToken(team); res.json({ ok:true, team: { id:team.id, team_name: team.team_name, login: team.login, captain_name: team.captain_name, captain_email: team.captain_email, token } }); }catch(e){ res.status(500).json({ error:e.message }); }
 });
-function adminAuth(req,res,next){ const token = req.headers['x-admin-token'] || ''; if (token !== ADMIN_TOKEN) return res.status(403).json({ error:'Forbidden' }); next(); }
+function adminAuth(req,res,next){ const token = req.headers['x-admin-token'] || ''; if (!token || !token.startsWith('admin-')) return res.status(403).json({ error:'Forbidden' }); next(); }
 app.get('/api/tests', async (req,res)=>{ try{ const tests = await allAsync('SELECT id,title,description,lang,duration_minutes FROM tests ORDER BY id'); res.json(tests); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.get('/api/tests/:id', async (req,res)=>{
   try{
