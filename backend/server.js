@@ -143,8 +143,8 @@ async function ensureSchema(){
         { ru: 'Тил жана адабият', ky: 'Тил жана адабият' },
         { ru: 'Өнөр жана спорт', ky: 'Өнөр жана спорт' }
       ];
-      for (const c of cats){ await runAsync('INSERT INTO categories (name_ru, name_ky, created_at) VALUES (?,?,datetime("now"))',[c.ru, c.ky]); }
-      const stmt = await runAsync('INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, created_at) VALUES (?,?,?,?,?,?,datetime("now"))',["Demo Test","Sample demo test","ru",30,null,null]);
+      for (const c of cats){ await runAsync('INSERT INTO categories (name_ru, name_ky, created_at) VALUES (?,?,datetime(\'now\'))',[c.ru, c.ky]); }
+      const stmt = await runAsync('INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, created_at) VALUES (?,?,?,?,?,?,datetime(\'now\'))',["Demo Test","Sample demo test","ru",30,null,null]);
       const testId = stmt.lastID;
       const qs = [
         {ordinal:1, text:'What is the capital of Kyrgyzstan?', options: JSON.stringify(['Bishkek','Osh','Jalal-Abad','Naryn']), correct:'0', points:1},
@@ -156,7 +156,7 @@ async function ensureSchema(){
     }
     const sAny = await getAsync('SELECT id FROM settings WHERE id=1');
     if(!sAny){
-      await runAsync('INSERT INTO settings (id,badge1_ru,badge1_ky,badge2_ru,badge2_ky,badge3_ru,badge3_ky,day1_date,day2_date,day3_date,final_place_ru,final_place_ky,updated_at) VALUES (1,?,?,?,?,?,?,?,?,?,?,?,datetime("now"))',[
+      await runAsync('INSERT INTO settings (id,badge1_ru,badge1_ky,badge2_ru,badge2_ky,badge3_ru,badge3_ky,day1_date,day2_date,day3_date,final_place_ru,final_place_ky,updated_at) VALUES (1,?,?,?,?,?,?,?,?,?,?,?,datetime(\'now\'))',[
         'Регистрация открыта!','Каттоо ачык!','Сдайте тест в кабинете.','Кабинетте тест тапшырыңыз.','Удачи!','Ийгилик!',
         '2025-12-05','2025-12-15','2025-12-27','Президентский лицей «Акылман» (Чолпон-Ата)','«Акылман» Президенттик лицейи (Чолпон-Ата)'
       ]);
@@ -220,7 +220,7 @@ app.post('/api/register', async (req,res)=>{
     if (exists) return res.status(400).json({ error:'Login exists' });
     const hashed = await bcrypt.hash(data.password, 10);
     const members_json = JSON.stringify(data.members || []);
-    await runAsync('INSERT INTO teams (team_name, login, password, captain_name, captain_email, captain_phone, members, school, city, created_at) VALUES (?,?,?,?,?,?,?,?,?,datetime("now"))',[data.team_name, data.login, hashed, data.captain_name, data.captain_email, data.captain_phone, members_json, data.school, data.city]);
+    await runAsync('INSERT INTO teams (team_name, login, password, captain_name, captain_email, captain_phone, members, school, city, created_at) VALUES (?,?,?,?,?,?,?,?,?,datetime(\'now\'))',[data.team_name, data.login, hashed, data.captain_name, data.captain_email, data.captain_phone, members_json, data.school, data.city]);
     res.json({ ok:true });
   }catch(e){ console.error(e); res.status(500).json({ error:e.message }); }
 });
@@ -246,11 +246,11 @@ app.get('/api/tests/:id', async (req,res)=>{
 app.get('/api/categories', async (req,res)=>{ try{ const rows = await allAsync('SELECT id, name_ru, name_ky, desc_ru, desc_ky FROM categories ORDER BY id'); res.json(rows); }catch(e){ res.status(500).json({ error:e.message }); } });
 function teamAuth(req,res,next){ const auth = req.headers['authorization'] || ''; if (!auth.startsWith('Bearer ')) return res.status(401).json({ error:'Missing token' }); const token = auth.slice(7); try{ const payload = jwt.verify(token, JWT_SECRET); req.team = payload; next(); }catch(e){ return res.status(401).json({ error:'Invalid token' }); } }
 app.post('/api/tests/:id/submit', teamAuth, async (req,res)=>{
-  try{ const testId = req.params.id; const answers = req.body.answers || {}; const qs = await allAsync('SELECT id, correct, points FROM questions WHERE test_id=?',[testId]); let score = 0; const answersArr = []; for (const q of qs){ const given = answers[q.id] !== undefined ? answers[q.id] : null; const correct = q.correct; let qok = false; if (correct===null||correct===undefined){ qok=false; } else if (String(correct).match(/^\\d+$/)){ if (String(given) === String(correct)) qok=true; } else { if (String(given||'').trim().toLowerCase() === String(correct).trim().toLowerCase()) qok=true; } if (qok) score += (q.points||1); answersArr.push({ question_id: q.id, given, correct }); } await runAsync('INSERT INTO results (team_id, test_id, score, answers, taken_at) VALUES (?,?,?,?,datetime("now"))',[req.team.id, testId, score, JSON.stringify(answersArr)]); res.json({ ok:true, score }); }catch(e){ res.status(500).json({ error:e.message }); } });
+  try{ const testId = req.params.id; const answers = req.body.answers || {}; const qs = await allAsync('SELECT id, correct, points FROM questions WHERE test_id=?',[testId]); let score = 0; const answersArr = []; for (const q of qs){ const given = answers[q.id] !== undefined ? answers[q.id] : null; const correct = q.correct; let qok = false; if (correct===null||correct===undefined){ qok=false; } else if (String(correct).match(/^\\d+$/)){ if (String(given) === String(correct)) qok=true; } else { if (String(given||'').trim().toLowerCase() === String(correct).trim().toLowerCase()) qok=true; } if (qok) score += (q.points||1); answersArr.push({ question_id: q.id, given, correct }); } await runAsync('INSERT INTO results (team_id, test_id, score, answers, taken_at) VALUES (?,?,?,?,datetime(\'now\'))',[req.team.id, testId, score, JSON.stringify(answersArr)]); res.json({ ok:true, score }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.get('/api/me', teamAuth, async (req,res)=>{ try{ const t = await getAsync('SELECT id, team_name, login, captain_name, captain_email, school, city FROM teams WHERE id=?',[req.team.id]); if (!t) return res.status(404).json({ error:'Team not found' }); res.json({ ok:true, team: t }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.get('/api/me/results', teamAuth, async (req,res)=>{ try{ const rows = await allAsync('SELECT r.id, r.test_id, r.score, r.taken_at, t.title FROM results r LEFT JOIN tests t ON t.id = r.test_id WHERE r.team_id = ? ORDER BY r.taken_at DESC',[req.team.id]); res.json(rows);}catch(e){ res.status(500).json({ error:e.message }); } });
 app.get('/api/admin/tests', adminAuth, async (req,res)=>{ try{ const tests = await allAsync('SELECT * FROM tests ORDER BY id DESC'); res.json(tests);}catch(e){ res.status(500).json({ error:e.message }); } });
-app.post('/api/admin/tests', adminAuth, async (req,res)=>{ try{ const { title, description, lang, duration_minutes, window_start, window_end, window_range } = req.body; const range = parseHumanWindow(window_range); const ws = range.start || window_start || null; const we = range.end || window_end || null; const stmt = await runAsync('INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, created_at) VALUES (?,?,?,?,?,?,datetime("now"))',[title,description,lang||'ru',duration_minutes||30, ws, we]); try{ writeQuestionsFile(stmt.lastID, []); }catch(e){} res.json({ ok:true, id: stmt.lastID }); }catch(e){ res.status(500).json({ error:e.message }); } });
+app.post('/api/admin/tests', adminAuth, async (req,res)=>{ try{ const { title, description, lang, duration_minutes, window_start, window_end, window_range } = req.body; const range = parseHumanWindow(window_range); const ws = range.start || window_start || null; const we = range.end || window_end || null; const stmt = await runAsync('INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, created_at) VALUES (?,?,?,?,?,?,datetime(\'now\'))',[title,description,lang||'ru',duration_minutes||30, ws, we]); try{ writeQuestionsFile(stmt.lastID, []); }catch(e){} res.json({ ok:true, id: stmt.lastID }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.put('/api/admin/tests/:id', adminAuth, async (req,res)=>{
   try{
     const { title, description, lang, duration_minutes, window_start, window_end, window_range } = req.body;
@@ -274,7 +274,7 @@ app.delete('/api/admin/tests/:id', adminAuth, async (req,res)=>{
 
 // Categories CRUD
 app.get('/api/admin/categories', adminAuth, async (req,res)=>{ try{ const rows = await allAsync('SELECT * FROM categories ORDER BY id'); res.json(rows); }catch(e){ res.status(500).json({ error:e.message }); } });
-app.post('/api/admin/categories', adminAuth, async (req,res)=>{ try{ const { name_ru, name_ky, desc_ru, desc_ky } = req.body; const stmt = await runAsync('INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES (?,?,?,?,datetime("now"))',[name_ru, name_ky, desc_ru||null, desc_ky||null]); res.json({ ok:true, id: stmt.lastID }); }catch(e){ res.status(500).json({ error:e.message }); } });
+app.post('/api/admin/categories', adminAuth, async (req,res)=>{ try{ const { name_ru, name_ky, desc_ru, desc_ky } = req.body; const stmt = await runAsync('INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES (?,?,?,?,datetime(\'now\'))',[name_ru, name_ky, desc_ru||null, desc_ky||null]); res.json({ ok:true, id: stmt.lastID }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.put('/api/admin/categories/:id', adminAuth, async (req,res)=>{ try{ const { name_ru, name_ky, desc_ru, desc_ky } = req.body; await runAsync('UPDATE categories SET name_ru=?, name_ky=?, desc_ru=?, desc_ky=? WHERE id=?',[name_ru, name_ky, desc_ru||null, desc_ky||null, req.params.id]); res.json({ ok:true }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.delete('/api/admin/categories/:id', adminAuth, async (req,res)=>{ try{ await runAsync('DELETE FROM categories WHERE id=?',[req.params.id]); res.json({ ok:true }); }catch(e){ res.status(500).json({ error:e.message }); } });
 
@@ -629,7 +629,7 @@ app.get('/api/settings', async (req,res)=>{ try{ const s = await getAsync('SELEC
 app.put('/api/admin/settings', adminAuth, async (req,res)=>{
   try{
     const s = req.body||{};
-    await runAsync('UPDATE settings SET badge1_ru=?,badge1_ky=?,badge2_ru=?,badge2_ky=?,badge3_ru=?,badge3_ky=?,day1_date=?,day2_date=?,day3_date=?,final_place_ru=?,final_place_ky=?,updated_at=datetime("now") WHERE id=1',[
+    await runAsync('UPDATE settings SET badge1_ru=?,badge1_ky=?,badge2_ru=?,badge2_ky=?,badge3_ru=?,badge3_ky=?,day1_date=?,day2_date=?,day3_date=?,final_place_ru=?,final_place_ky=?,updated_at=datetime(\'now\') WHERE id=1',[
       s.badge1_ru||null,s.badge1_ky||null,s.badge2_ru||null,s.badge2_ky||null,s.badge3_ru||null,s.badge3_ky||null,s.day1_date||null,s.day2_date||null,s.day3_date||null,s.final_place_ru||null,s.final_place_ky||null
     ]);
     res.json({ ok:true });
