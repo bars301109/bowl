@@ -635,4 +635,9 @@ app.put('/api/admin/settings', adminAuth, async (req,res)=>{
     res.json({ ok:true });
   }catch(e){ res.status(500).json({ error:e.message }); }
 });
-app.listen(PORT, ()=>console.log('Server running on port', PORT));
+ensureSchema().then(() => {
+  app.listen(PORT, ()=>console.log('Server running on port', PORT));
+}).catch(err => {
+  console.error('Failed to initialize database schema:', err);
+  process.exit(1);
+});
