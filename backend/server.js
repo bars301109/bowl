@@ -10,11 +10,22 @@ const jwt = require('jsonwebtoken');
 const upload = multer({ dest: path.join(__dirname, 'uploads') });
 const app = express();
 const PORT = process.env.PORT || 5000;
-const DB_FILE = path.join(__dirname, 'db.better-sqlite3.sqlite');
-const TESTS_DIR = path.join(__dirname, 'tests');
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'super-secret-token';
-// Ensure tests directory exists
+
+const DATA_DIR = process.env.DATA_DIR || (process.env.NODE_ENV === 'production' ? '/var/data' : path.join(__dirname, '..', 'data'));
+const DB_FILE = path.join(DATA_DIR, 'db.sqlite');
+const TESTS_DIR = path.join(DATA_DIR, 'tests');
+
+if(!fs.existsSync(DATA_DIR)){
+  try{
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    console.log('Created data directory:', DATA_DIR);
+  }catch(e){
+    console.error('Failed to create data directory:', e);
+  }
+}
+
 if(!fs.existsSync(TESTS_DIR)){
   try{
     fs.mkdirSync(TESTS_DIR, { recursive: true });
@@ -23,6 +34,34 @@ if(!fs.existsSync(TESTS_DIR)){
     console.error('Failed to create tests directory:', e);
   }
 }
+
+const OLD_DB_FILE = path.join(__dirname, 'db.better-sqlite3.sqlite');
+if(OLD_DB_FILE !== DB_FILE && fs.existsSync(OLD_DB_FILE) && !fs.existsSync(DB_FILE)){
+  try{
+    fs.copyFileSync(OLD_DB_FILE, DB_FILE);
+    console.log('Migrated database from', OLD_DB_FILE, 'to', DB_FILE);
+  }catch(e){
+    console.error('Failed to migrate database:', e);
+  }
+}
+
+const OLD_TESTS_DIR = path.join(__dirname, 'tests');
+if(OLD_TESTS_DIR !== TESTS_DIR && fs.existsSync(OLD_TESTS_DIR)){
+  try{
+    const files = fs.readdirSync(OLD_TESTS_DIR);
+    for(const file of files){
+      const oldPath = path.join(OLD_TESTS_DIR, file);
+      const newPath = path.join(TESTS_DIR, file);
+      if(!fs.existsSync(newPath)){
+        fs.copyFileSync(oldPath, newPath);
+      }
+    }
+    if(files.length > 0) console.log('Migrated', files.length, 'test files to persistent storage');
+  }catch(e){
+    console.error('Failed to migrate test files:', e);
+  }
+}
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/', express.static(path.join(__dirname, '..', 'frontend', 'src')));

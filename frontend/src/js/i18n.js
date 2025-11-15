@@ -155,7 +155,7 @@
   function getLang(){ return localStorage.getItem('akylman_lang') || 'ru'; }
   function setLang(l){ localStorage.setItem('akylman_lang', l); applyI18n(l); try{ window.dispatchEvent(new CustomEvent('akyl-langchange',{ detail:{ lang:l } })); }catch(e){} }
   function initSwitcher(){
-    document.querySelectorAll('.lang-switch button').forEach(b=>{ b.onclick = ()=> setLang(b.dataset.lang); });
+    document.querySelectorAll('.lang-switch button, .lang-switcher button').forEach(b=>{ b.onclick = ()=> setLang(b.dataset.lang); });
     applyI18n(getLang());
   }
   function t(key){ const d = DICTS[getLang()]||DICTS.ru; return d[key]||key; }

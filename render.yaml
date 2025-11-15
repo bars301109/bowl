@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: akylman-quiz
+    runtime: node
+    startCommand: cd backend && npm install && npm start
+    env: node
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
