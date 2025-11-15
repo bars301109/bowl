@@ -2,8 +2,13 @@ services:
   - type: web
     name: akylman-quiz
     runtime: node
-    startCommand: cd backend && npm install && npm start
-    env: node
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
     disk:
       name: data
       mountPath: /var/data
