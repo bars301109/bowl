@@ -10,20 +10,25 @@
   <style>
     .password-requirements {
       margin-top: 6px;
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 10px;
       font-size: 10px;
+      font-weight: 400;
     }
     .requirement {
-      color: #ef4444;
+      color: #ef4444 !important;
       transition: color 0.2s;
+      font-weight: 400 !important;
     }
     .requirement.met {
-      color: #16a34a;
+      color: #16a34a !important;
+    }
+    .requirement span {
+      font-weight: 400 !important;
     }
     .requirement-icon {
-      display: none;
+      display: none !important;
     }
   </style>
 </head>
