@@ -159,26 +159,34 @@
   <script>
     function addOrnaments() {
       const ornaments = ['orn-1.png', 'orn-2.png'];
-      const diagonalPairs = [
-        ['top-left', 'bottom-right'],
-        ['top-right', 'bottom-left']
-      ];
-      const sections = document.querySelectorAll('section');
+      const allCorners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+      const incompatible = {
+        'bottom-left': ['top-left'],
+        'bottom-right': ['top-right'],
+        'top-left': ['bottom-left'],
+        'top-right': ['bottom-right']
+      };
+      
+      const sections = document.querySelectorAll('section:not(.hero)');
+      let prevCorner = null;
       
       sections.forEach((section, index) => {
-        const orn1 = ornaments[index % 2];
-        const orn2 = ornaments[(index + 1) % 2];
-        const [corner1, corner2] = diagonalPairs[index % 2];
+        const ornament = ornaments[index % 2];
         
-        const ornDiv1 = document.createElement('div');
-        ornDiv1.className = `ornament ${corner1}`;
-        ornDiv1.style.backgroundImage = `url('/images/${orn1}')`;
-        section.appendChild(ornDiv1);
+        let availableCorners = allCorners;
+        if (prevCorner) {
+          availableCorners = allCorners.filter(corner => 
+            !incompatible[prevCorner].includes(corner)
+          );
+        }
         
-        const ornDiv2 = document.createElement('div');
-        ornDiv2.className = `ornament ${corner2}`;
-        ornDiv2.style.backgroundImage = `url('/images/${orn2}')`;
-        section.appendChild(ornDiv2);
+        const corner = availableCorners[Math.floor(Math.random() * availableCorners.length)];
+        prevCorner = corner;
+        
+        const ornDiv = document.createElement('div');
+        ornDiv.className = `ornament ${corner}`;
+        ornDiv.style.backgroundImage = `url('/images/${ornament}')`;
+        section.appendChild(ornDiv);
       });
     }
     

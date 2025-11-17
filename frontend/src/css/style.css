@@ -41,9 +41,9 @@ html {
 
 .ornament {
   position: absolute;
-  width: 600px;
-  height: 600px;
-  background-size: 600px 600px;
+  width: 900px;
+  height: 900px;
+  background-size: 900px 900px;
   background-repeat: no-repeat;
   opacity: 0.2;
   z-index: 0;
@@ -53,26 +53,26 @@ html {
 }
 
 .ornament.top-left {
-  top: -200px;
-  left: -200px;
+  top: -350px;
+  left: -350px;
   background-position: top left;
 }
 
 .ornament.top-right {
-  top: -200px;
-  right: -200px;
+  top: -350px;
+  right: -350px;
   background-position: top right;
 }
 
 .ornament.bottom-left {
-  bottom: -200px;
-  left: -200px;
+  bottom: -350px;
+  left: -350px;
   background-position: bottom left;
 }
 
 .ornament.bottom-right {
-  bottom: -200px;
-  right: -200px;
+  bottom: -350px;
+  right: -350px;
   background-position: bottom right;
 }
 
