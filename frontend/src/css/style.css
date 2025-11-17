@@ -30,6 +30,51 @@ html {
   scroll-behavior: smooth;
 }
 
+@keyframes rotate-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ornament {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background-size: 500px 500px;
+  background-repeat: no-repeat;
+  opacity: 0.25;
+  z-index: 0;
+  animation: rotate-slow 40s linear infinite;
+  pointer-events: none;
+}
+
+.ornament.top-left {
+  top: -150px;
+  left: -150px;
+  background-position: top left;
+}
+
+.ornament.top-right {
+  top: -150px;
+  right: -150px;
+  background-position: top right;
+}
+
+.ornament.bottom-left {
+  bottom: -150px;
+  left: -150px;
+  background-position: bottom left;
+}
+
+.ornament.bottom-right {
+  bottom: -150px;
+  right: -150px;
+  background-position: bottom right;
+}
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.6;
@@ -43,6 +88,8 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 24px;
+  position: relative;
+  z-index: 1;
 }
 
 header.header {
@@ -147,11 +194,15 @@ header.header .container {
   padding: 120px 0;
   text-align: center;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
 }
 
 .hero-content {
   max-width: 800px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 .hero-welcome-container {
@@ -247,6 +298,7 @@ header.header .container {
 .section {
   padding: 80px 0;
   position: relative;
+  overflow: hidden;
 }
 
 .section-alt {
