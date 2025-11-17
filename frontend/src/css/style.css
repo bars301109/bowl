@@ -138,11 +138,12 @@ header.header .container {
 }
 
 .hero {
-  background: linear-gradient(135deg, rgba(30, 64, 175, 0.4) 0%, rgba(30, 58, 138, 0.4) 100%), url('images/akylman-campus.png') center/cover no-repeat;
+  background: url('images/akylman-campus.png') center/cover no-repeat;
   background-attachment: fixed;
   color: white;
   padding: 120px 0;
   text-align: center;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .hero-content {
