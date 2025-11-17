@@ -14,7 +14,7 @@
   <header class="header">
     <div class="container">
       <a href="/" class="logo">
-        <img src="images/logo.png" alt="Akylman">
+        <img src="images/logos.jpeg" alt="Akylman">
       </a>
       <nav class="nav">
         <a href="/" data-i18n="nav.home">Главная</a>
@@ -34,7 +34,18 @@
     <section class="hero">
       <div class="container">
         <div class="hero-content">
-          <div class="hero-welcome">Welcome to</div>
+          <div class="hero-welcome-container">
+            <svg class="hero-welcome-svg" viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <path id="welcomeCurve" d="M 10,60 Q 100,20 190,60" fill="none"/>
+              </defs>
+              <text font-size="28" font-weight="300" font-style="italic" letter-spacing="2">
+                <textPath href="#welcomeCurve" startOffset="50%" text-anchor="middle">
+                  Welcome to
+                </textPath>
+              </text>
+            </svg>
+          </div>
           <h1 data-i18n="hero.title1">Akylman Quiz Bowl</h1>
           <p class="hero-subtitle" data-i18n="hero.subtitle">Международное соревнование по знаниям для студентов</p>
           <div class="hero-cta">
