@@ -138,7 +138,7 @@ header.header .container {
 }
 
 .hero {
-  background: url('images/akylman-campus.png') center/cover no-repeat;
+  background: url('/Users/barsbek-1/Desktop/akylman-quiz-complete/frontend/src/images/akylman-campus.png') center/cover no-repeat;
   background-attachment: fixed;
   color: white;
   padding: 120px 0;
