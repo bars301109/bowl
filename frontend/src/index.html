@@ -90,25 +90,29 @@
       <div class="container">
         <h2 class="section-title" data-i18n="timeline.title">Таймлайн</h2>
         <div class="timeline">
-          <div class="timeline-item">
+          <div class="timeline-item timeline-online">
             <div class="timeline-marker"></div>
             <div class="timeline-content">
-              <div class="timeline-date" id="d1">День 1</div>
-              <p data-i18n="about.prelim">Отборочный этап</p>
+              <div class="timeline-date" id="d1">15-декабрь, 2025-жыл</div>
+              <p data-i18n="timeline.online1">Онлайн Этап 1</p>
+              <p class="timeline-stage" data-i18n="about.prelim">Отборочный этап</p>
             </div>
           </div>
-          <div class="timeline-item">
+          <div class="timeline-item timeline-online">
             <div class="timeline-marker"></div>
             <div class="timeline-content">
-              <div class="timeline-date" id="d2">День 2</div>
-              <p data-i18n="about.semi">Полуфинал</p>
+              <div class="timeline-date" id="d2">20-декабрь, 2025-жыл</div>
+              <p data-i18n="timeline.online2">Онлайн Этап 2</p>
+              <p class="timeline-stage" data-i18n="about.semi">Полуфинал</p>
             </div>
           </div>
           <div class="timeline-item timeline-final">
             <div class="timeline-marker"></div>
             <div class="timeline-content">
-              <div class="timeline-date" data-i18n="timeline.final">Финал</div>
-              <p id="finalPlace">Оффлайн в "Акылман"</p>
+              <div class="timeline-date" data-i18n="timeline.final" id="d3">5-январь, 2026-жыл</div>
+              <p data-i18n="timeline.offline">Оффлайн Этап</p>
+              <p class="timeline-stage" data-i18n="about.final">Финал</p>
+              <p class="timeline-place" id="finalPlace">Оффлайн в "Акылман"</p>
             </div>
           </div>
         </div>
@@ -206,10 +210,10 @@
         const grid = document.getElementById('catsGrid');
         const list = document.getElementById('cats-list');
         
-        grid.innerHTML = cats.map(c => {
+        grid.innerHTML = cats.map((c, idx) => {
           const title = lang === 'ky' ? (c.name_ky || '') : (c.name_ru || '');
           const desc = lang === 'ky' ? (c.desc_ky || '') : (c.desc_ru || '');
-          return `<div class="category-card"><h4>${title}</h4><p>${desc}</p></div>`;
+          return `<div class="category-card" data-cat-index="${idx}"><h4>${title}</h4><p>${desc}</p></div>`;
         }).join('');
         
         list.innerHTML = '<ul>' + cats.map(c => {
