@@ -159,17 +159,26 @@
   <script>
     function addOrnaments() {
       const ornaments = ['orn-1.png', 'orn-2.png'];
-      const corners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+      const diagonalPairs = [
+        ['top-left', 'bottom-right'],
+        ['top-right', 'bottom-left']
+      ];
       const sections = document.querySelectorAll('section');
       
       sections.forEach((section, index) => {
-        const randomOrnament = ornaments[index % 2];
-        const randomCorner = corners[Math.floor(Math.random() * corners.length)];
+        const orn1 = ornaments[index % 2];
+        const orn2 = ornaments[(index + 1) % 2];
+        const [corner1, corner2] = diagonalPairs[index % 2];
         
-        const ornDiv = document.createElement('div');
-        ornDiv.className = `ornament ${randomCorner}`;
-        ornDiv.style.backgroundImage = `url('/images/${randomOrnament}')`;
-        section.appendChild(ornDiv);
+        const ornDiv1 = document.createElement('div');
+        ornDiv1.className = `ornament ${corner1}`;
+        ornDiv1.style.backgroundImage = `url('/images/${orn1}')`;
+        section.appendChild(ornDiv1);
+        
+        const ornDiv2 = document.createElement('div');
+        ornDiv2.className = `ornament ${corner2}`;
+        ornDiv2.style.backgroundImage = `url('/images/${orn2}')`;
+        section.appendChild(ornDiv2);
       });
     }
     

@@ -53,26 +53,26 @@ html {
 }
 
 .ornament.top-left {
-  top: -450px;
-  left: -450px;
+  top: -200px;
+  left: -200px;
   background-position: top left;
 }
 
 .ornament.top-right {
-  top: -450px;
-  right: -450px;
+  top: -200px;
+  right: -200px;
   background-position: top right;
 }
 
 .ornament.bottom-left {
-  bottom: -450px;
-  left: -450px;
+  bottom: -200px;
+  left: -200px;
   background-position: bottom left;
 }
 
 .ornament.bottom-right {
-  bottom: -450px;
-  right: -450px;
+  bottom: -200px;
+  right: -200px;
   background-position: bottom right;
 }
 
