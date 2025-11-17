@@ -41,37 +41,38 @@ html {
 
 .ornament {
   position: absolute;
-  width: 500px;
-  height: 500px;
-  background-size: 500px 500px;
+  width: 600px;
+  height: 600px;
+  background-size: 600px 600px;
   background-repeat: no-repeat;
-  opacity: 0.25;
+  opacity: 0.2;
   z-index: 0;
   animation: rotate-slow 40s linear infinite;
   pointer-events: none;
+  transform-origin: center;
 }
 
 .ornament.top-left {
-  top: -150px;
-  left: -150px;
+  top: -450px;
+  left: -450px;
   background-position: top left;
 }
 
 .ornament.top-right {
-  top: -150px;
-  right: -150px;
+  top: -450px;
+  right: -450px;
   background-position: top right;
 }
 
 .ornament.bottom-left {
-  bottom: -150px;
-  left: -150px;
+  bottom: -450px;
+  left: -450px;
   background-position: bottom left;
 }
 
 .ornament.bottom-right {
-  bottom: -150px;
-  right: -150px;
+  bottom: -450px;
+  right: -450px;
   background-position: bottom right;
 }
 
@@ -185,7 +186,7 @@ header.header .container {
 }
 
 .hero {
-  background-image: linear-gradient(135deg, rgba(30, 64, 175, 0.55) 0%, rgba(30, 58, 138, 0.6) 100%), url('/images/akylman-1.png');
+  background-image: linear-gradient(135deg, rgba(30, 64, 175, 0.55) 0%, rgba(30, 58, 138, 0.6) 100%), url('/images/akylman-1.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -205,18 +206,17 @@ header.header .container {
   z-index: 1;
 }
 
-.hero-welcome-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 8px;
-  height: 70px;
-}
-
-.hero-welcome-svg {
-  width: 250px;
-  height: 70px;
-  fill: #fbbf24;
-  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.4));
+.hero-welcome-text {
+  font-family: 'Tangerine', cursive;
+  font-size: 56px;
+  font-weight: 700;
+  color: #fbbf24;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+  margin-bottom: -20px;
+  transform: rotate(-15deg);
+  transform-origin: left center;
+  display: inline-block;
+  letter-spacing: 2px;
 }
 
 .hero h1 {

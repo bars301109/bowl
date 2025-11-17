@@ -6,7 +6,7 @@
   <title>Akylman Quiz Bowl</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" type="image/svg+xml" href="images/favicon.svg">
 </head>
@@ -34,18 +34,7 @@
     <section class="hero">
       <div class="container">
         <div class="hero-content">
-          <div class="hero-welcome-container">
-            <svg class="hero-welcome-svg" viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <path id="welcomeCurve" d="M 10,60 Q 100,20 190,60" fill="none"/>
-              </defs>
-              <text font-size="28" font-weight="300" font-style="italic" letter-spacing="2">
-                <textPath href="#welcomeCurve" startOffset="50%" text-anchor="middle">
-                  Welcome to
-                </textPath>
-              </text>
-            </svg>
-          </div>
+          <div class="hero-welcome-text">Welcome to</div>
           <h1 data-i18n="hero.title1">Akylman Quiz Bowl</h1>
           <p class="hero-subtitle" data-i18n="hero.subtitle">Международное соревнование по знаниям для студентов</p>
           <div class="hero-cta">
@@ -168,6 +157,23 @@
 
   <script src="js/i18n.js"></script>
   <script>
+    function addOrnaments() {
+      const ornaments = ['orn-1.png', 'orn-2.png'];
+      const corners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+      const sections = document.querySelectorAll('section');
+      
+      sections.forEach((section, index) => {
+        const randomOrnament = ornaments[index % 2];
+        const randomCorner = corners[Math.floor(Math.random() * corners.length)];
+        
+        const ornDiv = document.createElement('div');
+        ornDiv.className = `ornament ${randomCorner}`;
+        ornDiv.style.backgroundImage = `url('/images/${randomOrnament}')`;
+        section.appendChild(ornDiv);
+      });
+    }
+    
+    addOrnaments();
     AkylI18n.initSwitcher();
     
     function updateNavBar() {
