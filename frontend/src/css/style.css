@@ -475,7 +475,7 @@ header.header .container {
 .timeline-item.timeline-online {
   border-left-width: 6px;
   border-left-color: #3b82f6;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(96, 165, 250, 0.05) 100%);
+  background: white;
 }
 
 .timeline-item.timeline-online:nth-of-type(1) {
@@ -490,7 +490,7 @@ header.header .container {
   grid-area: final;
   border-left-width: 8px;
   border-left-color: var(--accent);
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%);
+  background: white;
   min-height: 320px;
   padding: 48px;
 }
@@ -1531,6 +1531,32 @@ hr {
 }
 
 @media (max-width: 768px) {
+  .ornament {
+    width: 500px;
+    height: 500px;
+    background-size: 500px 500px;
+  }
+
+  .ornament.top-left {
+    top: -200px;
+    left: -200px;
+  }
+
+  .ornament.top-right {
+    top: -200px;
+    right: -200px;
+  }
+
+  .ornament.bottom-left {
+    bottom: -200px;
+    left: -200px;
+  }
+
+  .ornament.bottom-right {
+    bottom: -200px;
+    right: -200px;
+  }
+
   .section {
     padding: 60px 0;
   }
@@ -1798,6 +1824,32 @@ hr {
 }
 
 @media (max-width: 480px) {
+  .ornament {
+    width: 350px;
+    height: 350px;
+    background-size: 350px 350px;
+  }
+
+  .ornament.top-left {
+    top: -140px;
+    left: -140px;
+  }
+
+  .ornament.top-right {
+    top: -140px;
+    right: -140px;
+  }
+
+  .ornament.bottom-left {
+    bottom: -140px;
+    left: -140px;
+  }
+
+  .ornament.bottom-right {
+    bottom: -140px;
+    right: -140px;
+  }
+
   .container {
     padding: 0 10px;
   }
