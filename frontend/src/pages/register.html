@@ -13,20 +13,32 @@
       margin-top: 6px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 0;
       font-size: 10px;
       font-weight: 400;
     }
-    .requirement {
+    #passwordReqs .requirement {
       color: #ef4444 !important;
-      transition: color 0.2s;
+      transition: color 0.2s ease;
       font-weight: 400 !important;
+      margin: 0;
+      padding: 0;
     }
-    .requirement.met {
+    #passwordReqs .requirement.met {
       color: #16a34a !important;
     }
-    .requirement span {
+    #passwordReqs .requirement.met,
+    #passwordReqs .requirement.met span {
+      color: #16a34a !important;
+    }
+    #passwordReqs .requirement:not(.met),
+    #passwordReqs .requirement:not(.met) span {
+      color: #ef4444 !important;
+    }
+    #passwordReqs .requirement span {
       font-weight: 400 !important;
+      color: inherit;
+      display: inline;
     }
     .requirement-icon {
       display: none !important;
@@ -38,7 +50,7 @@
   <div class="lang-switch text-end"><button data-lang="ru">РУ</button> <button data-lang="ky">КЫ</button></div>
   <a href="../index.html"><img src="../images/logo.png" class="logo-center img-fluid"/></a>
   <div class="topbar d-flex justify-content-end gap-2 flex-wrap">
-    <a class="link-pill outline" href="../index.html" data-i18n="nav.home">Главная</a>
+    <a class="nav-btn" href="../index.html" data-i18n="nav.home">Главная</a>
     <a class="link-pill" href="./login.html" data-i18n="nav.login">Войти</a>
   </div>
   <div class="form-card">
@@ -54,10 +66,10 @@
             <span data-i18n="register.password">Пароль</span>
             <input type="password" name="password" id="passwordInput" required/>
             <div class="password-requirements" id="passwordReqs">
-              <div class="requirement" id="req-length"><span>8 Characters</span></div>
-              <div class="requirement" id="req-number"><span>Number</span></div>
-              <div class="requirement" id="req-lowercase"><span>Lowercase</span></div>
-              <div class="requirement" id="req-uppercase"><span>Uppercase</span></div>
+              <div class="requirement" id="req-length"><span data-i18n="register.password.length">8 символов</span></div>
+              <div class="requirement" id="req-number"><span data-i18n="register.password.number">Цифра</span></div>
+              <div class="requirement" id="req-lowercase"><span data-i18n="register.password.lowercase">Строчная буква</span></div>
+              <div class="requirement" id="req-uppercase"><span data-i18n="register.password.uppercase">Заглавная буква</span></div>
             </div>
           </label>
           <label><span data-i18n="register.password2">Повтор пароля</span><input type="password" name="password2" required/></label>
@@ -77,7 +89,7 @@
         <div id="members_fields"></div>
         <div class="mt-2">
           <button class="primary" type="submit" data-i18n="register.submit">Зарегистрироваться</button>
-          <a class="small-muted" href="../index.html">← <span data-i18n="nav.home">Главная</span></a>
+          <a class="nav-btn" href="../index.html" data-i18n="nav.home">Главная</a>
         </div>
       </form>
       <div id="msg" class="small-muted"></div>
@@ -109,10 +121,12 @@ function updatePasswordRequirements(pw) {
 
   for (const [key, met] of Object.entries(checks)) {
     const elem = document.getElementById(`req-${key}`);
-    if (met) {
-      elem.classList.add('met');
-    } else {
-      elem.classList.remove('met');
+    if (elem) {
+      if (met) {
+        elem.classList.add('met');
+      } else {
+        elem.classList.remove('met');
+      }
     }
   }
 
@@ -130,10 +144,20 @@ function isValidEmail(email) {
 
 function renderMembers(n) {
   membersDiv.innerHTML = '';
+  const lang = AkylI18n.getLang();
   for (let i = 2; i <= n; i++) {
     const wrapper = document.createElement('div');
     wrapper.className = 'form-row';
-    wrapper.innerHTML = `<label><span>Участник ${i} ФИО</span><input name="member_${i}_name" required/></label><label><span>Класс/роль</span><input name="member_${i}_info"/></label>`;
+    let memberLabel, classLabel;
+    if (lang === 'ky') {
+      memberLabel = `${i}-${AkylI18n.t('register.member_name')}`;
+      classLabel = AkylI18n.t('register.member_class');
+    } else {
+      const ordinals = ['', '', 'второго', 'третьего', 'четвертого', 'пятого', 'шестого'];
+      memberLabel = `ФИО ${ordinals[i] || i + '-го'} участника`;
+      classLabel = AkylI18n.t('register.member_class');
+    }
+    wrapper.innerHTML = `<label><span>${memberLabel}</span><input name="member_${i}_name" required/></label><label><span>${classLabel}</span><input name="member_${i}_info"/></label>`;
     membersDiv.appendChild(wrapper);
   }
 }
@@ -142,9 +166,35 @@ renderMembers(3);
 
 document.getElementById('members_count').addEventListener('change', e => renderMembers(parseInt(e.target.value)));
 
-passwordInput.addEventListener('input', e => {
-  updatePasswordRequirements(e.target.value);
+window.addEventListener('akyl-langchange', () => {
+  renderMembers(parseInt(document.getElementById('members_count').value));
+  // Update password requirements text
+  AkylI18n.applyI18n(AkylI18n.getLang());
 });
+
+// Update password requirements on input
+if (passwordInput) {
+  passwordInput.addEventListener('input', e => {
+    updatePasswordRequirements(e.target.value);
+  });
+
+  // Initialize password requirements on focus
+  passwordInput.addEventListener('focus', e => {
+    updatePasswordRequirements(e.target.value);
+  });
+
+  // Also check on paste
+  passwordInput.addEventListener('paste', e => {
+    setTimeout(() => {
+      updatePasswordRequirements(e.target.value);
+    }, 10);
+  });
+
+  // Also check on keyup for better responsiveness
+  passwordInput.addEventListener('keyup', e => {
+    updatePasswordRequirements(e.target.value);
+  });
+}
 
 document.getElementById('regForm').addEventListener('submit', async e => {
   e.preventDefault();

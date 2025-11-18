@@ -8,13 +8,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" type="image/svg+xml" href="images/favicon.svg">
+  <link rel="icon" href="/Users/barsbek-1/Desktop/akylman-quiz-complete/frontend/src/images/logos.jpeg" type="image/png">
 </head>
 <body>
   <header class="header">
     <div class="container">
       <a href="/" class="logo">
-        <img src="images/logos.jpeg" alt="Akylman">
+        <img src="images/logo.png" alt="Akylman">
       </a>
       <nav class="nav">
         <a href="/" data-i18n="nav.home">Главная</a>
@@ -95,26 +95,26 @@
           <div class="timeline-item timeline-online">
             <div class="timeline-marker"></div>
             <div class="timeline-content">
+              <h3 class="timeline-title" data-i18n="timeline.stage1.title">Этап 1 - Отборочный тур</h3>
+              <p class="timeline-description" data-i18n="timeline.stage1.desc">На этом этапе команды проходят онлайн-тестирование по выбранным категориям. Участники отвечают на вопросы с множественным выбором и короткими ответами. По результатам этого этапа определяются команды, которые пройдут в следующий раунд.</p>
               <div class="timeline-date" id="d1">15-декабрь, 2025-жыл</div>
-              <p data-i18n="timeline.online1">Онлайн Этап 1</p>
-              <p class="timeline-stage" data-i18n="about.prelim">Отборочный этап</p>
             </div>
           </div>
           <div class="timeline-item timeline-online">
             <div class="timeline-marker"></div>
             <div class="timeline-content">
+              <h3 class="timeline-title" data-i18n="timeline.stage2.title">Этап 2 - Полуфинал</h3>
+              <p class="timeline-description" data-i18n="timeline.stage2.desc">Этап выявляет лучшие команды среди уже успешных. На этом этапе проводится онлайн-тестирование с более сложными вопросами. Команды соревнуются в режиме реального времени, отвечая на блиц-вопросы по различным категориям знаний.</p>
               <div class="timeline-date" id="d2">20-декабрь, 2025-жыл</div>
-              <p data-i18n="timeline.online2">Онлайн Этап 2</p>
-              <p class="timeline-stage" data-i18n="about.semi">Полуфинал</p>
             </div>
           </div>
           <div class="timeline-item timeline-final">
             <div class="timeline-marker"></div>
             <div class="timeline-content">
-              <div class="timeline-date" data-i18n="timeline.final" id="d3">5-январь, 2026-жыл</div>
-              <p data-i18n="timeline.offline">Оффлайн Этап</p>
-              <p class="timeline-stage" data-i18n="about.final">Финал</p>
+              <h3 class="timeline-title" data-i18n="timeline.stage3.title">Этап 3 - Финал</h3>
+              <p class="timeline-description" data-i18n="timeline.stage3.desc">Финал проводится в оффлайн формате в Президентском лицее «Акылман» (город Чолпон-Ата). Итоговый тест между лучшими командами по результатам полуфинала. Победители определяются по общему количеству набранных баллов.</p>
               <p class="timeline-place" id="finalPlace">Оффлайн в "Акылман"</p>
+              <div class="timeline-date" id="d3">5-январь, 2026-жыл</div>
             </div>
           </div>
         </div>
@@ -131,19 +131,30 @@
     <section class="section">
       <div class="container">
         <h2 class="section-title">Галерея</h2>
-        <div class="gallery">
-          <figure class="gallery-item">
-            <img src="images/akylman-campus.png" alt="Akylman campus">
-            <figcaption>Кампус</figcaption>
-          </figure>
-          <figure class="gallery-item">
-            <img src="images/akylman-2.jpg" alt="Akylman visitors">
-            <figcaption>Мероприятие</figcaption>
-          </figure>
-          <figure class="gallery-item">
-            <img src="images/akylman-3.jpg" alt="Akylman opening">
-            <figcaption>Открытие</figcaption>
-          </figure>
+        <div class="gallery-carousel">
+          <div class="carousel-wrapper">
+            <div class="carousel-track">
+              <figure class="carousel-item">
+                <img src="images/gallery/akylman-campus.png" alt="Akylman campus">
+              </figure>
+              <figure class="carousel-item">
+                <img src="images/gallery/akylman-2.jpg" alt="Akylman visitors">
+              </figure>
+              <figure class="carousel-item">
+                <img src="images/gallery/akylman-3.jpg" alt="Akylman opening">
+              </figure>
+            </div>
+          </div>
+          <button class="carousel-btn carousel-prev" aria-label="Previous slide">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <button class="carousel-btn carousel-next" aria-label="Next slide">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
         </div>
       </div>
     </section>
@@ -224,14 +235,40 @@
     
     updateNavBar();
     
+    function formatDate(dateStr, lang = 'ru') {
+      if (!dateStr) return dateStr;
+      
+      const monthsRu = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+      const monthsKy = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабрь'];
+      
+      let date;
+      if (dateStr.includes('-') && !dateStr.includes(',')) {
+        const [year, month, day] = dateStr.split('-');
+        date = new Date(year, parseInt(month) - 1, day);
+      } else {
+        date = new Date(dateStr);
+      }
+      
+      if (isNaN(date.getTime())) return dateStr;
+      
+      const d = date.getDate();
+      const m = date.getMonth();
+      const y = date.getFullYear();
+      
+      const months = lang === 'ky' ? monthsKy : monthsRu;
+      const yearSuffix = lang === 'ky' ? '-жыл' : 'г.';
+      
+      return `${d}-${months[m]}, ${y}${yearSuffix}`;
+    }
+    
     async function renderSettings() {
       try {
         const s = await fetch('/api/settings').then(r => r.json());
         const lang = AkylI18n.getLang();
         if (s) {
-          if (s.day1_date) document.getElementById('d1').textContent = s.day1_date;
-          if (s.day2_date) document.getElementById('d2').textContent = s.day2_date;
-          if (s.day3_date) document.getElementById('d3').textContent = s.day3_date;
+          if (s.day1_date) document.getElementById('d1').textContent = formatDate(s.day1_date, lang);
+          if (s.day2_date) document.getElementById('d2').textContent = formatDate(s.day2_date, lang);
+          if (s.day3_date) document.getElementById('d3').textContent = formatDate(s.day3_date, lang);
           if (s.final_place_ru || s.final_place_ky) {
             document.getElementById('finalPlace').textContent = lang === 'ky' ? (s.final_place_ky || '') : (s.final_place_ru || '');
           }
@@ -239,6 +276,26 @@
       } catch (e) { console.warn('settings load failed', e); }
     }
     
+    function getCategoryClass(title = '') {
+      const lower = title.toLowerCase();
+      if (lower.includes('кыргызстан') || lower.includes('тануу') || lower.includes('таануу')) {
+        return 'category-kyrgyzstan';
+      }
+      if (lower.includes('тарых') || lower.includes('история') || lower.includes('history')) {
+        return 'category-history';
+      }
+      if (lower.includes('илим') || lower.includes('наука') || lower.includes('технолог') || lower.includes('science')) {
+        return 'category-science';
+      }
+      if (lower.includes('тил') || lower.includes('язык') || lower.includes('адабият') || lower.includes('литерат') || lower.includes('language')) {
+        return 'category-language';
+      }
+      if (lower.includes('дүйнөлүк') || lower.includes('миров') || lower.includes('world')) {
+        return 'category-world';
+      }
+      return 'category-default';
+    }
+
     async function renderCategories() {
       try {
         const cats = await fetch('/api/categories').then(r => r.json());
@@ -249,7 +306,14 @@
         grid.innerHTML = cats.map((c, idx) => {
           const title = lang === 'ky' ? (c.name_ky || '') : (c.name_ru || '');
           const desc = lang === 'ky' ? (c.desc_ky || '') : (c.desc_ru || '');
-          return `<div class="category-card" data-cat-index="${idx}"><h4>${title}</h4><p>${desc}</p></div>`;
+          const categoryClass = getCategoryClass(title);
+          let extraElements = '';
+          if (categoryClass === 'category-kyrgyzstan') {
+            extraElements = '<div class="category-border-ornament"></div><div class="category-decor"></div><div class="category-bottom-line"></div>';
+          } else if (categoryClass === 'category-history' || categoryClass === 'category-science' || categoryClass === 'category-language' || categoryClass === 'category-world') {
+            extraElements = '<div class="category-border-ornament"></div>';
+          }
+          return `<div class="category-card ${categoryClass}" data-cat-index="${idx}">${extraElements}<h4>${title}</h4><p>${desc}</p></div>`;
         }).join('');
         
         list.innerHTML = '<ul>' + cats.map(c => {
@@ -266,6 +330,107 @@
       renderSettings();
       renderCategories();
     });
+
+    class Carousel {
+      constructor(element) {
+        this.element = element;
+        this.track = element.querySelector('.carousel-track');
+        this.items = element.querySelectorAll('.carousel-item');
+        this.prevBtn = element.querySelector('.carousel-prev');
+        this.nextBtn = element.querySelector('.carousel-next');
+        this.currentIndex = 0;
+        this.touchStartX = 0;
+        this.touchEndX = 0;
+        this.itemWidth = 0;
+        this.isMobile = window.innerWidth <= 1024;
+
+        this.init();
+        window.addEventListener('resize', () => {
+          const wasMobile = this.isMobile;
+          this.isMobile = window.innerWidth <= 1024;
+          this.updateItemWidth();
+          if (!this.isMobile) {
+            this.updateSlide();
+          }
+        });
+      }
+
+      init() {
+        this.updateItemWidth();
+        
+        this.prevBtn.addEventListener('click', () => this.prev());
+        this.nextBtn.addEventListener('click', () => this.next());
+        this.track.addEventListener('touchstart', (e) => {
+          if (this.isMobile) this.handleTouchStart(e);
+        }, false);
+        this.track.addEventListener('touchend', (e) => {
+          if (this.isMobile) this.handleTouchEnd(e);
+        }, false);
+      }
+
+      updateItemWidth() {
+        const firstItem = this.items[0];
+        if (!firstItem) return;
+        const computedStyle = window.getComputedStyle(this.track);
+        const gap = parseFloat(computedStyle.gap) || 16;
+        this.itemWidth = firstItem.offsetWidth + gap;
+      }
+
+      updateSlide() {
+        const offset = -this.currentIndex * this.itemWidth;
+        this.track.style.transform = `translateX(${offset}px)`;
+      }
+
+      next() {
+        const wrapper = this.element.querySelector('.carousel-wrapper');
+        const visibleItems = Math.round(wrapper.offsetWidth / this.itemWidth);
+        const maxIndex = Math.max(0, this.items.length - visibleItems);
+        
+        if (this.currentIndex < maxIndex) {
+          this.currentIndex++;
+        } else {
+          this.currentIndex = 0;
+        }
+        
+        this.updateSlide();
+      }
+
+      prev() {
+        if (this.currentIndex > 0) {
+          this.currentIndex--;
+        } else {
+          const wrapper = this.element.querySelector('.carousel-wrapper');
+          const visibleItems = Math.round(wrapper.offsetWidth / this.itemWidth);
+          this.currentIndex = Math.max(0, this.items.length - visibleItems);
+        }
+        
+        this.updateSlide();
+      }
+
+      handleTouchStart(e) {
+        this.touchStartX = e.changedTouches[0].screenX;
+      }
+
+      handleTouchEnd(e) {
+        this.touchEndX = e.changedTouches[0].screenX;
+        this.handleSwipe();
+      }
+
+      handleSwipe() {
+        const diff = this.touchStartX - this.touchEndX;
+        const threshold = 50;
+
+        if (Math.abs(diff) > threshold) {
+          if (diff > 0) {
+            this.next();
+          } else {
+            this.prev();
+          }
+        }
+      }
+    }
+
+    const carousel = new Carousel(document.querySelector('.gallery-carousel'));
   </script>
 </body>
 </html>
