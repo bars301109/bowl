@@ -129,6 +129,10 @@ function convertSQLiteToPostgres(sql) {
   // Replace SQLite-specific syntax with PostgreSQL equivalents
   let converted = sql;
   
+  // Convert ? placeholders to $1, $2, $3... (PostgreSQL uses numbered parameters)
+  let paramIndex = 1;
+  converted = converted.replace(/\?/g, () => `$${paramIndex++}`);
+  
   // INTEGER PRIMARY KEY AUTOINCREMENT -> SERIAL PRIMARY KEY
   converted = converted.replace(/INTEGER PRIMARY KEY AUTOINCREMENT/gi, 'SERIAL PRIMARY KEY');
   
