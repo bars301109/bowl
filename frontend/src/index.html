@@ -308,9 +308,7 @@
           const desc = lang === 'ky' ? (c.desc_ky || '') : (c.desc_ru || '');
           const categoryClass = getCategoryClass(title);
           let extraElements = '';
-          if (categoryClass === 'category-kyrgyzstan') {
-            extraElements = '<div class="category-border-ornament"></div><div class="category-decor"></div><div class="category-bottom-line"></div>';
-          } else if (categoryClass === 'category-history' || categoryClass === 'category-science' || categoryClass === 'category-language' || categoryClass === 'category-world') {
+          if (categoryClass === 'category-kyrgyzstan' || categoryClass === 'category-history' || categoryClass === 'category-science' || categoryClass === 'category-language' || categoryClass === 'category-world') {
             extraElements = '<div class="category-border-ornament"></div>';
           }
           return `<div class="category-card ${categoryClass}" data-cat-index="${idx}">${extraElements}<h4>${title}</h4><p>${desc}</p></div>`;

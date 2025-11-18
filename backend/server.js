@@ -1,12 +1,12 @@
 
 /* Complete backend for Akylman Quiz Bowl */
 const express = require('express');
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const db = require('./db'); // Universal database adapter (SQLite or PostgreSQL)
 const upload = multer({ dest: path.join(__dirname, 'uploads') });
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -14,7 +14,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'super-secret-token';
 
 let DATA_DIR = process.env.DATA_DIR || (process.env.NODE_ENV === 'production' ? '/var/data' : path.join(__dirname, '..', 'data'));
-let DB_FILE = path.join(DATA_DIR, 'db.sqlite');
+let DB_FILE = db.type === 'sqlite' ? (db.name || path.join(DATA_DIR, 'db.sqlite')) : 'PostgreSQL';
 let TESTS_DIR = path.join(DATA_DIR, 'tests');
 
 const ensureDirectory = (dir) => {
@@ -88,115 +88,87 @@ if(OLD_TESTS_DIR !== TESTS_DIR && fs.existsSync(OLD_TESTS_DIR)){
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/', express.static(path.join(__dirname, '..', 'frontend', 'src')));
-const db = new Database(DB_FILE);
-db.pragma('journal_mode = WAL');
-db.pragma('synchronous = NORMAL');
-function runAsync(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    try {
-      const stmt = db.prepare(sql);
-      const result = stmt.run(params);
-      resolve(result);
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
 
-function allAsync(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    try {
-      const stmt = db.prepare(sql);
-      const rows = stmt.all(params);
-      resolve(rows);
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
-
-function getAsync(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    try {
-      const stmt = db.prepare(sql);
-      const row = stmt.get(params);
-      resolve(row);
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
+// Use database adapter methods
+const runAsync = db.runAsync.bind(db);
+const allAsync = db.allAsync.bind(db);
+const getAsync = db.getAsync.bind(db);
 async function ensureSchema(){
   try{
+    // PostgreSQL uses different syntax, but our adapter handles conversion
+    const autoIncrement = db.type === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
+    const textType = 'TEXT'; // Both support TEXT
+    const checkConstraint = db.type === 'postgres' ? 'CHECK (id=1)' : 'CHECK (id=1)';
+    
     await runAsync(`CREATE TABLE IF NOT EXISTS teams (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      team_name TEXT,
-      login TEXT UNIQUE,
-      password TEXT,
-      captain_name TEXT,
-      captain_email TEXT,
-      captain_phone TEXT,
-      members TEXT,
-      school TEXT,
-      city TEXT,
-      created_at TEXT
+      id ${autoIncrement},
+      team_name ${textType},
+      login ${textType} UNIQUE,
+      password ${textType},
+      captain_name ${textType},
+      captain_email ${textType},
+      captain_phone ${textType},
+      members ${textType},
+      school ${textType},
+      city ${textType},
+      created_at ${textType}
     )`);
     await runAsync(`CREATE TABLE IF NOT EXISTS tests (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT,
-      description TEXT,
-      lang TEXT DEFAULT 'ru',
+      id ${autoIncrement},
+      title ${textType},
+      description ${textType},
+      lang ${textType} DEFAULT 'ru',
       duration_minutes INTEGER DEFAULT 60,
-      window_start TEXT,
-      window_end TEXT,
-      created_at TEXT
+      window_start ${textType},
+      window_end ${textType},
+      created_at ${textType}
     )`);
     // best-effort schema upgrades for tests (in case of older DBs)
-    try{ await runAsync('ALTER TABLE tests ADD COLUMN lang TEXT DEFAULT "ru"'); }catch(e){}
+    try{ await runAsync(`ALTER TABLE tests ADD COLUMN lang ${textType} DEFAULT 'ru'`); }catch(e){}
     try{ await runAsync('ALTER TABLE tests ADD COLUMN duration_minutes INTEGER DEFAULT 60'); }catch(e){}
-    try{ await runAsync('ALTER TABLE tests ADD COLUMN window_start TEXT'); }catch(e){}
-    try{ await runAsync('ALTER TABLE tests ADD COLUMN window_end TEXT'); }catch(e){}
+    try{ await runAsync(`ALTER TABLE tests ADD COLUMN window_start ${textType}`); }catch(e){}
+    try{ await runAsync(`ALTER TABLE tests ADD COLUMN window_end ${textType}`); }catch(e){}
     await runAsync(`CREATE TABLE IF NOT EXISTS categories (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name_ru TEXT NOT NULL,
-      name_ky TEXT NOT NULL,
-      desc_ru TEXT,
-      desc_ky TEXT,
-      created_at TEXT
+      id ${autoIncrement},
+      name_ru ${textType} NOT NULL,
+      name_ky ${textType} NOT NULL,
+      desc_ru ${textType},
+      desc_ky ${textType},
+      created_at ${textType}
     )`);
     // best-effort schema upgrades (ignore if already added)
-    try{ await runAsync('ALTER TABLE categories ADD COLUMN desc_ru TEXT'); }catch(e){}
-    try{ await runAsync('ALTER TABLE categories ADD COLUMN desc_ky TEXT'); }catch(e){}
+    try{ await runAsync(`ALTER TABLE categories ADD COLUMN desc_ru ${textType}`); }catch(e){}
+    try{ await runAsync(`ALTER TABLE categories ADD COLUMN desc_ky ${textType}`); }catch(e){}
     await runAsync(`CREATE TABLE IF NOT EXISTS questions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id ${autoIncrement},
       test_id INTEGER,
       ordinal INTEGER,
-      text TEXT,
-      options TEXT,
-      correct TEXT,
+      text ${textType},
+      options ${textType},
+      correct ${textType},
       points INTEGER DEFAULT 1,
-      lang TEXT DEFAULT 'ru',
+      lang ${textType} DEFAULT 'ru',
       category_id INTEGER,
       FOREIGN KEY(test_id) REFERENCES tests(id)
     )`);
     await runAsync(`CREATE TABLE IF NOT EXISTS results (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id ${autoIncrement},
       team_id INTEGER,
       test_id INTEGER,
       score INTEGER,
-      answers TEXT,
-      taken_at TEXT,
+      answers ${textType},
+      taken_at ${textType},
       FOREIGN KEY(team_id) REFERENCES teams(id),
       FOREIGN KEY(test_id) REFERENCES tests(id)
     )`);
     await runAsync(`CREATE TABLE IF NOT EXISTS settings (
       id INTEGER PRIMARY KEY CHECK (id=1),
-      badge1_ru TEXT, badge1_ky TEXT,
-      badge2_ru TEXT, badge2_ky TEXT,
-      badge3_ru TEXT, badge3_ky TEXT,
-      day1_date TEXT, day2_date TEXT, day3_date TEXT,
-      final_place_ru TEXT, final_place_ky TEXT,
-      updated_at TEXT
+      badge1_ru ${textType}, badge1_ky ${textType},
+      badge2_ru ${textType}, badge2_ky ${textType},
+      badge3_ru ${textType}, badge3_ky ${textType},
+      day1_date ${textType}, day2_date ${textType}, day3_date ${textType},
+      final_place_ru ${textType}, final_place_ky ${textType},
+      updated_at ${textType}
     )`);
     const any = await getAsync('SELECT id FROM tests LIMIT 1');
     if (!any){
@@ -226,9 +198,12 @@ async function ensureSchema(){
           desc_ky: 'Орусча тилин терең изилдөө: грамматика, орун белгилөө, орфография жана стилистика. Кыргыз тилинин негиздери жана анын уникалдуу өзгөчөлүктөрү. Эки элдин классикалык жана азыркы адабияты. Адабий чыгармаларды, алардын идеялык мазмунун жана сүндөт ыкмаларын анализдөө. Сөз маданиятын жана адабий даадын өнүгүүсү.'
         }
       ];
-      for (const c of cats){ await runAsync('INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES (?,?,?,?,datetime(\'now\'))',[c.ru, c.ky, c.desc_ru, c.desc_ky]); }
-      const stmt = await runAsync('INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, created_at) VALUES (?,?,?,?,?,?,datetime(\'now\'))',["Demo Test","Sample demo test","ru",30,null,null]);
-      const testId = stmt.lastID;
+      const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
+      for (const c of cats){ 
+        await runAsync(`INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES (?,?,?,?,${nowFunc})`, [c.ru, c.ky, c.desc_ru, c.desc_ky]); 
+      }
+      const stmt = await runAsync(`INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, created_at) VALUES (?,?,?,?,?,?,${nowFunc})${db.type === 'postgres' ? ' RETURNING id' : ''}`, ["Demo Test","Sample demo test","ru",30,null,null]);
+      const testId = db.type === 'postgres' ? (stmt.rows?.[0]?.id || stmt.id) : stmt.lastID;
       const qs = [
         {ordinal:1, text:'What is the capital of Kyrgyzstan?', options: JSON.stringify(['Bishkek','Osh','Jalal-Abad','Naryn']), correct:'0', points:1},
         {ordinal:2, text:'2+2 = ?', options: JSON.stringify(['3','4','5','22']), correct:'1', points:1},
@@ -239,7 +214,8 @@ async function ensureSchema(){
     }
     const sAny = await getAsync('SELECT id FROM settings WHERE id=1');
     if(!sAny){
-      await runAsync('INSERT INTO settings (id,badge1_ru,badge1_ky,badge2_ru,badge2_ky,badge3_ru,badge3_ky,day1_date,day2_date,day3_date,final_place_ru,final_place_ky,updated_at) VALUES (1,?,?,?,?,?,?,?,?,?,?,?,datetime(\'now\'))',[
+      const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
+      await runAsync(`INSERT INTO settings (id,badge1_ru,badge1_ky,badge2_ru,badge2_ky,badge3_ru,badge3_ky,day1_date,day2_date,day3_date,final_place_ru,final_place_ky,updated_at) VALUES (1,?,?,?,?,?,?,?,?,?,?,?,${nowFunc})`, [
         'Регистрация открыта!','Каттоо ачык!','Сдайте тест в кабинете.','Кабинетте тест тапшырыңыз.','Удачи!','Ийгилик!',
         '2025-12-05','2025-12-15','2025-12-27','Президентский лицей «Акылман» (Чолпон-Ата)','«Акылман» Президенттик лицейи (Чолпон-Ата)'
       ]);
@@ -307,7 +283,8 @@ app.post('/api/register', async (req,res)=>{
     if (exists) return res.status(400).json({ error:'Login exists' });
     const hashed = await bcrypt.hash(data.password, 10);
     const members_json = JSON.stringify(data.members || []);
-    await runAsync('INSERT INTO teams (team_name, login, password, captain_name, captain_email, captain_phone, members, school, city, created_at) VALUES (?,?,?,?,?,?,?,?,?,datetime(\'now\'))',[data.team_name, data.login, hashed, data.captain_name, data.captain_email, data.captain_phone, members_json, data.school, data.city]);
+    const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
+    await runAsync(`INSERT INTO teams (team_name, login, password, captain_name, captain_email, captain_phone, members, school, city, created_at) VALUES (?,?,?,?,?,?,?,?,?,${nowFunc})`, [data.team_name, data.login, hashed, data.captain_name, data.captain_email, data.captain_phone, members_json, data.school, data.city]);
     console.log(`✓ Team registered: ${data.team_name} (${data.login})`);
     res.json({ ok:true });
   }catch(e){ console.error(e); res.status(500).json({ error:e.message }); }
@@ -354,7 +331,8 @@ app.post('/api/tests/:id/submit', teamAuth, async (req,res)=>{
       if (qok) score += (q.points||1);
       answersArr.push({ question_id: q.id, given, correct });
     }
-    await runAsync('INSERT INTO results (team_id, test_id, score, answers, taken_at) VALUES (?,?,?,?,datetime(\'now\'))',[req.team.id, testId, score, JSON.stringify(answersArr)]);
+    const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
+    await runAsync(`INSERT INTO results (team_id, test_id, score, answers, taken_at) VALUES (?,?,?,?,${nowFunc})`, [req.team.id, testId, score, JSON.stringify(answersArr)]);
     console.log(`✓ Test submitted: team_id=${req.team.id}, test_id=${testId}, score=${score}`);
     res.json({ ok:true, score });
   }catch(e){ res.status(500).json({ error:e.message }); }
@@ -362,7 +340,7 @@ app.post('/api/tests/:id/submit', teamAuth, async (req,res)=>{
 app.get('/api/me', teamAuth, async (req,res)=>{ try{ const t = await getAsync('SELECT id, team_name, login, captain_name, captain_email, school, city FROM teams WHERE id=?',[req.team.id]); if (!t) return res.status(404).json({ error:'Team not found' }); res.json({ ok:true, team: t }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.get('/api/me/results', teamAuth, async (req,res)=>{ try{ const rows = await allAsync('SELECT r.id, r.test_id, r.score, r.taken_at, t.title FROM results r LEFT JOIN tests t ON t.id = r.test_id WHERE r.team_id = ? ORDER BY r.taken_at DESC',[req.team.id]); res.json(rows);}catch(e){ res.status(500).json({ error:e.message }); } });
 app.get('/api/admin/tests', adminAuth, async (req,res)=>{ try{ const tests = await allAsync('SELECT * FROM tests ORDER BY id DESC'); res.json(tests);}catch(e){ res.status(500).json({ error:e.message }); } });
-app.post('/api/admin/tests', adminAuth, async (req,res)=>{ try{ const { title, description, lang, duration_minutes, window_start, window_end, window_range } = req.body; const range = parseHumanWindow(window_range); const ws = range.start || window_start || null; const we = range.end || window_end || null; const stmt = await runAsync('INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, created_at) VALUES (?,?,?,?,?,?,datetime(\'now\'))',[title,description,lang||'ru',duration_minutes||30, ws, we]); try{ writeQuestionsFile(stmt.lastID, []); }catch(e){} res.json({ ok:true, id: stmt.lastID }); }catch(e){ res.status(500).json({ error:e.message }); } });
+app.post('/api/admin/tests', adminAuth, async (req,res)=>{ try{ const { title, description, lang, duration_minutes, window_start, window_end, window_range } = req.body; const range = parseHumanWindow(window_range); const ws = range.start || window_start || null; const we = range.end || window_end || null; const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')'; const stmt = await runAsync(`INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, created_at) VALUES (?,?,?,?,?,?,${nowFunc})${db.type === 'postgres' ? ' RETURNING id' : ''}`,[title,description,lang||'ru',duration_minutes||30, ws, we]); const testId = db.type === 'postgres' ? (stmt.rows?.[0]?.id || stmt.id) : stmt.lastID; try{ writeQuestionsFile(testId, []); }catch(e){} res.json({ ok:true, id: testId }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.put('/api/admin/tests/:id', adminAuth, async (req,res)=>{
   try{
     const { title, description, lang, duration_minutes, window_start, window_end, window_range } = req.body;
@@ -386,7 +364,7 @@ app.delete('/api/admin/tests/:id', adminAuth, async (req,res)=>{
 
 // Categories CRUD
 app.get('/api/admin/categories', adminAuth, async (req,res)=>{ try{ const rows = await allAsync('SELECT * FROM categories ORDER BY id'); res.json(rows); }catch(e){ res.status(500).json({ error:e.message }); } });
-app.post('/api/admin/categories', adminAuth, async (req,res)=>{ try{ const { name_ru, name_ky, desc_ru, desc_ky } = req.body; const stmt = await runAsync('INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES (?,?,?,?,datetime(\'now\'))',[name_ru, name_ky, desc_ru||null, desc_ky||null]); res.json({ ok:true, id: stmt.lastID }); }catch(e){ res.status(500).json({ error:e.message }); } });
+app.post('/api/admin/categories', adminAuth, async (req,res)=>{ try{ const { name_ru, name_ky, desc_ru, desc_ky } = req.body; const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')'; const stmt = await runAsync(`INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES (?,?,?,?,${nowFunc})${db.type === 'postgres' ? ' RETURNING id' : ''}`,[name_ru, name_ky, desc_ru||null, desc_ky||null]); const catId = db.type === 'postgres' ? (stmt.rows?.[0]?.id || stmt.id) : stmt.lastID; res.json({ ok:true, id: catId }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.put('/api/admin/categories/:id', adminAuth, async (req,res)=>{ try{ const { name_ru, name_ky, desc_ru, desc_ky } = req.body; await runAsync('UPDATE categories SET name_ru=?, name_ky=?, desc_ru=?, desc_ky=? WHERE id=?',[name_ru, name_ky, desc_ru||null, desc_ky||null, req.params.id]); res.json({ ok:true }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.delete('/api/admin/categories/:id', adminAuth, async (req,res)=>{ try{ await runAsync('DELETE FROM categories WHERE id=?',[req.params.id]); res.json({ ok:true }); }catch(e){ res.status(500).json({ error:e.message }); } });
 
@@ -741,7 +719,8 @@ app.get('/api/settings', async (req,res)=>{ try{ const s = await getAsync('SELEC
 app.put('/api/admin/settings', adminAuth, async (req,res)=>{
   try{
     const s = req.body||{};
-    await runAsync('UPDATE settings SET badge1_ru=?,badge1_ky=?,badge2_ru=?,badge2_ky=?,badge3_ru=?,badge3_ky=?,day1_date=?,day2_date=?,day3_date=?,final_place_ru=?,final_place_ky=?,updated_at=datetime(\'now\') WHERE id=1',[
+    const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
+    await runAsync(`UPDATE settings SET badge1_ru=?,badge1_ky=?,badge2_ru=?,badge2_ky=?,badge3_ru=?,badge3_ky=?,day1_date=?,day2_date=?,day3_date=?,final_place_ru=?,final_place_ky=?,updated_at=${nowFunc} WHERE id=1`, [
       s.badge1_ru||null,s.badge1_ky||null,s.badge2_ru||null,s.badge2_ky||null,s.badge3_ru||null,s.badge3_ky||null,s.day1_date||null,s.day2_date||null,s.day3_date||null,s.final_place_ru||null,s.final_place_ky||null
     ]);
     res.json({ ok:true });
@@ -751,13 +730,16 @@ ensureSchema().then(() => {
   const dbExists = fs.existsSync(DB_FILE);
   const testsDirExists = fs.existsSync(TESTS_DIR);
   
-  setInterval(() => {
-    try {
-      db.exec('PRAGMA wal_checkpoint(PASSIVE)');
-    } catch (e) {
-      console.warn('WAL checkpoint warning:', e.message);
-    }
-  }, 60000);
+  // SQLite WAL checkpoint (not needed for PostgreSQL)
+  if (db.type === 'sqlite') {
+    setInterval(() => {
+      try {
+        db.db.exec('PRAGMA wal_checkpoint(PASSIVE)');
+      } catch (e) {
+        console.warn('WAL checkpoint warning:', e.message);
+      }
+    }, 60000);
+  }
   
   app.listen(PORT, () => {
     console.log('');
@@ -766,17 +748,23 @@ ensureSchema().then(() => {
     console.log(`📍 Port: ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📁 Data Directory: ${DATA_DIR}`);
-    console.log(`🗄️  Database: ${DB_FILE} ${dbExists ? '✓ exists' : '✗ new'}`);
+    const dbStatus = db.type === 'postgres' ? 'PostgreSQL (persistent)' : (fs.existsSync(DB_FILE) ? '✓ exists' : '✗ new');
+    console.log(`🗄️  Database: ${db.type === 'postgres' ? 'PostgreSQL' : DB_FILE} ${dbStatus}`);
     console.log(`📝 Tests: ${TESTS_DIR} ${testsDirExists ? '✓ exists' : '✗ new'}`);
     console.log(`🔗 URL: http://localhost:${PORT}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     if(process.env.NODE_ENV === 'production'){
-      if(DATA_DIR.includes('/tmp')){
+      if(db.type === 'postgres'){
+        console.log('✅ PERSISTENT STORAGE MODE - Using PostgreSQL');
+        console.log('✓ Data will persist across redeploys');
+        console.log('✓ Database: PostgreSQL (managed by Render)');
+      } else if(DATA_DIR.includes('/tmp')){
         console.log('⚠️  TEMPORARY STORAGE MODE');
         console.log('⚠️  Data will be LOST when service restarts!');
         console.log('⚠️  To enable persistent storage:');
-        console.log('   1. Upgrade to Render PAID plan, OR');
-        console.log('   2. Switch to PostgreSQL (see RENDER_POSTGRES.md)');
+        console.log('   1. Create PostgreSQL database on Render');
+        console.log('   2. Set DATABASE_URL environment variable');
+        console.log('   3. See docs/RENDER_POSTGRES.md for details');
       } else {
         console.log('✅ PERSISTENT STORAGE MODE');
         console.log(`✓ Data stored in: ${DATA_DIR}`);

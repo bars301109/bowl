@@ -56,11 +56,10 @@ cd backend
 npm install pg
 ```
 
-#### 2. Update server.js (backend)
+#### 2. Code is already updated!
 
-The app will automatically use PostgreSQL if `DATABASE_URL` is set.
-
-Coming in next update - for now, app uses SQLite but will be upgraded to support PostgreSQL automatically.
+The app now automatically detects and uses PostgreSQL if `DATABASE_URL` is set.
+No code changes needed - just set the environment variable!
 
 ### Step 5: Redeploy
 
