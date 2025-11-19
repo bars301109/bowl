@@ -30,6 +30,11 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Optimize font loading - prevent invisible text during font load */
+* {
+  font-display: swap;
+}
+
 @keyframes rotate-slow {
   from {
     transform: rotate(0deg);
@@ -262,6 +267,9 @@ header.header .container {
   max-width: 1200px;
   margin: 0 auto;
   border-radius: 0 0 24px 24px;
+  /* Optimize background image loading */
+  will-change: transform;
+  contain: layout style paint;
 }
 
 .hero-content {

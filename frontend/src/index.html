@@ -3,18 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Akylman Quiz Bowl - Международное соревнование по знаниям для студентов">
+  <meta name="keywords" content="quiz, соревнование, знания, студенты, Кыргызстан">
   <title>Akylman Quiz Bowl</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="/Users/barsbek-1/Desktop/akylman-quiz-complete/frontend/src/images/logos.jpeg" type="image/png">
+  <link rel="icon" href="images/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="images/favicon.png">
 </head>
 <body>
   <header class="header">
     <div class="container">
       <a href="/" class="logo">
-        <img src="images/logo.png" alt="Akylman">
+        <img src="images/logo.png" alt="Akylman" width="120" height="48" loading="eager" fetchpriority="high">
       </a>
       <nav class="nav">
         <a href="/" data-i18n="nav.home">Главная</a>
@@ -135,13 +138,13 @@
           <div class="carousel-wrapper">
             <div class="carousel-track">
               <figure class="carousel-item">
-                <img src="images/gallery/akylman-campus.png" alt="Akylman campus">
+                <img src="images/gallery/akylman-campus.png" alt="Akylman campus" width="600" height="400" loading="lazy" decoding="async">
               </figure>
               <figure class="carousel-item">
-                <img src="images/gallery/akylman-2.jpg" alt="Akylman visitors">
+                <img src="images/gallery/akylman-2.jpg" alt="Akylman visitors" width="600" height="400" loading="lazy" decoding="async">
               </figure>
               <figure class="carousel-item">
-                <img src="images/gallery/akylman-3.jpg" alt="Akylman opening">
+                <img src="images/gallery/akylman-3.jpg" alt="Akylman opening" width="600" height="400" loading="lazy" decoding="async">
               </figure>
             </div>
           </div>
@@ -166,8 +169,8 @@
     </div>
   </footer>
 
-  <script src="js/i18n.js"></script>
-  <script>
+  <script src="js/i18n.js" defer></script>
+  <script defer>
     function addOrnaments() {
       const ornaments = ['orn-1.png', 'orn-2.png'];
       const allCorners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
