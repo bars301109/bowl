@@ -173,28 +173,27 @@
   <script>
     function addOrnaments() {
       const ornaments = ['orn-1.png', 'orn-2.png'];
-      const allCorners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
-      const incompatible = {
-        'bottom-left': ['top-left'],
-        'bottom-right': ['top-right'],
-        'top-left': ['bottom-left'],
-        'top-right': ['bottom-right']
+      const horizontalOpposite = {
+        'top-left': 'top-right',
+        'top-right': 'top-left',
+        'bottom-left': 'bottom-right',
+        'bottom-right': 'bottom-left'
       };
       
       const sections = document.querySelectorAll('section:not(.hero)');
+      const corners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
       let prevCorner = null;
       
       sections.forEach((section, index) => {
         const ornament = ornaments[index % 2];
         
-        let availableCorners = allCorners;
+        let corner;
         if (prevCorner) {
-          availableCorners = allCorners.filter(corner => 
-            !incompatible[prevCorner].includes(corner)
-          );
+          corner = horizontalOpposite[prevCorner];
+        } else {
+          corner = corners[Math.floor(Math.random() * corners.length)];
         }
         
-        const corner = availableCorners[Math.floor(Math.random() * availableCorners.length)];
         prevCorner = corner;
         
         const ornDiv = document.createElement('div');
@@ -205,7 +204,16 @@
     }
     
     addOrnaments();
-    AkylI18n.initSwitcher();
+    
+    // Initialize language switcher when AkylI18n is ready
+    function initLanguageSwitcher() {
+      if (typeof AkylI18n !== 'undefined' && AkylI18n.initSwitcher) {
+        AkylI18n.initSwitcher();
+      } else {
+        setTimeout(initLanguageSwitcher, 50);
+      }
+    }
+    initLanguageSwitcher();
     
     function updateNavBar() {
       const token = localStorage.getItem('akylman_token');
@@ -416,6 +424,15 @@
         return;
       }
       
+      // Ensure language switcher is initialized
+      if (AkylI18n.initSwitcher) {
+        try {
+          AkylI18n.initSwitcher();
+        } catch (e) {
+          console.warn('Failed to init language switcher:', e);
+        }
+      }
+      
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
           renderSettings();
@@ -430,9 +447,11 @@
     initApp();
     
     window.addEventListener('akyl-langchange', () => {
-      AkylI18n.applyI18n(AkylI18n.getLang());
-      renderSettings();
-      renderCategories();
+      if (typeof AkylI18n !== 'undefined') {
+        AkylI18n.applyI18n(AkylI18n.getLang());
+        renderSettings();
+        renderCategories();
+      }
     });
 
     class Carousel {
