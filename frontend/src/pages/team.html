@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title data-i18n="team.title">Кабинет</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="../css/style.css?v=3"/>
   <link rel="icon" type="image/svg+xml" href="../images/favicon.svg">
 </head>
 <body class="admin-panel">
@@ -104,14 +104,14 @@ document.getElementById('tabHome').onclick = async (e) => {
     
     out.innerHTML = `
       <h3 data-i18n="team.welcome">Добро пожаловать в кабинет команды!</h3>
-      <div style="margin-top: 20px;">
+      <div class="team-info">
         <p><strong data-i18n="team.team_name">Название команды:</strong> ${teamData.team_name || ''}</p>
         <p><strong data-i18n="team.captain">Капитан:</strong> ${teamData.captain_name || ''}</p>
         ${teamData.captain_email ? `<p><strong data-i18n="team.email">Email:</strong> ${teamData.captain_email}</p>` : ''}
         ${teamData.captain_phone ? `<p><strong data-i18n="team.phone">Телефон:</strong> ${teamData.captain_phone}</p>` : ''}
         ${teamData.school ? `<p><strong data-i18n="team.school">Школа:</strong> ${teamData.school}</p>` : ''}
         ${teamData.city ? `<p><strong data-i18n="team.city">Город:</strong> ${teamData.city}</p>` : ''}
-        <h4 style="margin-top: 24px;" data-i18n="team.members">Участники команды:</h4>
+        <h4 data-i18n="team.members">Участники команды:</h4>
         <ul>
           ${membersHtml}
         </ul>
@@ -176,16 +176,11 @@ document.getElementById('tabTests').onclick = async (e) => {
       return '';
     }
     
-    out.innerHTML = '<ul style="list-style: none; padding: 0;">' + tests.map(t => `
-      <li style="padding: 16px; margin-bottom: 12px; background: #f9fafb; border-radius: 8px; border-left: 4px solid var(--primary); transition: all 0.3s ease;" 
-          onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'; this.style.transform='translateY(-2px)';" 
-          onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)';">
-        <strong style="font-size: 16px; display: block; margin-bottom: 8px;">${t.title}</strong>
-        <p style="margin: 8px 0; color: #4b5563;">${t.description || ''} ${renderWindow(t)}</p>
-        <button data-id="${t.id}" class="take primary" style="margin-top: 8px; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;" 
-                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(245, 158, 11, 0.4)';" 
-                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';" 
-                data-i18n="team.take_test">Пройти</button>
+    out.innerHTML = '<ul class="test-list">' + tests.map(t => `
+      <li>
+        <strong>${t.title}</strong>
+        <p>${t.description || ''} ${renderWindow(t)}</p>
+        <button data-id="${t.id}" class="take primary" data-i18n="team.take_test">Пройти</button>
       </li>
     `).join('') + '</ul>';
     
@@ -217,22 +212,20 @@ document.getElementById('tabResults').onclick = async (e) => {
     }
     
     out.innerHTML = `
-      <table class="table" style="width: 100%; border-collapse: collapse; margin-top: 16px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+      <table class="results-table">
         <thead>
-          <tr style="background: #f3f4f6; border-bottom: 2px solid var(--border);">
-            <th style="padding: 16px; text-align: left; font-weight: 600; color: #111827;" data-i18n="team.test_title">Тест</th>
-            <th style="padding: 16px; text-align: left; font-weight: 600; color: #111827;" data-i18n="team.score">Баллы</th>
-            <th style="padding: 16px; text-align: left; font-weight: 600; color: #111827;" data-i18n="team.date">Дата</th>
+          <tr>
+            <th data-i18n="team.test_title">Тест</th>
+            <th data-i18n="team.score">Баллы</th>
+            <th data-i18n="team.date">Дата</th>
           </tr>
         </thead>
         <tbody>
           ${rows.map(r => `
-            <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s ease;" 
-                onmouseover="this.style.background='#f9fafb';" 
-                onmouseout="this.style.background='white';">
-              <td style="padding: 16px; color: #1f2937;">${r.title || ''}</td>
-              <td style="padding: 16px;"><strong style="color: var(--primary); font-size: 18px;">${r.score || 0}</strong></td>
-              <td style="padding: 16px; color: #6b7280;">${r.taken_at || ''}</td>
+            <tr>
+              <td>${r.title || ''}</td>
+              <td class="score"><strong>${r.score || 0}</strong></td>
+              <td class="date">${r.taken_at || ''}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -264,13 +257,13 @@ document.getElementById('tabSettings').onclick = async (e) => {
   if (teamData) {
     out.innerHTML = `
       <h3 data-i18n="team.tab.settings">Настройки аккаунта</h3>
-      <div style="margin-top: 20px; padding: 24px; background: #f9fafb; border-radius: 12px; border: 1px solid var(--border);">
-        <p style="margin-bottom: 12px;"><strong data-i18n="team.team_name">Название команды:</strong> <span style="color: #1f2937;">${teamData.team_name || ''}</span></p>
-        <p style="margin-bottom: 12px;"><strong data-i18n="team.login">Логин:</strong> <span style="color: #1f2937;">${teamData.login || 'Не указан'}</span></p>
-        ${teamData.captain_email ? `<p style="margin-bottom: 12px;"><strong data-i18n="team.email">Email капитана:</strong> <span style="color: #1f2937;">${teamData.captain_email}</span></p>` : ''}
-        ${teamData.captain_phone ? `<p style="margin-bottom: 12px;"><strong data-i18n="team.phone">Телефон капитана:</strong> <span style="color: #1f2937;">${teamData.captain_phone}</span></p>` : ''}
-        ${teamData.school ? `<p style="margin-bottom: 12px;"><strong data-i18n="team.school">Школа:</strong> <span style="color: #1f2937;">${teamData.school}</span></p>` : ''}
-        ${teamData.city ? `<p style="margin-bottom: 12px;"><strong data-i18n="team.city">Город:</strong> <span style="color: #1f2937;">${teamData.city}</span></p>` : ''}
+      <div class="settings-card">
+        <p><strong data-i18n="team.team_name">Название команды:</strong> <span>${teamData.team_name || ''}</span></p>
+        <p><strong data-i18n="team.login">Логин:</strong> <span>${teamData.login || 'Не указан'}</span></p>
+        ${teamData.captain_email ? `<p><strong data-i18n="team.email">Email капитана:</strong> <span>${teamData.captain_email}</span></p>` : ''}
+        ${teamData.captain_phone ? `<p><strong data-i18n="team.phone">Телефон капитана:</strong> <span>${teamData.captain_phone}</span></p>` : ''}
+        ${teamData.school ? `<p><strong data-i18n="team.school">Школа:</strong> <span>${teamData.school}</span></p>` : ''}
+        ${teamData.city ? `<p><strong data-i18n="team.city">Город:</strong> <span>${teamData.city}</span></p>` : ''}
         <p class="small-muted" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);" data-i18n="team.settings_note">Для изменения данных обратитесь к администратору.</p>
       </div>
     `;
@@ -301,19 +294,15 @@ async function startTest(id) {
       return;
     }
     
-    let remainingSec = 0;
+  let remainingSec = 0;
     const testMetaRes = await fetch('/api/tests', { headers: {} });
     const allTests = await testMetaRes.json();
     const testMeta = allTests.find(x => String(x.id) === String(id));
-    const durMins = (testMeta && testMeta.duration_minutes) ? testMeta.duration_minutes : 60;
+  const durMins = (testMeta && testMeta.duration_minutes) ? testMeta.duration_minutes : 60;
     remainingSec = durMins * 60;
     
     const timerDiv = document.createElement('div');
-    timerDiv.className = 'small-muted';
-    timerDiv.style.margin = '8px 0';
-    timerDiv.style.fontSize = '16px';
-    timerDiv.style.fontWeight = '600';
-    timerDiv.style.color = 'var(--primary)';
+    timerDiv.className = 'test-timer';
     
     const interval = setInterval(() => {
       remainingSec--;
@@ -330,35 +319,31 @@ async function startTest(id) {
     function show() {
       const q = qs[idx];
       out.innerHTML = '';
-      out.appendChild(timerDiv);
-      const block = document.createElement('div');
+    out.appendChild(timerDiv);
+    const block = document.createElement('div');
       block.innerHTML = `
-        <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 16px;">
-          <h4 style="color: var(--primary); margin-bottom: 16px;">Вопрос ${idx + 1}/${qs.length}</h4>
-          <p style="font-size: 16px; margin: 16px 0; line-height: 1.6; color: #1f2937;">${q.text}</p>
+        <div class="question-block">
+          <h4>Вопрос ${idx + 1}/${qs.length}</h4>
+          <p>${q.text}</p>
           ${q.options && q.options.length ? q.options.map((o, i) => `
-            <div style="margin: 12px 0; padding: 16px; background: #f9fafb; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;" 
-                 onmouseover="this.style.borderColor='var(--primary)'; this.style.background='#f0f4ff';" 
-                 onmouseout="this.style.borderColor='transparent'; this.style.background='#f9fafb';">
-              <label style="cursor: pointer; display: flex; align-items: center; gap: 12px; margin: 0;">
-                <input type="radio" name="opt" value="${i}" style="cursor: pointer; width: 18px; height: 18px;"/>
-                <span style="font-size: 15px; color: #1f2937;">${o}</span>
+            <div class="option-item">
+              <label>
+                <input type="radio" name="opt" value="${i}"/>
+                <span>${o}</span>
               </label>
             </div>
           `).join('') : `
-            <div style="margin: 16px 0;">
-              <input id="txt" placeholder="Введите ответ" style="width: 100%; padding: 14px; border: 2px solid var(--border); border-radius: 8px; font-size: 14px; transition: all 0.2s;" 
-                     onfocus="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 0 0 3px rgba(30, 64, 175, 0.1)';" 
-                     onblur="this.style.borderColor='var(--border)'; this.style.boxShadow='none';"/>
+            <div class="text-answer">
+              <input id="txt" placeholder="Введите ответ"/>
             </div>
           `}
         </div>
-        <div style="margin-top: 24px; display: flex; gap: 12px;">
-          <button id="prev" class="nav-btn" style="padding: 12px 24px; ${idx === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}">${t('team.prev')}</button>
-          <button id="next" class="primary" style="padding: 12px 24px;">${idx >= qs.length - 1 ? t('team.done') : t('team.next')}</button>
+        <div class="test-navigation">
+          <button id="prev" class="nav-btn" ${idx === 0 ? 'disabled' : ''}>${t('team.prev')}</button>
+          <button id="next" class="primary">${idx >= qs.length - 1 ? t('team.done') : t('team.next')}</button>
         </div>
       `;
-      out.appendChild(block);
+    out.appendChild(block);
       
       if (idx > 0) {
         document.getElementById('prev').onclick = () => {
@@ -405,9 +390,9 @@ async function startTest(id) {
           return;
         }
         out.innerHTML = `
-          <div style="text-align: center; padding: 32px;">
-            <h3 style="color: var(--success); margin-bottom: 16px;" data-i18n="team.done">Готово</h3>
-            <p style="font-size: 20px; margin-top: 16px;">Ваш результат: <strong style="font-size: 28px; color: var(--primary);">${j.score || 0} баллов</strong></p>
+          <div class="test-result">
+            <h3 data-i18n="team.done">Готово</h3>
+            <p>Ваш результат: <strong>${j.score || 0} баллов</strong></p>
           </div>
         `;
         AkylI18n.applyI18n(AkylI18n.getLang(), out);
