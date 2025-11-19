@@ -5,9 +5,45 @@
 <div class="form-card">
   <div>
     <h2 data-i18n="login.title" class="grad-text">Вход</h2>
-    <form id="loginForm"><div class="form-row"><label><span data-i18n="login.login">Логин</span><input name="login" required/></label><label><span data-i18n="login.password">Пароль</span><input type="password" name="password" required/></label></div><div class="mt-2"><button class="primary" type="submit" data-i18n="login.submit">Войти</button> <a class="nav-btn" href="../index.html" data-i18n="nav.home">Главная</a></div></form><div id="msg" class="small-muted"></div>
+    <form id="loginForm"><div class="form-row"><label><span data-i18n="login.login">Логин</span><input name="login" placeholder="Введите логин команды" required/></label><label><span data-i18n="login.password">Пароль</span><input type="password" name="password" placeholder="Введите пароль" required/></label></div><div class="mt-2"><button class="primary" type="submit" data-i18n="login.submit">Войти</button> <a class="nav-btn" href="../index.html" data-i18n="nav.home">Главная</a></div></form><div id="msg" class="small-muted"></div>
   </div>
 </div></div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script><script src="../js/i18n.js"></script><script>AkylI18n.initSwitcher();</script>
-<script>document.getElementById('loginForm').addEventListener('submit', async e=>{ e.preventDefault(); const msg=document.getElementById('msg'); msg.textContent='Вход...'; const data=Object.fromEntries(new FormData(e.target).entries()); try{ const res=await fetch('/api/login',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)}); const j=await res.json(); if(!res.ok){ msg.textContent=j.error||'Ошибка'; msg.style.color='#b00020'; return; } localStorage.setItem('akylman_token', j.team.token); localStorage.setItem('team', JSON.stringify(j.team)); msg.textContent='Успешно'; msg.style.color='#166534'; setTimeout(()=> location.href='/pages/team.html',600); }catch(err){ console.error(err); msg.textContent='Сервер недоступен'; msg.style.color='#b00020'; }});</script></body></html>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = document.getElementById('msg');
+  msg.textContent = 'Вход...';
+  msg.className = 'small-muted';
+  msg.style.color = '';
+  
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const j = await res.json();
+    if (!res.ok) {
+      msg.textContent = j.error || 'Ошибка входа';
+      msg.style.color = '#b00020';
+      msg.className = 'small-muted error';
+      return;
+    }
+    localStorage.setItem('akylman_token', j.team.token);
+    localStorage.setItem('team', JSON.stringify(j.team));
+    msg.textContent = 'Успешно! Перенаправление...';
+    msg.style.color = '#166534';
+    msg.className = 'small-muted success';
+    setTimeout(() => location.href = '/pages/team.html', 600);
+  } catch (err) {
+    console.error(err);
+    msg.textContent = 'Сервер недоступен. Проверьте подключение к интернету.';
+    msg.style.color = '#b00020';
+    msg.className = 'small-muted error';
+  }
+});
+</script></body></html>
 

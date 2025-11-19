@@ -10,22 +10,48 @@
   <link rel="icon" type="image/svg+xml" href="../images/favicon.svg">
   <style>
     .password-requirements {
-      margin-top: 6px;
+      margin-top: 10px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0;
-      font-size: 10px;
+      gap: 8px;
+      font-size: 12px;
       font-weight: 400;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.02);
+      border-radius: 8px;
+      border: 1px solid var(--border);
     }
     #passwordReqs .requirement {
       color: #ef4444 !important;
-      transition: color 0.2s ease;
+      transition: all 0.3s ease;
       font-weight: 400 !important;
       margin: 0;
-      padding: 0;
+      padding: 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    #passwordReqs .requirement::before {
+      content: '✗';
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+      font-size: 10px;
+      line-height: 16px;
+      text-align: center;
+      flex-shrink: 0;
     }
     #passwordReqs .requirement.met {
       color: #16a34a !important;
+    }
+    #passwordReqs .requirement.met::before {
+      content: '✓';
+      background: rgba(22, 163, 74, 0.1);
+      color: #16a34a;
     }
     #passwordReqs .requirement.met,
     #passwordReqs .requirement.met span {
@@ -58,13 +84,13 @@
       <h2 data-i18n="register.title" class="grad-text">Регистрация команды</h2>
       <form id="regForm">
         <div class="form-row">
-          <label><span data-i18n="register.team_name">Название команды</span><input name="team_name" required/></label>
-          <label><span data-i18n="register.login">Логин команды</span><input name="login" required/></label>
+          <label><span data-i18n="register.team_name">Название команды</span><input name="team_name" placeholder="Например: Команда А" required/></label>
+          <label><span data-i18n="register.login">Логин команды</span><input name="login" placeholder="team_login" required/></label>
         </div>
         <div class="form-row">
           <label>
             <span data-i18n="register.password">Пароль</span>
-            <input type="password" name="password" id="passwordInput" required/>
+            <input type="password" name="password" id="passwordInput" placeholder="Введите пароль" required/>
             <div class="password-requirements" id="passwordReqs">
               <div class="requirement" id="req-length"><span data-i18n="register.password.length">8 символов</span></div>
               <div class="requirement" id="req-number"><span data-i18n="register.password.number">Цифра</span></div>
@@ -72,18 +98,18 @@
               <div class="requirement" id="req-uppercase"><span data-i18n="register.password.uppercase">Заглавная буква</span></div>
             </div>
           </label>
-          <label><span data-i18n="register.password2">Повтор пароля</span><input type="password" name="password2" required/></label>
+          <label><span data-i18n="register.password2">Повтор пароля</span><input type="password" name="password2" placeholder="Повторите пароль" required/></label>
         </div>
         <div class="form-row">
-          <label><span data-i18n="register.captain_name">ФИО капитана</span><input name="captain_name" required/></label>
-          <label><span data-i18n="register.captain_email">Email капитана</span><input type="email" name="captain_email"/></label>
+          <label><span data-i18n="register.captain_name">ФИО капитана</span><input name="captain_name" placeholder="Иванов Иван Иванович" required/></label>
+          <label><span data-i18n="register.captain_email">Email капитана</span><input type="email" name="captain_email" placeholder="example@email.com"/></label>
         </div>
         <div class="form-row">
-          <label><span data-i18n="register.captain_phone">Телефон капитана</span><input name="captain_phone"/></label>
-          <label><span data-i18n="register.school">Школа</span><input name="school"/></label>
+          <label><span data-i18n="register.captain_phone">Телефон капитана</span><input name="captain_phone" type="tel" placeholder="+996 555 123456"/></label>
+          <label><span data-i18n="register.school">Школа</span><input name="school" placeholder="Название школы"/></label>
         </div>
         <div class="form-row">
-          <label><span data-i18n="register.city">Город</span><input name="city"/></label>
+          <label><span data-i18n="register.city">Город</span><input name="city" placeholder="Город"/></label>
           <label><span data-i18n="register.members_count">Количество участников</span><select id="members_count" name="members_count"><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
         </div>
         <div id="members_fields"></div>
@@ -157,7 +183,7 @@ function renderMembers(n) {
       memberLabel = `ФИО ${ordinals[i] || i + '-го'} участника`;
       classLabel = AkylI18n.t('register.member_class');
     }
-    wrapper.innerHTML = `<label><span>${memberLabel}</span><input name="member_${i}_name" required/></label><label><span>${classLabel}</span><input name="member_${i}_info"/></label>`;
+    wrapper.innerHTML = `<label><span>${memberLabel}</span><input name="member_${i}_name" placeholder="ФИО участника" required/></label><label><span>${classLabel}</span><input name="member_${i}_info" placeholder="Класс"/></label>`;
     membersDiv.appendChild(wrapper);
   }
 }
@@ -200,24 +226,29 @@ document.getElementById('regForm').addEventListener('submit', async e => {
   e.preventDefault();
   const msg = document.getElementById('msg');
   msg.textContent = 'Отправка...';
+  msg.className = 'small-muted';
+  msg.style.color = '';
 
   const data = Object.fromEntries(new FormData(e.target).entries());
 
   if (!isValidEmail(data.captain_email || '')) {
     msg.textContent = 'Некорректный email';
     msg.style.color = '#b00020';
+    msg.className = 'small-muted error';
     return;
   }
 
   if (data.password !== data.password2) {
     msg.textContent = 'Пароли не совпадают';
     msg.style.color = '#b00020';
+    msg.className = 'small-muted error';
     return;
   }
 
   if (!isValidPassword(data.password)) {
     msg.textContent = 'Пароль не соответствует требованиям';
     msg.style.color = '#b00020';
+    msg.className = 'small-muted error';
     return;
   }
 
@@ -250,15 +281,18 @@ document.getElementById('regForm').addEventListener('submit', async e => {
     if (!res.ok) {
       msg.textContent = j.error || 'Ошибка';
       msg.style.color = '#b00020';
+      msg.className = 'small-muted error';
       return;
     }
-    msg.textContent = 'Успешно зарегистрированы';
+    msg.textContent = 'Успешно зарегистрированы! Перенаправление...';
     msg.style.color = '#166534';
+    msg.className = 'small-muted success';
     setTimeout(() => location.href = '/pages/login.html', 800);
   } catch (err) {
     console.error(err);
-    msg.textContent = 'Сервер недоступен';
+    msg.textContent = 'Сервер недоступен. Проверьте подключение к интернету.';
     msg.style.color = '#b00020';
+    msg.className = 'small-muted error';
   }
 });
 </script>
