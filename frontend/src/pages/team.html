@@ -1,21 +1,137 @@
 
-<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title data-i18n="team.title">Кабинет</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous"><link rel="stylesheet" href="../css/style.css"/><link rel="icon" type="image/svg+xml" href="../images/favicon.svg"></head><body class="admin-panel">
-<div class="container"><div class="lang-switch text-end"><button data-lang="ru">РУ</button> <button data-lang="ky">КЫ</button></div><a href="../index.html"><img src="../images/logo.png" class="logo-center img-fluid"/></a>
-<div class="topbar d-flex justify-content-end gap-2 flex-wrap"><a class="nav-btn" href="/index.html" data-i18n="nav.home">Главная</a><a class="link-pill" href="#" id="logout" data-i18n="nav.logout">Выход</a></div>
-<div class="form-card"><h2 data-i18n="team.title">Кабинет команды</h2><div id="teamInfo"></div>
-<div class="team-tabs"><button id="tabHome" class="tab-btn active" data-i18n="team.tab.home">Главная</button> <button id="tabTests" class="tab-btn" data-i18n="team.tab.tests">Тесты</button> <button id="tabResults" class="tab-btn" data-i18n="team.tab.results">Результаты</button> <button id="tabSettings" class="tab-btn" data-i18n="team.tab.settings">Настройки</button> <button id="tabPractice" class="tab-btn" data-i18n="team.tab.practice">Практика</button> <button id="tabRules" class="tab-btn" data-i18n="team.tab.rules">Правила</button></div><hr/><div id="tabContent"></div></div></div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script><script src="../js/i18n.js"></script><script>AkylI18n.initSwitcher();</script>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title data-i18n="team.title">Кабинет</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="icon" type="image/svg+xml" href="../images/favicon.svg">
+</head>
+<body class="admin-panel">
+<div class="container">
+  <div class="lang-switch text-end">
+    <button data-lang="ru">РУ</button> 
+    <button data-lang="ky">КЫ</button>
+  </div>
+  <a href="../index.html"><img src="../images/logo.png" class="logo-center img-fluid"/></a>
+  <div class="topbar d-flex justify-content-end gap-2 flex-wrap">
+    <a class="nav-btn" href="/index.html" data-i18n="nav.home">Главная</a>
+    <a class="link-pill" href="#" id="logout" data-i18n="nav.logout">Выход</a>
+  </div>
+  <div class="form-card">
+    <h2 data-i18n="team.title">Кабинет команды</h2>
+    <div id="teamInfo"></div>
+    <div class="team-tabs">
+      <button id="tabHome" class="tab-btn active" data-i18n="team.tab.home">Главная</button> 
+      <button id="tabTests" class="tab-btn" data-i18n="team.tab.tests">Тесты</button> 
+      <button id="tabResults" class="tab-btn" data-i18n="team.tab.results">Результаты</button> 
+      <button id="tabSettings" class="tab-btn" data-i18n="team.tab.settings">Настройки</button> 
+      <button id="tabPractice" class="tab-btn" data-i18n="team.tab.practice">Практика</button> 
+      <button id="tabRules" class="tab-btn" data-i18n="team.tab.rules">Правила</button>
+    </div>
+    <hr/>
+    <div id="tabContent"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script src="../js/i18n.js"></script>
+<script>AkylI18n.initSwitcher();</script>
 <script>
-const token = localStorage.getItem('akylman_token'); if(!token) location.href='/pages/login.html';
-async function load(){ const res = await fetch('/api/me',{headers:{'Authorization':'Bearer '+token}}); const j=await res.json(); if(!j.ok){ localStorage.removeItem('akylman_token'); location.href='/pages/login.html'; } document.getElementById('teamInfo').innerHTML=`<p>${j.team.team_name} — ${j.team.captain_name}</p>`; }
+const token = localStorage.getItem('akylman_token');
+if (!token) location.href = '/pages/login.html';
+
+let teamData = null;
+
+// Функция для получения переводов
+function t(key) {
+  if (typeof AkylI18n !== 'undefined' && AkylI18n.t) {
+    return AkylI18n.t(key);
+  }
+  return key;
+}
+
+async function load() {
+  const res = await fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
+  const j = await res.json();
+  if (!j.ok) {
+    localStorage.removeItem('akylman_token');
+    location.href = '/pages/login.html';
+    return;
+  }
+  teamData = j.team;
+  document.getElementById('teamInfo').innerHTML = `<p><strong>${j.team.team_name}</strong> — ${j.team.captain_name}</p>`;
+}
+
 load();
-document.getElementById('logout').onclick = ()=>{ localStorage.removeItem('akylman_token'); localStorage.removeItem('team'); location.href='/index.html'; };
 
-function setActiveTab(btn){ document.querySelectorAll('.tab-btn').forEach(b=> b.classList.remove('active')); btn.classList.add('active'); }
-document.getElementById('tabHome').onclick = (e)=>{ setActiveTab(e.currentTarget); document.getElementById('tabContent').innerHTML='<p>Welcome</p>'; AkylI18n.applyI18n(AkylI18n.getLang(), document.getElementById('tabContent')); };
-document.getElementById('tabRules').onclick = (e)=>{ setActiveTab(e.currentTarget); document.getElementById('tabContent').innerHTML='<h3 data-i18n="team.tab.rules">Правила</h3><p data-i18n="team.rules.hidden_note">Правила доступны здесь.</p><iframe src="../pages/rules.pdf" style="width:100%;height:480px;border:1px solid #eef4fb;border-radius:10px"></iframe>'; AkylI18n.applyI18n(AkylI18n.getLang(), document.getElementById('tabContent')); };
+document.getElementById('logout').onclick = () => {
+  localStorage.removeItem('akylman_token');
+  localStorage.removeItem('team');
+  location.href = '/index.html';
+};
 
-document.getElementById('tabPractice').onclick = (e)=>{ setActiveTab(e.currentTarget);
+function setActiveTab(btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+document.getElementById('tabHome').onclick = async (e) => {
+  setActiveTab(e.currentTarget);
+  const out = document.getElementById('tabContent');
+  
+  // Если данные еще не загружены, загружаем их
+  if (!teamData) {
+    try {
+      const res = await fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
+      const j = await res.json();
+      if (j.ok) teamData = j.team;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  
+  if (teamData) {
+    // Получаем участников команды
+    let membersHtml = '';
+    if (teamData.members && teamData.members.length > 0) {
+      membersHtml = teamData.members.map(m => `<li>${m.name || 'Участник'}${m.class ? ' — ' + m.class : ''}</li>`).join('');
+    } else {
+      membersHtml = '<li>Участники не указаны</li>';
+    }
+    
+    out.innerHTML = `
+      <h3 data-i18n="team.welcome">Добро пожаловать в кабинет команды!</h3>
+      <div style="margin-top: 20px;">
+        <p><strong data-i18n="team.team_name">Название команды:</strong> ${teamData.team_name || ''}</p>
+        <p><strong data-i18n="team.captain">Капитан:</strong> ${teamData.captain_name || ''}</p>
+        ${teamData.captain_email ? `<p><strong data-i18n="team.email">Email:</strong> ${teamData.captain_email}</p>` : ''}
+        ${teamData.captain_phone ? `<p><strong data-i18n="team.phone">Телефон:</strong> ${teamData.captain_phone}</p>` : ''}
+        ${teamData.school ? `<p><strong data-i18n="team.school">Школа:</strong> ${teamData.school}</p>` : ''}
+        ${teamData.city ? `<p><strong data-i18n="team.city">Город:</strong> ${teamData.city}</p>` : ''}
+        <h4 style="margin-top: 24px;" data-i18n="team.members">Участники команды:</h4>
+        <ul>
+          ${membersHtml}
+        </ul>
+      </div>
+    `;
+  } else {
+    out.innerHTML = '<p data-i18n="team.loading">Загрузка...</p>';
+  }
+  
+  AkylI18n.applyI18n(AkylI18n.getLang(), out);
+};
+
+document.getElementById('tabRules').onclick = (e) => {
+  setActiveTab(e.currentTarget);
+  document.getElementById('tabContent').innerHTML = '<h3 data-i18n="team.tab.rules">Правила</h3><p data-i18n="team.rules.hidden_note">Правила доступны здесь.</p><iframe src="../pages/rules.pdf" style="width:100%;height:480px;border:1px solid #eef4fb;border-radius:10px"></iframe>';
+  AkylI18n.applyI18n(AkylI18n.getLang(), document.getElementById('tabContent'));
+};
+
+document.getElementById('tabPractice').onclick = (e) => {
+  setActiveTab(e.currentTarget);
   const out = document.getElementById('tabContent');
   out.innerHTML = `
     <h3 data-i18n="team.tab.practice">Практика</h3>
@@ -37,43 +153,299 @@ document.getElementById('tabPractice').onclick = (e)=>{ setActiveTab(e.currentTa
   `;
 };
 
-document.getElementById('tabTests').onclick = async (e)=>{ setActiveTab(e.currentTarget);
-  const out=document.getElementById('tabContent'); out.innerHTML='Loading...'; AkylI18n.applyI18n(AkylI18n.getLang(), out);
-  const res=await fetch('/api/tests'); const tests=await res.json(); if(!tests.length){ out.innerHTML='<p>Нет тестов</p>'; return; }
-  out.innerHTML = '<ul>'+tests.map(t=>`<li><strong>${t.title}</strong> — ${t.description||''} ${renderWindow(t)} <button data-id="${t.id}" class="take">Пройти</button></li>`).join('')+'</ul>';
-  document.querySelectorAll('.take').forEach(b=> b.onclick = ()=> startTest(b.dataset.id));
-};
-function renderWindow(t){ if(t.window_start && t.window_end){ return `<span class="small-muted">(${t.window_start} → ${t.window_end})</span>`;} return ''; }
-
-document.getElementById('tabResults').onclick = async (e)=>{ setActiveTab(e.currentTarget); const out=document.getElementById('tabContent'); out.innerHTML='Загрузка результатов...'; const res=await fetch('/api/me/results',{headers:{'Authorization':'Bearer '+token}}); const rows=await res.json(); if(!rows.length){ out.innerHTML='<p>Результатов нет</p>'; return; } out.innerHTML = '<table class="table"><tr><th>Тест</th><th>Баллы</th><th>Дата</th></tr>' + rows.map(r=>`<tr><td>${r.title}</td><td>${r.score}</td><td>${r.taken_at}</td></tr>`).join('') + '</table>'; };
-document.getElementById('tabSettings').onclick = (e)=>{ setActiveTab(e.currentTarget); document.getElementById('tabContent').innerHTML = '<p>Настройки аккаунта</p>'; };
-
-async function startTest(id){
-  const out=document.getElementById('tabContent');
-  out.innerHTML='Загрузка вопросов...';
-  const res=await fetch('/api/tests/'+id);
-  if(res.status===403){ out.innerHTML='<p>Тест сейчас недоступен</p>'; return; }
-  const qs=await res.json(); if(!qs.length){ out.innerHTML='<p>Пустой тест</p>'; return; }
-  let remainingSec = 0;
-  const testMeta = (await (await fetch('/api/tests',{headers:{}})).json()).find(x=> String(x.id)===String(id));
-  const durMins = (testMeta && testMeta.duration_minutes) ? testMeta.duration_minutes : 60;
-  remainingSec = durMins*60;
-  const timerDiv = document.createElement('div'); timerDiv.className='small-muted'; timerDiv.style.margin='8px 0';
-  const interval = setInterval(()=>{ remainingSec--; timerDiv.textContent = `${t('team.timer')}: `+fmt(remainingSec); if(remainingSec<=0){ clearInterval(interval); finish(); } },1000);
-
-  let idx=0; const answers={};
-  function show(){ const q=qs[idx]; out.innerHTML = '';
-    out.appendChild(timerDiv);
-    const block = document.createElement('div');
-    block.innerHTML = `<h4>Вопрос ${idx+1}/${qs.length}</h4><p>${q.text}</p>` + (q.options && q.options.length ? q.options.map((o,i)=>`<div><label><input type=\"radio\" name=\"opt\" value=\"${i}\"/> ${o}</label></div>`).join('') : `<div><input id=\"txt\" placeholder=\"Ответ\"/></div>`) + '<div style="margin-top:12px"><button id="prev">'+t('team.prev')+'</button> <button id="next" class="primary">'+t('team.next')+'</button></div>';
-    out.appendChild(block);
-    document.getElementById('prev').onclick = ()=>{ if(idx>0) idx--; show(); };
-    document.getElementById('next').onclick = ()=>{ if(q.options && q.options.length){ const sel = document.querySelector('input[name=\"opt\"]:checked'); answers[q.id] = sel ? sel.value : null; } else { answers[q.id] = document.getElementById('txt').value; } idx++; if(idx>=qs.length) finish(); else show(); };
+document.getElementById('tabTests').onclick = async (e) => {
+  setActiveTab(e.currentTarget);
+  const out = document.getElementById('tabContent');
+  out.innerHTML = t('team.loading');
+  AkylI18n.applyI18n(AkylI18n.getLang(), out);
+  
+  try {
+    const res = await fetch('/api/tests');
+    const tests = await res.json();
+    
+    if (!tests.length) {
+      out.innerHTML = `<p data-i18n="team.no_tests">Нет тестов</p>`;
+      AkylI18n.applyI18n(AkylI18n.getLang(), out);
+      return;
+    }
+    
+    function renderWindow(t) {
+      if (t.window_start && t.window_end) {
+        return `<span class="small-muted">(${t.window_start} → ${t.window_end})</span>`;
+      }
+      return '';
+    }
+    
+    out.innerHTML = '<ul style="list-style: none; padding: 0;">' + tests.map(t => `
+      <li style="padding: 16px; margin-bottom: 12px; background: #f9fafb; border-radius: 8px; border-left: 4px solid var(--primary); transition: all 0.3s ease;" 
+          onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'; this.style.transform='translateY(-2px)';" 
+          onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)';">
+        <strong style="font-size: 16px; display: block; margin-bottom: 8px;">${t.title}</strong>
+        <p style="margin: 8px 0; color: #4b5563;">${t.description || ''} ${renderWindow(t)}</p>
+        <button data-id="${t.id}" class="take primary" style="margin-top: 8px; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;" 
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(245, 158, 11, 0.4)';" 
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';" 
+                data-i18n="team.take_test">Пройти</button>
+      </li>
+    `).join('') + '</ul>';
+    
+    AkylI18n.applyI18n(AkylI18n.getLang(), out);
+    
+    document.querySelectorAll('.take').forEach(b => {
+      b.onclick = () => startTest(b.dataset.id);
+    });
+  } catch (err) {
+    console.error(err);
+    out.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки тестов</p>';
   }
-  async function finish(){ out.innerHTML=t('team.submitting'); clearInterval(interval); const resp = await fetch('/api/tests/'+id+'/submit',{method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify({answers})}); const j = await resp.json(); if(!j.ok){ out.innerHTML='<p>Ошибка</p>'; return; } out.innerHTML = `<h3>Готово — ${j.score}</h3>`; }
-  function fmt(s){ if(s<0) s=0; const m=Math.floor(s/60), ss=String(s%60).padStart(2,'0'); return `${m}:${ss}`; }
-  show();
+};
+
+document.getElementById('tabResults').onclick = async (e) => {
+  setActiveTab(e.currentTarget);
+  const out = document.getElementById('tabContent');
+  out.innerHTML = t('team.loading_results');
+  AkylI18n.applyI18n(AkylI18n.getLang(), out);
+  
+  try {
+    const res = await fetch('/api/me/results', { headers: { 'Authorization': 'Bearer ' + token } });
+    const rows = await res.json();
+    
+    if (!rows.length) {
+      out.innerHTML = `<p data-i18n="team.no_results">Результатов нет</p>`;
+      AkylI18n.applyI18n(AkylI18n.getLang(), out);
+      return;
+    }
+    
+    out.innerHTML = `
+      <table class="table" style="width: 100%; border-collapse: collapse; margin-top: 16px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <thead>
+          <tr style="background: #f3f4f6; border-bottom: 2px solid var(--border);">
+            <th style="padding: 16px; text-align: left; font-weight: 600; color: #111827;" data-i18n="team.test_title">Тест</th>
+            <th style="padding: 16px; text-align: left; font-weight: 600; color: #111827;" data-i18n="team.score">Баллы</th>
+            <th style="padding: 16px; text-align: left; font-weight: 600; color: #111827;" data-i18n="team.date">Дата</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s ease;" 
+                onmouseover="this.style.background='#f9fafb';" 
+                onmouseout="this.style.background='white';">
+              <td style="padding: 16px; color: #1f2937;">${r.title || ''}</td>
+              <td style="padding: 16px;"><strong style="color: var(--primary); font-size: 18px;">${r.score || 0}</strong></td>
+              <td style="padding: 16px; color: #6b7280;">${r.taken_at || ''}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    
+    AkylI18n.applyI18n(AkylI18n.getLang(), out);
+  } catch (err) {
+    console.error(err);
+    out.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки результатов</p>';
+  }
+};
+
+document.getElementById('tabSettings').onclick = async (e) => {
+  setActiveTab(e.currentTarget);
+  const out = document.getElementById('tabContent');
+  
+  // Если данные еще не загружены, загружаем их
+  if (!teamData) {
+    try {
+      const res = await fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
+      const j = await res.json();
+      if (j.ok) teamData = j.team;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  
+  if (teamData) {
+    out.innerHTML = `
+      <h3 data-i18n="team.tab.settings">Настройки аккаунта</h3>
+      <div style="margin-top: 20px; padding: 24px; background: #f9fafb; border-radius: 12px; border: 1px solid var(--border);">
+        <p style="margin-bottom: 12px;"><strong data-i18n="team.team_name">Название команды:</strong> <span style="color: #1f2937;">${teamData.team_name || ''}</span></p>
+        <p style="margin-bottom: 12px;"><strong data-i18n="team.login">Логин:</strong> <span style="color: #1f2937;">${teamData.login || 'Не указан'}</span></p>
+        ${teamData.captain_email ? `<p style="margin-bottom: 12px;"><strong data-i18n="team.email">Email капитана:</strong> <span style="color: #1f2937;">${teamData.captain_email}</span></p>` : ''}
+        ${teamData.captain_phone ? `<p style="margin-bottom: 12px;"><strong data-i18n="team.phone">Телефон капитана:</strong> <span style="color: #1f2937;">${teamData.captain_phone}</span></p>` : ''}
+        ${teamData.school ? `<p style="margin-bottom: 12px;"><strong data-i18n="team.school">Школа:</strong> <span style="color: #1f2937;">${teamData.school}</span></p>` : ''}
+        ${teamData.city ? `<p style="margin-bottom: 12px;"><strong data-i18n="team.city">Город:</strong> <span style="color: #1f2937;">${teamData.city}</span></p>` : ''}
+        <p class="small-muted" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);" data-i18n="team.settings_note">Для изменения данных обратитесь к администратору.</p>
+      </div>
+    `;
+  } else {
+    out.innerHTML = '<p data-i18n="team.loading">Загрузка...</p>';
+  }
+  
+  AkylI18n.applyI18n(AkylI18n.getLang(), out);
+};
+
+async function startTest(id) {
+  const out = document.getElementById('tabContent');
+  out.innerHTML = t('team.loading_questions');
+  AkylI18n.applyI18n(AkylI18n.getLang(), out);
+  
+  try {
+    const res = await fetch('/api/tests/' + id);
+    if (res.status === 403) {
+      out.innerHTML = `<p data-i18n="team.test_unavailable">Тест сейчас недоступен</p>`;
+      AkylI18n.applyI18n(AkylI18n.getLang(), out);
+      return;
+    }
+    
+    const qs = await res.json();
+    if (!qs.length) {
+      out.innerHTML = `<p data-i18n="team.empty_test">Пустой тест</p>`;
+      AkylI18n.applyI18n(AkylI18n.getLang(), out);
+      return;
+    }
+    
+    let remainingSec = 0;
+    const testMetaRes = await fetch('/api/tests', { headers: {} });
+    const allTests = await testMetaRes.json();
+    const testMeta = allTests.find(x => String(x.id) === String(id));
+    const durMins = (testMeta && testMeta.duration_minutes) ? testMeta.duration_minutes : 60;
+    remainingSec = durMins * 60;
+    
+    const timerDiv = document.createElement('div');
+    timerDiv.className = 'small-muted';
+    timerDiv.style.margin = '8px 0';
+    timerDiv.style.fontSize = '16px';
+    timerDiv.style.fontWeight = '600';
+    timerDiv.style.color = 'var(--primary)';
+    
+    const interval = setInterval(() => {
+      remainingSec--;
+      timerDiv.textContent = `${t('team.timer')}: ` + fmt(remainingSec);
+      if (remainingSec <= 0) {
+        clearInterval(interval);
+        finish();
+      }
+    }, 1000);
+    
+    let idx = 0;
+    const answers = {};
+    
+    function show() {
+      const q = qs[idx];
+      out.innerHTML = '';
+      out.appendChild(timerDiv);
+      const block = document.createElement('div');
+      block.innerHTML = `
+        <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 16px;">
+          <h4 style="color: var(--primary); margin-bottom: 16px;">Вопрос ${idx + 1}/${qs.length}</h4>
+          <p style="font-size: 16px; margin: 16px 0; line-height: 1.6; color: #1f2937;">${q.text}</p>
+          ${q.options && q.options.length ? q.options.map((o, i) => `
+            <div style="margin: 12px 0; padding: 16px; background: #f9fafb; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;" 
+                 onmouseover="this.style.borderColor='var(--primary)'; this.style.background='#f0f4ff';" 
+                 onmouseout="this.style.borderColor='transparent'; this.style.background='#f9fafb';">
+              <label style="cursor: pointer; display: flex; align-items: center; gap: 12px; margin: 0;">
+                <input type="radio" name="opt" value="${i}" style="cursor: pointer; width: 18px; height: 18px;"/>
+                <span style="font-size: 15px; color: #1f2937;">${o}</span>
+              </label>
+            </div>
+          `).join('') : `
+            <div style="margin: 16px 0;">
+              <input id="txt" placeholder="Введите ответ" style="width: 100%; padding: 14px; border: 2px solid var(--border); border-radius: 8px; font-size: 14px; transition: all 0.2s;" 
+                     onfocus="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 0 0 3px rgba(30, 64, 175, 0.1)';" 
+                     onblur="this.style.borderColor='var(--border)'; this.style.boxShadow='none';"/>
+            </div>
+          `}
+        </div>
+        <div style="margin-top: 24px; display: flex; gap: 12px;">
+          <button id="prev" class="nav-btn" style="padding: 12px 24px; ${idx === 0 ? 'opacity: 0.5; cursor: not-allowed;' : ''}">${t('team.prev')}</button>
+          <button id="next" class="primary" style="padding: 12px 24px;">${idx >= qs.length - 1 ? t('team.done') : t('team.next')}</button>
+        </div>
+      `;
+      out.appendChild(block);
+      
+      if (idx > 0) {
+        document.getElementById('prev').onclick = () => {
+          if (idx > 0) {
+            idx--;
+            show();
+          }
+        };
+      }
+      
+      document.getElementById('next').onclick = () => {
+        if (q.options && q.options.length) {
+          const sel = document.querySelector('input[name="opt"]:checked');
+          answers[q.id] = sel ? sel.value : null;
+        } else {
+          answers[q.id] = document.getElementById('txt').value;
+        }
+        idx++;
+        if (idx >= qs.length) {
+          finish();
+        } else {
+          show();
+        }
+      };
+    }
+    
+    async function finish() {
+      out.innerHTML = t('team.submitting');
+      clearInterval(interval);
+      
+      try {
+        const resp = await fetch('/api/tests/' + id + '/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ answers })
+        });
+        const j = await resp.json();
+        if (!j.ok) {
+          out.innerHTML = `<p style="color: var(--danger);" data-i18n="team.error">Ошибка</p>`;
+          AkylI18n.applyI18n(AkylI18n.getLang(), out);
+          return;
+        }
+        out.innerHTML = `
+          <div style="text-align: center; padding: 32px;">
+            <h3 style="color: var(--success); margin-bottom: 16px;" data-i18n="team.done">Готово</h3>
+            <p style="font-size: 20px; margin-top: 16px;">Ваш результат: <strong style="font-size: 28px; color: var(--primary);">${j.score || 0} баллов</strong></p>
+          </div>
+        `;
+        AkylI18n.applyI18n(AkylI18n.getLang(), out);
+      } catch (err) {
+        console.error(err);
+        out.innerHTML = `<p style="color: var(--danger);" data-i18n="team.error">Ошибка</p>`;
+        AkylI18n.applyI18n(AkylI18n.getLang(), out);
+      }
+    }
+    
+    function fmt(s) {
+      if (s < 0) s = 0;
+      const m = Math.floor(s / 60);
+      const ss = String(s % 60).padStart(2, '0');
+      return `${m}:${ss}`;
+    }
+    
+    show();
+  } catch (err) {
+    console.error(err);
+    out.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки теста</p>';
+  }
 }
 
+// Инициализация - открываем вкладку "Главная"
 document.getElementById('tabHome').click();
-</script></body></html>
+
+// Обработчик изменения языка
+window.addEventListener('akyl-langchange', () => {
+  if (typeof AkylI18n !== 'undefined') {
+    AkylI18n.applyI18n(AkylI18n.getLang());
+    // Перезагружаем текущую вкладку
+    const activeTab = document.querySelector('.tab-btn.active');
+    if (activeTab) {
+      activeTab.click();
+    }
+  }
+});
+</script>
+</body>
+</html>

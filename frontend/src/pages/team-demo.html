@@ -1,0 +1,460 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title data-i18n="team.title">Кабинет</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="icon" type="image/svg+xml" href="../images/favicon.svg">
+</head>
+<body class="admin-panel">
+<div class="container">
+  <div class="lang-switch text-end">
+    <button data-lang="ru">РУ</button> 
+    <button data-lang="ky">КЫ</button>
+  </div>
+  <a href="../index.html"><img src="../images/logo.png" class="logo-center img-fluid"/></a>
+  <div class="topbar d-flex justify-content-end gap-2 flex-wrap">
+    <a class="nav-btn" href="/index.html" data-i18n="nav.home">Главная</a>
+    <a class="link-pill" href="#" id="logout" data-i18n="nav.logout">Выход</a>
+  </div>
+  <div class="form-card">
+    <h2 data-i18n="team.title">Кабинет команды</h2>
+    <div id="teamInfo"></div>
+    <div class="team-tabs">
+      <button id="tabHome" class="tab-btn active" data-i18n="team.tab.home">Главная</button> 
+      <button id="tabTests" class="tab-btn" data-i18n="team.tab.tests">Тесты</button> 
+      <button id="tabResults" class="tab-btn" data-i18n="team.tab.results">Результаты</button> 
+      <button id="tabSettings" class="tab-btn" data-i18n="team.tab.settings">Настройки</button> 
+      <button id="tabPractice" class="tab-btn" data-i18n="team.tab.practice">Практика</button> 
+      <button id="tabRules" class="tab-btn" data-i18n="team.tab.rules">Правила</button>
+    </div>
+    <hr/>
+    <div id="tabContent"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script src="../js/i18n.js"></script>
+<script>AkylI18n.initSwitcher();</script>
+<script>
+// Демо данные команды
+const demoTeam = {
+  team_name: 'Команда "Акылман"',
+  captain_name: 'Иванов Иван Иванович',
+  captain_email: 'ivanov@example.com',
+  captain_phone: '+996 555 123456',
+  school: 'Президентский лицей «Акылман»',
+  city: 'Чолпон-Ата',
+  members: [
+    { name: 'Петров Петр Петрович', class: '9 класс' },
+    { name: 'Сидоров Сидор Сидорович', class: '10 класс' },
+    { name: 'Козлова Анна Сергеевна', class: '9 класс' }
+  ]
+};
+
+// Демо данные тестов
+const demoTests = [
+  {
+    id: 1,
+    title: 'Кыргызстан таануу - Отборочный этап',
+    description: 'Тест по истории и географии Кыргызстана',
+    window_start: '2025-12-15',
+    window_end: '2025-12-20',
+    duration_minutes: 60
+  },
+  {
+    id: 2,
+    title: 'Адабият - Отборочный этап',
+    description: 'Тест по литературе Кыргызстана и мира',
+    window_start: '2025-12-15',
+    window_end: '2025-12-20',
+    duration_minutes: 45
+  },
+  {
+    id: 3,
+    title: 'Илим - Отборочный этап',
+    description: 'Тест по естественным наукам',
+    window_start: '2025-12-15',
+    window_end: '2025-12-20',
+    duration_minutes: 50
+  }
+];
+
+// Демо данные результатов
+const demoResults = [
+  {
+    id: 1,
+    title: 'Кыргызстан таануу - Отборочный этап',
+    score: 85,
+    taken_at: '2025-12-16 14:30:00'
+  },
+  {
+    id: 2,
+    title: 'Адабият - Отборочный этап',
+    score: 92,
+    taken_at: '2025-12-17 10:15:00'
+  }
+];
+
+// Демо вопросы для теста
+const demoQuestions = {
+  1: [
+    {
+      id: 1,
+      text: 'Столица Кыргызстана?',
+      options: ['Бишкек', 'Ош', 'Чолпон-Ата', 'Каракол'],
+      correct: 0
+    },
+    {
+      id: 2,
+      text: 'Самое большое озеро Кыргызстана?',
+      options: ['Иссык-Куль', 'Сон-Куль', 'Чатыр-Куль', 'Сары-Челек'],
+      correct: 0
+    },
+    {
+      id: 3,
+      text: 'Государственный язык Кыргызстана?',
+      options: ['Кыргызский', 'Русский', 'Узбекский', 'Английский'],
+      correct: 0
+    }
+  ],
+  2: [
+    {
+      id: 4,
+      text: 'Главный герой эпоса "Манас"?',
+      options: ['Манас', 'Семетей', 'Сейтек', 'Алмамбет'],
+      correct: 0
+    },
+    {
+      id: 5,
+      text: 'Автор романа "Евгений Онегин"?',
+      options: ['А.С. Пушкин', 'Л.Н. Толстой', 'Ф.М. Достоевский', 'Н.В. Гоголь'],
+      correct: 0
+    }
+  ],
+  3: [
+    {
+      id: 6,
+      text: 'Химическая формула воды?',
+      options: ['H2O', 'CO2', 'O2', 'H2SO4'],
+      correct: 0
+    },
+    {
+      id: 7,
+      text: 'Сколько планет в Солнечной системе?',
+      options: ['8', '9', '7', '10'],
+      correct: 0
+    }
+  ]
+};
+
+// Функция для получения переводов (аналог t())
+function t(key) {
+  if (typeof AkylI18n !== 'undefined' && AkylI18n.t) {
+    return AkylI18n.t(key);
+  }
+  // Fallback на русский
+  const fallback = {
+    'team.timer': 'Осталось времени',
+    'team.prev': 'Назад',
+    'team.next': 'Далее',
+    'team.submitting': 'Отправка...'
+  };
+  return fallback[key] || key;
+}
+
+// Загрузка информации о команде (демо)
+function load() {
+  document.getElementById('teamInfo').innerHTML = `<p><strong>${demoTeam.team_name}</strong> — ${demoTeam.captain_name}</p>`;
+}
+
+load();
+
+// Обработчик выхода (для демо просто редирект)
+document.getElementById('logout').onclick = () => {
+  location.href = '/index.html';
+};
+
+function setActiveTab(btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+document.getElementById('tabHome').onclick = (e) => {
+  setActiveTab(e.currentTarget);
+  document.getElementById('tabContent').innerHTML = `
+    <h3>Добро пожаловать в кабинет команды!</h3>
+    <div style="margin-top: 20px;">
+      <p><strong>Название команды:</strong> ${demoTeam.team_name}</p>
+      <p><strong>Капитан:</strong> ${demoTeam.captain_name}</p>
+      <p><strong>Email:</strong> ${demoTeam.captain_email}</p>
+      <p><strong>Телефон:</strong> ${demoTeam.captain_phone}</p>
+      <p><strong>Школа:</strong> ${demoTeam.school}</p>
+      <p><strong>Город:</strong> ${demoTeam.city}</p>
+      <h4 style="margin-top: 24px;">Участники команды:</h4>
+      <ul>
+        ${demoTeam.members.map(m => `<li>${m.name} — ${m.class}</li>`).join('')}
+      </ul>
+    </div>
+  `;
+  AkylI18n.applyI18n(AkylI18n.getLang(), document.getElementById('tabContent'));
+};
+
+document.getElementById('tabRules').onclick = (e) => {
+  setActiveTab(e.currentTarget);
+  document.getElementById('tabContent').innerHTML = '<h3 data-i18n="team.tab.rules">Правила</h3><p data-i18n="team.rules.hidden_note">Правила доступны здесь.</p><iframe src="../pages/rules.pdf" style="width:100%;height:480px;border:1px solid #eef4fb;border-radius:10px"></iframe>';
+  AkylI18n.applyI18n(AkylI18n.getLang(), document.getElementById('tabContent'));
+};
+
+document.getElementById('tabPractice').onclick = (e) => {
+  setActiveTab(e.currentTarget);
+  const out = document.getElementById('tabContent');
+  out.innerHTML = `
+    <h3 data-i18n="team.tab.practice">Практика</h3>
+    <div class="info" style="margin-top:8px">
+      <h4>Кыргызстан таануу — үлгү суроолор</h4>
+      <ol>
+        <li>Кыргызстандын борбору кайсы? — <strong>Бишкек</strong></li>
+        <li>Ысык-Көл кайсы дубанда жайгашкан? — <strong>Ысык-Көл облусу</strong></li>
+        <li>Кыргызстандын мамлекеттик тили? — <strong>Кыргыз тили</strong></li>
+      </ol>
+      <h4 style="margin-top:12px">Адабият — үлгү суроолор</h4>
+      <ol>
+        <li>«Манас» эпосунун башкы каарманы ким? — <strong>Манас</strong></li>
+        <li>А. Пушкиндин кайсы чыгармасында Татьяна бар? — <strong>Евгений Онегин</strong></li>
+        <li>«Ысык-Көлдүн кулагы» чыгарма кайсы жанрда? — <strong>Повесть/эссе (контексттик кабыл)</strong></li>
+      </ol>
+      <p class="small-muted">Бул үлгүлөр формат менен тааныштыруу үчүн гана.</p>
+    </div>
+  `;
+};
+
+document.getElementById('tabTests').onclick = async (e) => {
+  setActiveTab(e.currentTarget);
+  const out = document.getElementById('tabContent');
+  out.innerHTML = 'Загрузка...';
+  AkylI18n.applyI18n(AkylI18n.getLang(), out);
+  
+  // Используем демо данные
+  const tests = demoTests;
+  if (!tests.length) {
+    out.innerHTML = '<p>Нет тестов</p>';
+    return;
+  }
+  
+  function renderWindow(t) {
+    if (t.window_start && t.window_end) {
+      return `<span class="small-muted">(${t.window_start} → ${t.window_end})</span>`;
+    }
+    return '';
+  }
+  
+  out.innerHTML = '<ul style="list-style: none; padding: 0;">' + tests.map(t => `
+    <li style="padding: 16px; margin-bottom: 12px; background: #f9fafb; border-radius: 8px; border-left: 4px solid var(--primary);">
+      <strong>${t.title}</strong> — ${t.description || ''} ${renderWindow(t)}
+      <button data-id="${t.id}" class="take primary" style="margin-top: 8px; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Пройти</button>
+    </li>
+  `).join('') + '</ul>';
+  
+  document.querySelectorAll('.take').forEach(b => {
+    b.onclick = () => startTest(b.dataset.id);
+  });
+};
+
+document.getElementById('tabResults').onclick = async (e) => {
+  setActiveTab(e.currentTarget);
+  const out = document.getElementById('tabContent');
+  out.innerHTML = 'Загрузка результатов...';
+  
+  // Используем демо данные
+  const rows = demoResults;
+  if (!rows.length) {
+    out.innerHTML = '<p>Результатов нет</p>';
+    return;
+  }
+  
+  out.innerHTML = `
+    <table class="table" style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+      <thead>
+        <tr style="background: #f3f4f6; border-bottom: 2px solid var(--border);">
+          <th style="padding: 12px; text-align: left;">Тест</th>
+          <th style="padding: 12px; text-align: left;">Баллы</th>
+          <th style="padding: 12px; text-align: left;">Дата</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 12px;">${r.title}</td>
+            <td style="padding: 12px;"><strong>${r.score}</strong></td>
+            <td style="padding: 12px;">${r.taken_at}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+};
+
+document.getElementById('tabSettings').onclick = (e) => {
+  setActiveTab(e.currentTarget);
+  document.getElementById('tabContent').innerHTML = `
+    <h3>Настройки аккаунта</h3>
+    <div style="margin-top: 20px;">
+      <p><strong>Название команды:</strong> ${demoTeam.team_name}</p>
+      <p><strong>Логин:</strong> team_akylman</p>
+      <p><strong>Email капитана:</strong> ${demoTeam.captain_email}</p>
+      <p><strong>Телефон капитана:</strong> ${demoTeam.captain_phone}</p>
+      <p><strong>Школа:</strong> ${demoTeam.school}</p>
+      <p><strong>Город:</strong> ${demoTeam.city}</p>
+      <p class="small-muted" style="margin-top: 16px;">Для изменения данных обратитесь к администратору.</p>
+    </div>
+  `;
+};
+
+async function startTest(id) {
+  const out = document.getElementById('tabContent');
+  out.innerHTML = 'Загрузка вопросов...';
+  
+  // Используем демо вопросы
+  const qs = demoQuestions[id] || [];
+  if (!qs.length) {
+    out.innerHTML = '<p>Пустой тест</p>';
+    return;
+  }
+  
+  let remainingSec = 0;
+  const testMeta = demoTests.find(x => String(x.id) === String(id));
+  const durMins = (testMeta && testMeta.duration_minutes) ? testMeta.duration_minutes : 60;
+  remainingSec = durMins * 60;
+  
+  const timerDiv = document.createElement('div');
+  timerDiv.className = 'small-muted';
+  timerDiv.style.margin = '8px 0';
+  
+  const interval = setInterval(() => {
+    remainingSec--;
+    timerDiv.textContent = `${t('team.timer')}: ` + fmt(remainingSec);
+    if (remainingSec <= 0) {
+      clearInterval(interval);
+      finish();
+    }
+  }, 1000);
+  
+  let idx = 0;
+  const answers = {};
+  
+  function show() {
+    const q = qs[idx];
+    out.innerHTML = '';
+    out.appendChild(timerDiv);
+    const block = document.createElement('div');
+    block.innerHTML = `
+      <h4>Вопрос ${idx + 1}/${qs.length}</h4>
+      <p style="font-size: 16px; margin: 16px 0;">${q.text}</p>
+      ${q.options && q.options.length ? q.options.map((o, i) => `
+        <div style="margin: 12px 0; padding: 12px; background: #f9fafb; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;" 
+             onmouseover="this.style.borderColor='var(--primary)'; this.style.background='#f0f4ff';" 
+             onmouseout="this.style.borderColor='transparent'; this.style.background='#f9fafb';">
+          <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+            <input type="radio" name="opt" value="${i}" style="cursor: pointer;"/>
+            <span>${o}</span>
+          </label>
+        </div>
+      `).join('') : `
+        <div style="margin: 16px 0;">
+          <input id="txt" placeholder="Ответ" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 14px;"/>
+        </div>
+      `}
+      <div style="margin-top: 24px; display: flex; gap: 12px;">
+        <button id="prev" class="nav-btn" style="padding: 10px 20px;">${t('team.prev')}</button>
+        <button id="next" class="primary" style="padding: 10px 20px;">${t('team.next')}</button>
+      </div>
+    `;
+    out.appendChild(block);
+    
+    document.getElementById('prev').onclick = () => {
+      if (idx > 0) {
+        idx--;
+        show();
+      }
+    };
+    
+    document.getElementById('next').onclick = () => {
+      if (q.options && q.options.length) {
+        const sel = document.querySelector('input[name="opt"]:checked');
+        answers[q.id] = sel ? sel.value : null;
+      } else {
+        answers[q.id] = document.getElementById('txt').value;
+      }
+      idx++;
+      if (idx >= qs.length) {
+        finish();
+      } else {
+        show();
+      }
+    };
+  }
+  
+  async function finish() {
+    out.innerHTML = t('team.submitting');
+    clearInterval(interval);
+    
+    // Симуляция отправки (демо)
+    setTimeout(() => {
+      // Подсчет баллов (демо)
+      let score = 0;
+      qs.forEach(q => {
+        const answer = answers[q.id];
+        if (answer !== null && answer !== undefined) {
+          if (q.options && q.options.length) {
+            if (parseInt(answer) === q.correct) {
+              score += 10;
+            }
+          } else {
+            // Для текстовых ответов просто даем баллы
+            if (answer.trim().length > 0) {
+              score += 10;
+            }
+          }
+        }
+      });
+      
+      out.innerHTML = `
+        <h3 style="color: var(--success); margin-top: 20px;">Тест завершен!</h3>
+        <p style="font-size: 18px; margin-top: 16px;">Ваш результат: <strong style="font-size: 24px; color: var(--primary);">${score} баллов</strong> из ${qs.length * 10}</p>
+        <p class="small-muted" style="margin-top: 16px;">Это демо-версия. В реальной версии результаты будут сохранены в системе.</p>
+      `;
+    }, 1000);
+  }
+  
+  function fmt(s) {
+    if (s < 0) s = 0;
+    const m = Math.floor(s / 60);
+    const ss = String(s % 60).padStart(2, '0');
+    return `${m}:${ss}`;
+  }
+  
+  show();
+}
+
+// Инициализация - открываем вкладку "Главная"
+document.getElementById('tabHome').click();
+
+// Обработчик изменения языка
+window.addEventListener('akyl-langchange', () => {
+  if (typeof AkylI18n !== 'undefined') {
+    AkylI18n.applyI18n(AkylI18n.getLang());
+    // Перезагружаем текущую вкладку
+    const activeTab = document.querySelector('.tab-btn.active');
+    if (activeTab) {
+      activeTab.click();
+    }
+  }
+});
+</script>
+</body>
+</html>
+
