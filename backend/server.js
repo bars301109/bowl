@@ -94,9 +94,13 @@ app.use('/', express.static(path.join(__dirname, '..', 'frontend', 'src'), {
   etag: true,
   lastModified: true,
   setHeaders: (res, path) => {
-    // Cache images, fonts, and CSS/JS for 1 year in production
-    if (path.match(/\.(jpg|jpeg|png|gif|svg|webp|ico|woff|woff2|ttf|eot|css|js)$/)) {
+    // Cache images and fonts for 1 year in production
+    if (path.match(/\.(jpg|jpeg|png|gif|svg|webp|ico|woff|woff2|ttf|eot)$/)) {
       res.setHeader('Cache-Control', process.env.NODE_ENV === 'production' ? 'public, max-age=31536000, immutable' : 'no-cache');
+    }
+    // Cache CSS and JS for shorter time to allow updates
+    else if (path.match(/\.(css|js)$/)) {
+      res.setHeader('Cache-Control', process.env.NODE_ENV === 'production' ? 'public, max-age=3600' : 'no-cache');
     }
   }
 }));
