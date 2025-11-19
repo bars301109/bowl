@@ -299,33 +299,90 @@
       return 'category-default';
     }
 
+    let categoriesCache = null; // Cache categories to prevent disappearing
+    
     async function renderCategories() {
+      const lang = AkylI18n.getLang();
+      const grid = document.getElementById('catsGrid');
+      const list = document.getElementById('cats-list');
+      
+      if (!grid) {
+        console.error('catsGrid element not found');
+        return;
+      }
+      
+      if (!list) {
+        console.error('cats-list element not found');
+        return;
+      }
+      
       try {
-        const cats = await fetch('/api/categories').then(r => r.json());
-        const lang = AkylI18n.getLang();
-        const grid = document.getElementById('catsGrid');
-        const list = document.getElementById('cats-list');
-        
-        grid.innerHTML = cats.map((c, idx) => {
-          const title = lang === 'ky' ? (c.name_ky || '') : (c.name_ru || '');
-          const desc = lang === 'ky' ? (c.desc_ky || '') : (c.desc_ru || '');
-          const categoryClass = getCategoryClass(title);
-          let extraElements = '';
-          if (categoryClass === 'category-kyrgyzstan' || categoryClass === 'category-history' || categoryClass === 'category-science' || categoryClass === 'category-language' || categoryClass === 'category-world') {
-            extraElements = '<div class="category-border-ornament"></div>';
+        const response = await fetch('/api/categories');
+        if (!response.ok) {
+          console.error('Failed to fetch categories:', response.status);
+          // Use cached categories if available
+          if (categoriesCache && categoriesCache.length > 0) {
+            renderCategoriesFromData(categoriesCache, lang, grid, list);
           }
-          return `<div class="category-card ${categoryClass}" data-cat-index="${idx}">${extraElements}<h4>${title}</h4><p>${desc}</p></div>`;
-        }).join('');
+          return;
+        }
+        const cats = await response.json();
         
-        list.innerHTML = '<ul>' + cats.map(c => {
-          const title = lang === 'ky' ? (c.name_ky || '') : (c.name_ru || '');
-          return `<li>${title}</li>`;
-        }).join('') + '</ul>';
-      } catch (e) { console.warn('categories load failed', e); }
+        if (!Array.isArray(cats) || cats.length === 0) {
+          console.warn('No categories found or invalid response');
+          // Use cached categories if available
+          if (categoriesCache && categoriesCache.length > 0) {
+            renderCategoriesFromData(categoriesCache, lang, grid, list);
+          }
+          return;
+        }
+        
+        // Cache successful response
+        categoriesCache = cats;
+        renderCategoriesFromData(cats, lang, grid, list);
+      } catch (e) { 
+        console.error('categories load failed', e);
+        // Use cached categories if available
+        if (categoriesCache && categoriesCache.length > 0) {
+          renderCategoriesFromData(categoriesCache, lang, grid, list);
+        } else {
+          // Retry after a short delay only if no cache
+          setTimeout(() => {
+            renderCategories();
+          }, 2000);
+        }
+      }
     }
     
-    renderSettings();
-    renderCategories();
+    function renderCategoriesFromData(cats, lang, grid, list) {
+      grid.innerHTML = cats.map((c, idx) => {
+        const title = lang === 'ky' ? (c.name_ky || '') : (c.name_ru || '');
+        const desc = lang === 'ky' ? (c.desc_ky || '') : (c.desc_ru || '');
+        const categoryClass = getCategoryClass(title);
+        let extraElements = '';
+        if (categoryClass === 'category-kyrgyzstan' || categoryClass === 'category-history' || categoryClass === 'category-science' || categoryClass === 'category-language' || categoryClass === 'category-world') {
+          extraElements = '<div class="category-border-ornament"></div>';
+        }
+        return `<div class="category-card ${categoryClass}" data-cat-index="${idx}">${extraElements}<h4>${title}</h4><p>${desc}</p></div>`;
+      }).join('');
+      
+      list.innerHTML = '<ul>' + cats.map(c => {
+        const title = lang === 'ky' ? (c.name_ky || '') : (c.name_ru || '');
+        return `<li>${title}</li>`;
+      }).join('') + '</ul>';
+    }
+    
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        renderSettings();
+        renderCategories();
+      });
+    } else {
+      renderSettings();
+      renderCategories();
+    }
+    
     window.addEventListener('akyl-langchange', () => {
       AkylI18n.applyI18n(AkylI18n.getLang());
       renderSettings();
