@@ -1,39 +1,41 @@
 
 <!doctype html>
-<html>
+<html lang="ru">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title data-i18n="team.title">Кабинет</title>
+  <meta name="description" content="Кабинет команды - Akylman Quiz Bowl">
+  <title data-i18n="team.title">Кабинет команды</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <link rel="stylesheet" href="../css/style.css?v=3"/>
+  <link rel="stylesheet" href="../css/style.css?v=4"/>
   <link rel="icon" type="image/svg+xml" href="../images/favicon.svg">
 </head>
 <body class="admin-panel">
 <div class="container">
-  <div class="lang-switch text-end">
-    <button data-lang="ru">РУ</button> 
-    <button data-lang="ky">КЫ</button>
+  <div class="lang-switch text-end" role="group" aria-label="Выбор языка">
+    <button data-lang="ru" aria-label="Русский язык" aria-pressed="true">РУ</button> 
+    <button data-lang="ky" aria-label="Кыргызский язык" aria-pressed="false">КЫ</button>
   </div>
-  <a href="../index.html"><img src="../images/logo.png" class="logo-center img-fluid"/></a>
-  <div class="topbar d-flex justify-content-end gap-2 flex-wrap">
-    <a class="nav-btn" href="/index.html" data-i18n="nav.home">Главная</a>
-    <a class="link-pill" href="#" id="logout" data-i18n="nav.logout">Выход</a>
-  </div>
-  <div class="form-card">
-    <h2 data-i18n="team.title">Кабинет команды</h2>
-    <div id="teamInfo"></div>
-    <div class="team-tabs">
-      <button id="tabHome" class="tab-btn active" data-i18n="team.tab.home">Главная</button> 
-      <button id="tabTests" class="tab-btn" data-i18n="team.tab.tests">Тесты</button> 
-      <button id="tabResults" class="tab-btn" data-i18n="team.tab.results">Результаты</button> 
-      <button id="tabSettings" class="tab-btn" data-i18n="team.tab.settings">Настройки</button> 
-      <button id="tabPractice" class="tab-btn" data-i18n="team.tab.practice">Практика</button> 
-      <button id="tabRules" class="tab-btn" data-i18n="team.tab.rules">Правила</button>
-    </div>
-    <hr/>
-    <div id="tabContent"></div>
-  </div>
+  <a href="../index.html" aria-label="Главная страница"><img src="../images/logo.png" class="logo-center img-fluid" alt="Akylman Quiz Bowl" width="120" height="48"/></a>
+  <nav class="topbar d-flex justify-content-end gap-2 flex-wrap" aria-label="Основная навигация">
+    <a class="nav-btn" href="/index.html" data-i18n="nav.home" aria-label="Перейти на главную страницу">Главная</a>
+    <button class="link-pill" id="logout" data-i18n="nav.logout" aria-label="Выйти из аккаунта" type="button">Выход</button>
+  </nav>
+  <main class="form-card" role="main">
+    <h1 data-i18n="team.title" class="sr-only">Кабинет команды</h1>
+    <h2 data-i18n="team.title" class="visually-hidden">Кабинет команды</h2>
+    <div id="teamInfo" role="region" aria-live="polite" aria-label="Информация о команде"></div>
+    <nav class="team-tabs" role="tablist" aria-label="Навигация по разделам">
+      <button id="tabHome" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tabContent" data-i18n="team.tab.home" tabindex="0">Главная</button> 
+      <button id="tabTests" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-i18n="team.tab.tests" tabindex="-1">Тесты</button> 
+      <button id="tabResults" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-i18n="team.tab.results" tabindex="-1">Результаты</button> 
+      <button id="tabSettings" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-i18n="team.tab.settings" tabindex="-1">Настройки</button> 
+      <button id="tabPractice" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-i18n="team.tab.practice" tabindex="-1">Практика</button> 
+      <button id="tabRules" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-i18n="team.tab.rules" tabindex="-1">Правила</button>
+    </nav>
+    <hr aria-hidden="true"/>
+    <div id="tabContent" role="tabpanel" aria-labelledby="tabHome" aria-live="polite"></div>
+  </main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
@@ -74,13 +76,23 @@ document.getElementById('logout').onclick = () => {
 };
 
 function setActiveTab(btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+    b.setAttribute('tabindex', '-1');
+  });
   btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  btn.setAttribute('tabindex', '0');
+  document.getElementById('tabContent').setAttribute('aria-labelledby', btn.id);
 }
 
 document.getElementById('tabHome').onclick = async (e) => {
   setActiveTab(e.currentTarget);
   const out = document.getElementById('tabContent');
+  out.setAttribute('aria-busy', 'true');
+  out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка...</span></div><p data-i18n="team.loading">Загрузка...</p>';
+  AkylI18n.applyI18n(AkylI18n.getLang(), out);
   
   // Если данные еще не загружены, загружаем их
   if (!teamData) {
@@ -90,158 +102,302 @@ document.getElementById('tabHome').onclick = async (e) => {
       if (j.ok) teamData = j.team;
     } catch (err) {
       console.error(err);
+      out.setAttribute('aria-busy', 'false');
+      out.innerHTML = '<div class="error-message" role="alert"><p style="color: var(--danger);">Ошибка загрузки данных. Пожалуйста, обновите страницу.</p></div>';
+      return;
     }
   }
+  
+  out.setAttribute('aria-busy', 'false');
   
   if (teamData) {
     // Получаем участников команды
     let membersHtml = '';
     if (teamData.members && teamData.members.length > 0) {
-      membersHtml = teamData.members.map(m => `<li>${m.name || 'Участник'}${m.class ? ' — ' + m.class : ''}</li>`).join('');
+      membersHtml = teamData.members.map((m, idx) => `<li><span class="member-name">${m.name || 'Участник'}</span>${m.class ? ` <span class="member-class">— ${m.class}</span>` : ''}</li>`).join('');
     } else {
-      membersHtml = '<li>Участники не указаны</li>';
+      membersHtml = '<li class="empty-state">Участники не указаны</li>';
     }
     
     out.innerHTML = `
-      <h3 data-i18n="team.welcome">Добро пожаловать в кабинет команды!</h3>
-      <div class="team-info">
-        <p><strong data-i18n="team.team_name">Название команды:</strong> ${teamData.team_name || ''}</p>
-        <p><strong data-i18n="team.captain">Капитан:</strong> ${teamData.captain_name || ''}</p>
-        ${teamData.captain_email ? `<p><strong data-i18n="team.email">Email:</strong> ${teamData.captain_email}</p>` : ''}
-        ${teamData.captain_phone ? `<p><strong data-i18n="team.phone">Телефон:</strong> ${teamData.captain_phone}</p>` : ''}
-        ${teamData.school ? `<p><strong data-i18n="team.school">Школа:</strong> ${teamData.school}</p>` : ''}
-        ${teamData.city ? `<p><strong data-i18n="team.city">Город:</strong> ${teamData.city}</p>` : ''}
-        <h4 data-i18n="team.members">Участники команды:</h4>
-        <ul>
-          ${membersHtml}
-        </ul>
-      </div>
+      <section aria-labelledby="welcome-heading">
+        <h3 id="welcome-heading" data-i18n="team.welcome">Добро пожаловать в кабинет команды!</h3>
+        <div class="team-info" role="region" aria-label="Информация о команде">
+          <dl class="info-list">
+            <div class="info-item">
+              <dt data-i18n="team.team_name">Название команды:</dt>
+              <dd>${escapeHtml(teamData.team_name || '')}</dd>
+            </div>
+            <div class="info-item">
+              <dt data-i18n="team.captain">Капитан:</dt>
+              <dd>${escapeHtml(teamData.captain_name || '')}</dd>
+            </div>
+            ${teamData.captain_email ? `
+            <div class="info-item">
+              <dt data-i18n="team.email">Email:</dt>
+              <dd><a href="mailto:${escapeHtml(teamData.captain_email)}" aria-label="Отправить email капитану">${escapeHtml(teamData.captain_email)}</a></dd>
+            </div>
+            ` : ''}
+            ${teamData.captain_phone ? `
+            <div class="info-item">
+              <dt data-i18n="team.phone">Телефон:</dt>
+              <dd><a href="tel:${escapeHtml(teamData.captain_phone)}" aria-label="Позвонить капитану">${escapeHtml(teamData.captain_phone)}</a></dd>
+            </div>
+            ` : ''}
+            ${teamData.school ? `
+            <div class="info-item">
+              <dt data-i18n="team.school">Школа:</dt>
+              <dd>${escapeHtml(teamData.school)}</dd>
+            </div>
+            ` : ''}
+            ${teamData.city ? `
+            <div class="info-item">
+              <dt data-i18n="team.city">Город:</dt>
+              <dd>${escapeHtml(teamData.city)}</dd>
+            </div>
+            ` : ''}
+          </dl>
+          <section aria-labelledby="members-heading">
+            <h4 id="members-heading" data-i18n="team.members">Участники команды:</h4>
+            <ul class="members-list" role="list">
+              ${membersHtml}
+            </ul>
+          </section>
+        </div>
+      </section>
     `;
   } else {
-    out.innerHTML = '<p data-i18n="team.loading">Загрузка...</p>';
+    out.innerHTML = '<div class="empty-state" role="status"><p data-i18n="team.loading">Загрузка...</p></div>';
   }
   
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
 };
 
+// Функция для экранирования HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 document.getElementById('tabRules').onclick = (e) => {
   setActiveTab(e.currentTarget);
-  document.getElementById('tabContent').innerHTML = '<h3 data-i18n="team.tab.rules">Правила</h3><p data-i18n="team.rules.hidden_note">Правила доступны здесь.</p><iframe src="../pages/rules.pdf" style="width:100%;height:480px;border:1px solid #eef4fb;border-radius:10px"></iframe>';
-  AkylI18n.applyI18n(AkylI18n.getLang(), document.getElementById('tabContent'));
+  const out = document.getElementById('tabContent');
+  out.innerHTML = `
+    <section aria-labelledby="rules-heading">
+      <h3 id="rules-heading" data-i18n="team.tab.rules">Правила</h3>
+      <p data-i18n="team.rules.hidden_note">Правила доступны здесь.</p>
+      <div class="iframe-wrapper">
+        <iframe 
+          src="../pages/rules.pdf" 
+          title="Правила соревнования"
+          aria-label="Документ с правилами соревнования"
+          style="width:100%;height:480px;border:1px solid #eef4fb;border-radius:10px">
+        </iframe>
+      </div>
+    </section>
+  `;
+  AkylI18n.applyI18n(AkylI18n.getLang(), out);
 };
 
 document.getElementById('tabPractice').onclick = (e) => {
   setActiveTab(e.currentTarget);
   const out = document.getElementById('tabContent');
   out.innerHTML = `
-    <h3 data-i18n="team.tab.practice">Практика</h3>
-    <div class="info" style="margin-top:8px">
-      <h4>Кыргызстан таануу — үлгү суроолор</h4>
-      <ol>
-        <li>Кыргызстандын борбору кайсы? — <strong>Бишкек</strong></li>
-        <li>Ысык-Көл кайсы дубанда жайгашкан? — <strong>Ысык-Көл облусу</strong></li>
-        <li>Кыргызстандын мамлекеттик тили? — <strong>Кыргыз тили</strong></li>
-      </ol>
-      <h4 style="margin-top:12px">Адабият — үлгү суроолор</h4>
-      <ol>
-        <li>«Манас» эпосунун башкы каарманы ким? — <strong>Манас</strong></li>
-        <li>А. Пушкиндин кайсы чыгармасында Татьяна бар? — <strong>Евгений Онегин</strong></li>
-        <li>«Ысык-Көлдүн кулагы» чыгарма кайсы жанрда? — <strong>Повесть/эссе (контексттик кабыл)</strong></li>
-      </ol>
-      <p class="small-muted">Бул үлгүлөр формат менен тааныштыруу үчүн гана.</p>
-    </div>
+    <section aria-labelledby="practice-heading">
+      <h3 id="practice-heading" data-i18n="team.tab.practice">Практика</h3>
+      <div class="practice-content" role="region" aria-label="Примеры вопросов для практики">
+        <div class="practice-section">
+          <h4>Кыргызстан таануу — үлгү суроолор</h4>
+          <ol class="practice-list">
+            <li>Кыргызстандын борбору кайсы? — <strong>Бишкек</strong></li>
+            <li>Ысык-Көл кайсы дубанда жайгашкан? — <strong>Ысык-Көл облусу</strong></li>
+            <li>Кыргызстандын мамлекеттик тили? — <strong>Кыргыз тили</strong></li>
+          </ol>
+        </div>
+        <div class="practice-section">
+          <h4>Адабият — үлгү суроолор</h4>
+          <ol class="practice-list">
+            <li>«Манас» эпосунун башкы каарманы ким? — <strong>Манас</strong></li>
+            <li>А. Пушкиндин кайсы чыгармасында Татьяна бар? — <strong>Евгений Онегин</strong></li>
+            <li>«Ысык-Көлдүн кулагы» чыгарма кайсы жанрда? — <strong>Повесть/эссе (контексттик кабыл)</strong></li>
+          </ol>
+        </div>
+        <p class="small-muted practice-note">Бул үлгүлөр формат менен тааныштыруу үчүн гана.</p>
+      </div>
+    </section>
   `;
+  AkylI18n.applyI18n(AkylI18n.getLang(), out);
 };
 
 document.getElementById('tabTests').onclick = async (e) => {
   setActiveTab(e.currentTarget);
   const out = document.getElementById('tabContent');
-  out.innerHTML = t('team.loading');
+  out.setAttribute('aria-busy', 'true');
+  out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка тестов...</span></div><p data-i18n="team.loading">Загрузка...</p>';
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
   
   try {
     const res = await fetch('/api/tests');
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
     const tests = await res.json();
+    out.setAttribute('aria-busy', 'false');
     
     if (!tests.length) {
-      out.innerHTML = `<p data-i18n="team.no_tests">Нет тестов</p>`;
+      out.innerHTML = `
+        <div class="empty-state" role="status" aria-live="polite">
+          <div class="empty-icon">📝</div>
+          <p data-i18n="team.no_tests" class="empty-message">Нет тестов</p>
+          <p class="empty-hint">Тесты появятся здесь, когда они будут доступны.</p>
+        </div>
+      `;
       AkylI18n.applyI18n(AkylI18n.getLang(), out);
       return;
     }
     
     function renderWindow(t) {
       if (t.window_start && t.window_end) {
-        return `<span class="small-muted">(${t.window_start} → ${t.window_end})</span>`;
+        return `<span class="test-window" aria-label="Период доступности теста">(${t.window_start} → ${t.window_end})</span>`;
       }
       return '';
     }
     
-    out.innerHTML = '<ul class="test-list">' + tests.map(t => `
-      <li>
-        <strong>${t.title}</strong>
-        <p>${t.description || ''} ${renderWindow(t)}</p>
-        <button data-id="${t.id}" class="take primary" data-i18n="team.take_test">Пройти</button>
-      </li>
-    `).join('') + '</ul>';
+    out.innerHTML = `
+      <section aria-labelledby="tests-heading">
+        <h3 id="tests-heading" class="sr-only" data-i18n="team.tab.tests">Тесты</h3>
+        <ul class="test-list" role="list" aria-label="Список доступных тестов">
+          ${tests.map((t, idx) => `
+            <li role="listitem" class="test-card">
+              <div class="test-card-header">
+                <h4 class="test-title">${escapeHtml(t.title || 'Без названия')}</h4>
+                ${renderWindow(t)}
+              </div>
+              ${t.description ? `<p class="test-description">${escapeHtml(t.description)}</p>` : ''}
+              <button 
+                data-id="${t.id}" 
+                class="take primary" 
+                data-i18n="team.take_test"
+                aria-label="Начать тест: ${escapeHtml(t.title || 'Без названия')}"
+                type="button">
+                Пройти
+              </button>
+            </li>
+          `).join('')}
+        </ul>
+      </section>
+    `;
     
     AkylI18n.applyI18n(AkylI18n.getLang(), out);
     
     document.querySelectorAll('.take').forEach(b => {
       b.onclick = () => startTest(b.dataset.id);
+      b.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          b.click();
+        }
+      });
     });
   } catch (err) {
     console.error(err);
-    out.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки тестов</p>';
+    out.setAttribute('aria-busy', 'false');
+    out.innerHTML = `
+      <div class="error-message" role="alert" aria-live="assertive">
+        <div class="error-icon">⚠️</div>
+        <p class="error-text">Ошибка загрузки тестов</p>
+        <p class="error-hint">Пожалуйста, проверьте подключение к интернету и попробуйте снова.</p>
+        <button class="primary" onclick="location.reload()" type="button">Обновить страницу</button>
+      </div>
+    `;
   }
 };
 
 document.getElementById('tabResults').onclick = async (e) => {
   setActiveTab(e.currentTarget);
   const out = document.getElementById('tabContent');
-  out.innerHTML = t('team.loading_results');
+  out.setAttribute('aria-busy', 'true');
+  out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка результатов...</span></div><p data-i18n="team.loading_results">Загрузка результатов...</p>';
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
   
   try {
     const res = await fetch('/api/me/results', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
     const rows = await res.json();
+    out.setAttribute('aria-busy', 'false');
     
     if (!rows.length) {
-      out.innerHTML = `<p data-i18n="team.no_results">Результатов нет</p>`;
+      out.innerHTML = `
+        <div class="empty-state" role="status" aria-live="polite">
+          <div class="empty-icon">📊</div>
+          <p data-i18n="team.no_results" class="empty-message">Результатов нет</p>
+          <p class="empty-hint">Ваши результаты тестирования появятся здесь после прохождения тестов.</p>
+        </div>
+      `;
       AkylI18n.applyI18n(AkylI18n.getLang(), out);
       return;
     }
     
     out.innerHTML = `
-      <table class="results-table">
-        <thead>
-          <tr>
-            <th data-i18n="team.test_title">Тест</th>
-            <th data-i18n="team.score">Баллы</th>
-            <th data-i18n="team.date">Дата</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map(r => `
-            <tr>
-              <td>${r.title || ''}</td>
-              <td class="score"><strong>${r.score || 0}</strong></td>
-              <td class="date">${r.taken_at || ''}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+      <section aria-labelledby="results-heading">
+        <h3 id="results-heading" class="sr-only" data-i18n="team.tab.results">Результаты</h3>
+        <div class="table-wrapper" role="region" aria-label="Таблица результатов">
+          <table class="results-table" role="table" aria-label="Результаты тестирования">
+            <thead>
+              <tr>
+                <th scope="col" data-i18n="team.test_title">Тест</th>
+                <th scope="col" data-i18n="team.score">Баллы</th>
+                <th scope="col" data-i18n="team.date">Дата</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((r, idx) => `
+                <tr role="row">
+                  <td role="cell">${escapeHtml(r.title || 'Без названия')}</td>
+                  <td role="cell" class="score" aria-label="Набрано баллов: ${r.score || 0}">
+                    <strong>${r.score || 0}</strong>
+                  </td>
+                  <td role="cell" class="date">${escapeHtml(r.taken_at || 'Не указана')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="results-summary" role="region" aria-label="Сводка результатов">
+          <p class="summary-text">
+            Всего пройдено тестов: <strong>${rows.length}</strong>
+          </p>
+          <p class="summary-text">
+            Средний балл: <strong>${Math.round(rows.reduce((sum, r) => sum + (r.score || 0), 0) / rows.length)}</strong>
+          </p>
+        </div>
+      </section>
     `;
     
     AkylI18n.applyI18n(AkylI18n.getLang(), out);
   } catch (err) {
     console.error(err);
-    out.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки результатов</p>';
+    out.setAttribute('aria-busy', 'false');
+    out.innerHTML = `
+      <div class="error-message" role="alert" aria-live="assertive">
+        <div class="error-icon">⚠️</div>
+        <p class="error-text">Ошибка загрузки результатов</p>
+        <p class="error-hint">Пожалуйста, проверьте подключение к интернету и попробуйте снова.</p>
+        <button class="primary" onclick="location.reload()" type="button">Обновить страницу</button>
+      </div>
+    `;
   }
 };
 
 document.getElementById('tabSettings').onclick = async (e) => {
   setActiveTab(e.currentTarget);
   const out = document.getElementById('tabContent');
+  out.setAttribute('aria-busy', 'true');
+  out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка настроек...</span></div><p data-i18n="team.loading">Загрузка...</p>';
+  AkylI18n.applyI18n(AkylI18n.getLang(), out);
   
   // Если данные еще не загружены, загружаем их
   if (!teamData) {
@@ -251,24 +407,65 @@ document.getElementById('tabSettings').onclick = async (e) => {
       if (j.ok) teamData = j.team;
     } catch (err) {
       console.error(err);
+      out.setAttribute('aria-busy', 'false');
+      out.innerHTML = `
+        <div class="error-message" role="alert">
+          <p class="error-text">Ошибка загрузки данных</p>
+        </div>
+      `;
+      return;
     }
   }
   
+  out.setAttribute('aria-busy', 'false');
+  
   if (teamData) {
     out.innerHTML = `
-      <h3 data-i18n="team.tab.settings">Настройки аккаунта</h3>
-      <div class="settings-card">
-        <p><strong data-i18n="team.team_name">Название команды:</strong> <span>${teamData.team_name || ''}</span></p>
-        <p><strong data-i18n="team.login">Логин:</strong> <span>${teamData.login || 'Не указан'}</span></p>
-        ${teamData.captain_email ? `<p><strong data-i18n="team.email">Email капитана:</strong> <span>${teamData.captain_email}</span></p>` : ''}
-        ${teamData.captain_phone ? `<p><strong data-i18n="team.phone">Телефон капитана:</strong> <span>${teamData.captain_phone}</span></p>` : ''}
-        ${teamData.school ? `<p><strong data-i18n="team.school">Школа:</strong> <span>${teamData.school}</span></p>` : ''}
-        ${teamData.city ? `<p><strong data-i18n="team.city">Город:</strong> <span>${teamData.city}</span></p>` : ''}
-        <p class="small-muted" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);" data-i18n="team.settings_note">Для изменения данных обратитесь к администратору.</p>
-      </div>
+      <section aria-labelledby="settings-heading">
+        <h3 id="settings-heading" data-i18n="team.tab.settings">Настройки аккаунта</h3>
+        <div class="settings-card" role="region" aria-label="Настройки команды">
+          <dl class="settings-list">
+            <div class="settings-item">
+              <dt data-i18n="team.team_name">Название команды:</dt>
+              <dd>${escapeHtml(teamData.team_name || 'Не указано')}</dd>
+            </div>
+            <div class="settings-item">
+              <dt data-i18n="team.login">Логин:</dt>
+              <dd>${escapeHtml(teamData.login || 'Не указан')}</dd>
+            </div>
+            ${teamData.captain_email ? `
+            <div class="settings-item">
+              <dt data-i18n="team.email">Email капитана:</dt>
+              <dd><a href="mailto:${escapeHtml(teamData.captain_email)}" aria-label="Отправить email">${escapeHtml(teamData.captain_email)}</a></dd>
+            </div>
+            ` : ''}
+            ${teamData.captain_phone ? `
+            <div class="settings-item">
+              <dt data-i18n="team.phone">Телефон капитана:</dt>
+              <dd><a href="tel:${escapeHtml(teamData.captain_phone)}" aria-label="Позвонить">${escapeHtml(teamData.captain_phone)}</a></dd>
+            </div>
+            ` : ''}
+            ${teamData.school ? `
+            <div class="settings-item">
+              <dt data-i18n="team.school">Школа:</dt>
+              <dd>${escapeHtml(teamData.school)}</dd>
+            </div>
+            ` : ''}
+            ${teamData.city ? `
+            <div class="settings-item">
+              <dt data-i18n="team.city">Город:</dt>
+              <dd>${escapeHtml(teamData.city)}</dd>
+            </div>
+            ` : ''}
+          </dl>
+          <div class="settings-note" role="note" aria-label="Примечание">
+            <p class="small-muted" data-i18n="team.settings_note">Для изменения данных обратитесь к администратору.</p>
+          </div>
+        </div>
+      </section>
     `;
   } else {
-    out.innerHTML = '<p data-i18n="team.loading">Загрузка...</p>';
+    out.innerHTML = '<div class="empty-state" role="status"><p data-i18n="team.loading">Загрузка...</p></div>';
   }
   
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
@@ -322,31 +519,87 @@ async function startTest(id) {
     out.appendChild(timerDiv);
     const block = document.createElement('div');
       block.innerHTML = `
-        <div class="question-block">
-          <h4>Вопрос ${idx + 1}/${qs.length}</h4>
-          <p>${q.text}</p>
-          ${q.options && q.options.length ? q.options.map((o, i) => `
-            <div class="option-item">
-              <label>
-                <input type="radio" name="opt" value="${i}"/>
-                <span>${o}</span>
-              </label>
+        <div class="question-block" role="region" aria-labelledby="question-number">
+          <div class="question-header">
+            <h4 id="question-number" class="question-number">Вопрос ${idx + 1} из ${qs.length}</h4>
+            <div class="question-progress" role="progressbar" aria-valuenow="${idx + 1}" aria-valuemin="1" aria-valuemax="${qs.length}" aria-label="Прогресс: вопрос ${idx + 1} из ${qs.length}">
+              <div class="progress-bar" style="width: ${((idx + 1) / qs.length) * 100}%"></div>
             </div>
-          `).join('') : `
-            <div class="text-answer">
-              <input id="txt" placeholder="Введите ответ"/>
-            </div>
-          `}
+          </div>
+          <p class="question-text" id="question-text-${idx}">${escapeHtml(q.text)}</p>
+          <fieldset class="question-options" role="radiogroup" aria-labelledby="question-text-${idx}">
+            ${q.options && q.options.length ? q.options.map((o, i) => `
+              <div class="option-item">
+                <label>
+                  <input 
+                    type="radio" 
+                    name="opt" 
+                    value="${i}" 
+                    id="opt-${idx}-${i}"
+                    aria-describedby="question-text-${idx}"
+                    ${answers[q.id] === String(i) ? 'checked' : ''}
+                  />
+                  <span>${escapeHtml(o)}</span>
+                </label>
+              </div>
+            `).join('') : `
+              <div class="text-answer">
+                <label for="txt-${idx}" class="sr-only">Введите ваш ответ</label>
+                <input 
+                  id="txt-${idx}" 
+                  type="text" 
+                  placeholder="Введите ответ"
+                  aria-labelledby="question-text-${idx}"
+                  value="${answers[q.id] || ''}"
+                />
+              </div>
+            `}
+          </fieldset>
         </div>
-        <div class="test-navigation">
-          <button id="prev" class="nav-btn" ${idx === 0 ? 'disabled' : ''}>${t('team.prev')}</button>
-          <button id="next" class="primary">${idx >= qs.length - 1 ? t('team.done') : t('team.next')}</button>
-        </div>
+        <nav class="test-navigation" aria-label="Навигация по вопросам">
+          <button 
+            id="prev" 
+            class="nav-btn" 
+            ${idx === 0 ? 'disabled aria-disabled="true"' : ''}
+            aria-label="Предыдущий вопрос"
+            type="button">
+            ${t('team.prev')}
+          </button>
+          <button 
+            id="next" 
+            class="primary"
+            aria-label="${idx >= qs.length - 1 ? 'Завершить тест' : 'Следующий вопрос'}"
+            type="button">
+            ${idx >= qs.length - 1 ? t('team.done') : t('team.next')}
+          </button>
+        </nav>
       `;
     out.appendChild(block);
       
+      // Восстанавливаем сохраненный ответ
+      if (q.options && q.options.length) {
+        const savedAnswer = answers[q.id];
+        if (savedAnswer !== null && savedAnswer !== undefined) {
+          const radio = document.getElementById(`opt-${idx}-${savedAnswer}`);
+          if (radio) radio.checked = true;
+        }
+      } else {
+        const textInput = document.getElementById(`txt-${idx}`);
+        if (textInput) {
+          textInput.value = answers[q.id] || '';
+        }
+      }
+      
       if (idx > 0) {
         document.getElementById('prev').onclick = () => {
+          // Сохраняем текущий ответ перед переходом
+          if (q.options && q.options.length) {
+            const sel = document.querySelector('input[name="opt"]:checked');
+            answers[q.id] = sel ? sel.value : null;
+          } else {
+            const textInput = document.getElementById(`txt-${idx}`);
+            answers[q.id] = textInput ? textInput.value : '';
+          }
           if (idx > 0) {
             idx--;
             show();
@@ -355,11 +608,13 @@ async function startTest(id) {
       }
       
       document.getElementById('next').onclick = () => {
+        // Сохраняем текущий ответ
         if (q.options && q.options.length) {
           const sel = document.querySelector('input[name="opt"]:checked');
           answers[q.id] = sel ? sel.value : null;
         } else {
-          answers[q.id] = document.getElementById('txt').value;
+          const textInput = document.getElementById(`txt-${idx}`);
+          answers[q.id] = textInput ? textInput.value : '';
         }
         idx++;
         if (idx >= qs.length) {
@@ -368,6 +623,22 @@ async function startTest(id) {
           show();
         }
       };
+      
+      // Автосохранение при изменении ответа
+      if (q.options && q.options.length) {
+        document.querySelectorAll('input[name="opt"]').forEach(radio => {
+          radio.addEventListener('change', () => {
+            answers[q.id] = radio.value;
+          });
+        });
+      } else {
+        const textInput = document.getElementById(`txt-${idx}`);
+        if (textInput) {
+          textInput.addEventListener('input', () => {
+            answers[q.id] = textInput.value;
+          });
+        }
+      }
     }
     
     async function finish() {
@@ -389,10 +660,30 @@ async function startTest(id) {
           AkylI18n.applyI18n(AkylI18n.getLang(), out);
           return;
         }
+        const maxScore = qs.length * 10; // Предполагаем 10 баллов за вопрос
+        const percentage = Math.round(((j.score || 0) / maxScore) * 100);
         out.innerHTML = `
-          <div class="test-result">
+          <div class="test-result" role="region" aria-live="polite" aria-label="Результат теста">
+            <div class="result-icon" aria-hidden="true">${percentage >= 70 ? '🎉' : percentage >= 50 ? '👍' : '📝'}</div>
             <h3 data-i18n="team.done">Готово</h3>
-            <p>Ваш результат: <strong>${j.score || 0} баллов</strong></p>
+            <div class="result-score">
+              <p class="result-label">Ваш результат:</p>
+              <p class="result-value"><strong>${j.score || 0}</strong> <span class="result-max">из ${maxScore}</span></p>
+              <div class="result-percentage" aria-label="Процент правильных ответов: ${percentage}%">
+                <div class="percentage-bar">
+                  <div class="percentage-fill" style="width: ${percentage}%"></div>
+                </div>
+                <span class="percentage-text">${percentage}%</span>
+              </div>
+            </div>
+            <div class="result-actions">
+              <button class="primary" onclick="document.getElementById('tabResults').click()" type="button">
+                Посмотреть все результаты
+              </button>
+              <button class="nav-btn" onclick="document.getElementById('tabTests').click()" type="button">
+                Вернуться к тестам
+              </button>
+            </div>
           </div>
         `;
         AkylI18n.applyI18n(AkylI18n.getLang(), out);
@@ -416,6 +707,34 @@ async function startTest(id) {
     out.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки теста</p>';
   }
 }
+
+// Клавиатурная навигация для вкладок
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('keydown', (e) => {
+    const tabs = Array.from(document.querySelectorAll('.tab-btn'));
+    const currentIndex = tabs.indexOf(btn);
+    
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      let nextIndex;
+      if (e.key === 'ArrowRight') {
+        nextIndex = (currentIndex + 1) % tabs.length;
+      } else {
+        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      }
+      tabs[nextIndex].focus();
+      tabs[nextIndex].click();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      tabs[0].focus();
+      tabs[0].click();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      tabs[tabs.length - 1].focus();
+      tabs[tabs.length - 1].click();
+    }
+  });
+});
 
 // Инициализация - открываем вкладку "Главная"
 document.getElementById('tabHome').click();
