@@ -308,7 +308,7 @@ app.post('/api/register', async (req,res)=>{
   }catch(e){ console.error(e); res.status(500).json({ error:e.message }); }
 });
 app.post('/api/login', async (req,res)=>{
-  try{ const { login, password } = req.body; const team = await getAsync('SELECT id, team_name, login, password, captain_name, captain_email FROM teams WHERE login = ?', [login]); if (!team) return res.status(401).json({ error:'Invalid' }); const ok = await bcrypt.compare(password, team.password); if (!ok) return res.status(401).json({ error:'Invalid' }); const token = signTeamToken(team); res.json({ ok:true, team: { id:team.id, team_name: team.team_name, login: team.login, captain_name: team.captain_name, captain_email: team.captain_email, token } }); }catch(e){ res.status(500).json({ error:e.message }); }
+  try{ const { login, password } = req.body; const team = await getAsync('SELECT id, team_name, login, password, captain_name, captain_email FROM teams WHERE login = ?', [login]); if (!team) return res.status(401).json({ error:'Неправильный логин или пароль' }); const ok = await bcrypt.compare(password, team.password); if (!ok) return res.status(401).json({ error:'Неправильный логин или пароль' }); const token = signTeamToken(team); res.json({ ok:true, team: { id:team.id, team_name: team.team_name, login: team.login, captain_name: team.captain_name, captain_email: team.captain_email, token } }); }catch(e){ res.status(500).json({ error:e.message }); }
 });
 function adminAuth(req,res,next){ const token = req.headers['x-admin-token'] || ''; if (!token || !token.startsWith('admin-')) return res.status(403).json({ error:'Forbidden' }); next(); }
 app.get('/api/tests', async (req,res)=>{ try{ const tests = await allAsync('SELECT id,title,description,lang,duration_minutes FROM tests ORDER BY id'); res.json(tests); }catch(e){ res.status(500).json({ error:e.message }); } });
@@ -355,7 +355,25 @@ app.post('/api/tests/:id/submit', teamAuth, async (req,res)=>{
     res.json({ ok:true, score });
   }catch(e){ res.status(500).json({ error:e.message }); }
 });
-app.get('/api/me', teamAuth, async (req,res)=>{ try{ const t = await getAsync('SELECT id, team_name, login, captain_name, captain_email, school, city FROM teams WHERE id=?',[req.team.id]); if (!t) return res.status(404).json({ error:'Team not found' }); res.json({ ok:true, team: t }); }catch(e){ res.status(500).json({ error:e.message }); } });
+app.get('/api/me', teamAuth, async (req,res)=>{
+  try{
+    const t = await getAsync('SELECT id, team_name, login, captain_name, captain_email, captain_phone, members, school, city FROM teams WHERE id=?',[req.team.id]);
+    if (!t) return res.status(404).json({ error:'Team not found' });
+    // Parse members JSON string to array
+    if (t.members && typeof t.members === 'string') {
+      try {
+        t.members = JSON.parse(t.members);
+      } catch(e) {
+        t.members = [];
+      }
+    } else if (!t.members) {
+      t.members = [];
+    }
+    res.json({ ok:true, team: t });
+  }catch(e){
+    res.status(500).json({ error:e.message });
+  }
+});
 app.get('/api/me/results', teamAuth, async (req,res)=>{ try{ const rows = await allAsync('SELECT r.id, r.test_id, r.score, r.taken_at, t.title FROM results r LEFT JOIN tests t ON t.id = r.test_id WHERE r.team_id = ? ORDER BY r.taken_at DESC',[req.team.id]); res.json(rows);}catch(e){ res.status(500).json({ error:e.message }); } });
 app.get('/api/admin/tests', adminAuth, async (req,res)=>{ try{ const tests = await allAsync('SELECT * FROM tests ORDER BY id DESC'); res.json(tests);}catch(e){ res.status(500).json({ error:e.message }); } });
 app.post('/api/admin/tests', adminAuth, async (req,res)=>{ try{ const { title, description, lang, duration_minutes, window_start, window_end, window_range } = req.body; const range = parseHumanWindow(window_range); const ws = range.start || window_start || null; const we = range.end || window_end || null; const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')'; const stmt = await runAsync(`INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, created_at) VALUES (?,?,?,?,?,?,${nowFunc})${db.type === 'postgres' ? ' RETURNING id' : ''}`,[title,description,lang||'ru',duration_minutes||30, ws, we]); const testId = db.type === 'postgres' ? (stmt.rows?.[0]?.id || stmt.id) : stmt.lastID; try{ writeQuestionsFile(testId, []); }catch(e){} res.json({ ok:true, id: testId }); }catch(e){ res.status(500).json({ error:e.message }); } });

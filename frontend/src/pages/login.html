@@ -27,7 +27,8 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     });
     const j = await res.json();
     if (!res.ok) {
-      msg.textContent = j.error || 'Ошибка входа';
+      const errorText = j.error === 'Неправильный логин или пароль' ? (typeof AkylI18n !== 'undefined' ? AkylI18n.t('login.error') : 'Неправильный логин или пароль') : (j.error || 'Ошибка входа');
+      msg.textContent = errorText;
       msg.style.color = '#b00020';
       msg.className = 'small-muted error';
       return;
