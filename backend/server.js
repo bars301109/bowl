@@ -23,7 +23,16 @@ const emailTransporter = nodemailer.createTransport({
   auth: {
     user: process.env.SMTP_USER || process.env.GMAIL_USER || '',
     pass: process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || ''
-  }
+  },
+  // Increase timeouts for Gmail (can be slow on Render)
+  connectionTimeout: 20000, // 20 seconds to establish connection
+  greetingTimeout: 20000, // 20 seconds to receive greeting
+  socketTimeout: 60000, // 60 seconds for socket operations
+  // Retry configuration
+  pool: false, // Don't pool connections for better reliability
+  // Debug mode (only in development)
+  debug: process.env.NODE_ENV === 'development',
+  logger: process.env.NODE_ENV === 'development'
 });
 
 let DATA_DIR = process.env.DATA_DIR || (process.env.NODE_ENV === 'production' ? '/var/data' : path.join(__dirname, '..', 'data'));
@@ -331,6 +340,37 @@ app.post('/api/register', async (req,res)=>{
     res.json({ ok:true });
   }catch(e){ console.error(e); res.status(500).json({ error:e.message }); }
 });
+
+// Test email configuration on startup
+async function testEmailConfig() {
+  const hasUser = process.env.SMTP_USER || process.env.GMAIL_USER;
+  const hasPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+  
+  if (!hasUser || !hasPass) {
+    console.warn('⚠️  Email configuration missing:');
+    console.warn('   GMAIL_USER or SMTP_USER not set');
+    console.warn('   GMAIL_APP_PASSWORD or SMTP_PASS not set');
+    console.warn('   Password reset emails will not be sent!');
+    console.warn('   See docs/EMAIL_SETUP.md for configuration instructions');
+    return false;
+  }
+  
+  console.log('✓ Email configuration found');
+  console.log(`   User: ${hasUser}`);
+  console.log(`   Password: ${hasPass.substring(0, 4)}...`);
+  
+  // Try to verify connection (non-blocking)
+  emailTransporter.verify((error, success) => {
+    if (error) {
+      console.warn('⚠️  Email service verification failed:', error.message);
+      console.warn('   Emails may not be sent. Check your Gmail credentials.');
+    } else {
+      console.log('✓ Email service connection verified');
+    }
+  });
+  
+  return true;
+}
 app.post('/api/login', async (req,res)=>{
   try{
     const { email, password } = req.body;
@@ -390,11 +430,22 @@ app.post('/api/password-reset/request', async (req,res)=>{
     
     console.log(`Password reset code generated for ${email}: ${code}`);
     
-    // Send email with timeout
+    // Send email with increased timeout and better error handling
     let emailSent = false;
     try {
+      // Verify transporter configuration first
+      const emailUser = process.env.SMTP_USER || process.env.GMAIL_USER;
+      const emailPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+      
+      if (!emailUser || !emailPass) {
+        console.warn('⚠️  Email configuration missing: GMAIL_USER or GMAIL_APP_PASSWORD not set');
+        throw new Error('Email service not configured');
+      }
+      
+      console.log(`Attempting to send email to ${email}...`);
+      
       const emailPromise = emailTransporter.sendMail({
-        from: process.env.SMTP_FROM || process.env.GMAIL_USER || process.env.SMTP_USER || 'noreply@akylman.kg',
+        from: process.env.SMTP_FROM || emailUser,
         to: email,
         subject: 'Код сброса пароля - Akylman Quiz Bowl',
         html: `
@@ -412,20 +463,44 @@ app.post('/api/password-reset/request', async (req,res)=>{
         `
       });
       
-      // Add timeout to email sending (10 seconds)
+      // Increase timeout to 30 seconds for Gmail (can be slow on Render)
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Email sending timeout')), 10000)
+        setTimeout(() => reject(new Error('Email sending timeout (30s)')), 30000)
       );
       
+      const startTime = Date.now();
       await Promise.race([emailPromise, timeoutPromise]);
+      const duration = Date.now() - startTime;
       emailSent = true;
-      console.log(`Password reset email sent successfully to ${email}`);
+      console.log(`✓ Password reset email sent successfully to ${email} (took ${duration}ms)`);
     } catch(emailError) {
-      console.error('Failed to send email:', emailError);
+      const errorMsg = emailError.message || 'Unknown error';
+      console.error('✗ Failed to send email:', errorMsg);
+      
       // Log detailed error for debugging
       if (emailError.response) {
-        console.error('Email error response:', emailError.response);
+        console.error('  Email error response:', JSON.stringify(emailError.response, null, 2));
       }
+      if (emailError.code) {
+        console.error('  Email error code:', emailError.code);
+      }
+      if (emailError.command) {
+        console.error('  Email error command:', emailError.command);
+      }
+      if (emailError.responseCode) {
+        console.error('  Email response code:', emailError.responseCode);
+      }
+      
+      // Common Gmail errors
+      if (errorMsg.includes('Invalid login') || errorMsg.includes('535')) {
+        console.error('  → Check Gmail credentials: GMAIL_USER and GMAIL_APP_PASSWORD');
+        console.error('  → Make sure you\'re using App Password, not regular password');
+      }
+      if (errorMsg.includes('timeout')) {
+        console.error('  → Email sending timed out. Gmail may be slow or unreachable.');
+        console.error('  → Check network connectivity and Gmail service status');
+      }
+      
       // Don't fail the request - return success to not reveal if email exists
       // But log the error for admin to see
     }
@@ -970,6 +1045,9 @@ ensureSchema().then(() => {
       }
     }, 60000);
   }
+  
+  // Test email configuration
+  testEmailConfig();
   
   app.listen(PORT, () => {
     console.log('');
