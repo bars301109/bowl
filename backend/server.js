@@ -6,12 +6,25 @@ const fs = require('fs');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const db = require('./db'); // Universal database adapter (SQLite or PostgreSQL)
 const upload = multer({ dest: path.join(__dirname, 'uploads') });
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'super-secret-token';
+
+// Email configuration for password reset (Gmail by default)
+const emailTransporter = nodemailer.createTransport({
+  service: process.env.SMTP_SERVICE || 'gmail',
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+  auth: {
+    user: process.env.SMTP_USER || process.env.GMAIL_USER || '',
+    pass: process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || ''
+  }
+});
 
 let DATA_DIR = process.env.DATA_DIR || (process.env.NODE_ENV === 'production' ? '/var/data' : path.join(__dirname, '..', 'data'));
 let DB_FILE = db.type === 'sqlite' ? (db.name || path.join(DATA_DIR, 'db.sqlite')) : 'PostgreSQL';
@@ -113,14 +126,23 @@ async function ensureSchema(){
     await runAsync(`CREATE TABLE IF NOT EXISTS teams (
       id ${autoIncrement},
       team_name ${textType},
-      login ${textType} UNIQUE,
+      login ${textType},
       password ${textType},
       captain_name ${textType},
-      captain_email ${textType},
+      captain_email ${textType} UNIQUE,
       captain_phone ${textType},
       members ${textType},
       school ${textType},
       city ${textType},
+      created_at ${textType}
+    )`);
+    // Password reset codes table
+    await runAsync(`CREATE TABLE IF NOT EXISTS password_reset_codes (
+      id ${autoIncrement},
+      email ${textType},
+      code ${textType},
+      expires_at ${textType},
+      used INTEGER DEFAULT 0,
       created_at ${textType}
     )`);
     await runAsync(`CREATE TABLE IF NOT EXISTS tests (
@@ -291,24 +313,122 @@ function parseHumanWindow(windowRange){
 app.post('/api/register', async (req,res)=>{
   try{
     const data = req.body;
-    if (!data.team_name || !data.login || !data.password) return res.status(400).json({ error:'Missing fields' });
+    if (!data.team_name || !data.password || !data.captain_email) return res.status(400).json({ error:'Missing fields' });
     const email = data.captain_email || '';
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    if(email && !emailOk) return res.status(400).json({ error:'Invalid email' });
+    if(!emailOk) return res.status(400).json({ error:'Invalid email' });
     const pw = data.password || '';
     if(!(pw.length>=8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /\d/.test(pw))) return res.status(400).json({ error:'Weak password: must have 8+ chars, uppercase, lowercase, and number' });
-    const exists = await getAsync('SELECT id FROM teams WHERE login = ?', [data.login]);
-    if (exists) return res.status(400).json({ error:'Login exists' });
+    const exists = await getAsync('SELECT id FROM teams WHERE captain_email = ?', [email]);
+    if (exists) return res.status(400).json({ error:'Email already registered' });
     const hashed = await bcrypt.hash(data.password, 10);
     const members_json = JSON.stringify(data.members || []);
     const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
-    await runAsync(`INSERT INTO teams (team_name, login, password, captain_name, captain_email, captain_phone, members, school, city, created_at) VALUES (?,?,?,?,?,?,?,?,?,${nowFunc})`, [data.team_name, data.login, hashed, data.captain_name, data.captain_email, data.captain_phone, members_json, data.school, data.city]);
-    console.log(`✓ Team registered: ${data.team_name} (${data.login})`);
+    // Generate a random login for backward compatibility (not used for auth)
+    const randomLogin = 'team_' + Math.random().toString(36).substring(2, 15);
+    await runAsync(`INSERT INTO teams (team_name, login, password, captain_name, captain_email, captain_phone, members, school, city, created_at) VALUES (?,?,?,?,?,?,?,?,?,${nowFunc})`, [data.team_name, randomLogin, hashed, data.captain_name, data.captain_email, data.captain_phone, members_json, data.school, data.city]);
+    console.log(`✓ Team registered: ${data.team_name} (${email})`);
     res.json({ ok:true });
   }catch(e){ console.error(e); res.status(500).json({ error:e.message }); }
 });
 app.post('/api/login', async (req,res)=>{
-  try{ const { login, password } = req.body; const team = await getAsync('SELECT id, team_name, login, password, captain_name, captain_email FROM teams WHERE login = ?', [login]); if (!team) return res.status(401).json({ error:'Неправильный логин или пароль' }); const ok = await bcrypt.compare(password, team.password); if (!ok) return res.status(401).json({ error:'Неправильный логин или пароль' }); const token = signTeamToken(team); res.json({ ok:true, team: { id:team.id, team_name: team.team_name, login: team.login, captain_name: team.captain_name, captain_email: team.captain_email, token } }); }catch(e){ res.status(500).json({ error:e.message }); }
+  try{
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error:'Email and password required' });
+    const team = await getAsync('SELECT id, team_name, login, password, captain_name, captain_email FROM teams WHERE captain_email = ?', [email]);
+    if (!team) return res.status(401).json({ error:'Неправильный логин или пароль' });
+    const ok = await bcrypt.compare(password, team.password);
+    if (!ok) return res.status(401).json({ error:'Неправильный логин или пароль' });
+    const token = signTeamToken(team);
+    res.json({ ok:true, team: { id:team.id, team_name: team.team_name, login: team.login, captain_name: team.captain_name, captain_email: team.captain_email, token } });
+  }catch(e){
+    res.status(500).json({ error:e.message });
+  }
+});
+
+// Password reset: request code
+app.post('/api/password-reset/request', async (req,res)=>{
+  try{
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error:'Email required' });
+    const team = await getAsync('SELECT id, captain_name FROM teams WHERE captain_email = ?', [email]);
+    if (!team) {
+      // Don't reveal if email exists for security
+      return res.json({ ok:true, message:'If email exists, reset code has been sent' });
+    }
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
+    // For PostgreSQL, calculate expiration time in JavaScript, for SQLite use datetime function
+    let expiresAt;
+    if (db.type === 'postgres') {
+      const expiresDate = new Date();
+      expiresDate.setMinutes(expiresDate.getMinutes() + 15);
+      expiresAt = expiresDate.toISOString();
+    } else {
+      expiresAt = null; // Will use SQL function
+    }
+    // Delete old codes for this email
+    await runAsync('DELETE FROM password_reset_codes WHERE email = ?', [email]);
+    // Insert new code
+    if (db.type === 'postgres') {
+      await runAsync(`INSERT INTO password_reset_codes (email, code, expires_at, created_at) VALUES (?,?,?,${nowFunc})`, [email, code, expiresAt]);
+    } else {
+      await runAsync(`INSERT INTO password_reset_codes (email, code, expires_at, created_at) VALUES (?,?,datetime('now', '+15 minutes'),${nowFunc})`, [email, code]);
+    }
+    // Send email
+    try {
+      await emailTransporter.sendMail({
+        from: process.env.SMTP_FROM || process.env.GMAIL_USER || process.env.SMTP_USER || 'noreply@akylman.kg',
+        to: email,
+        subject: 'Код сброса пароля - Akylman Quiz Bowl',
+        html: `
+          <h2>Сброс пароля</h2>
+          <p>Здравствуйте, ${team.captain_name || 'пользователь'}!</p>
+          <p>Вы запросили сброс пароля для вашей команды в Akylman Quiz Bowl.</p>
+          <p><strong>Ваш код для сброса пароля: ${code}</strong></p>
+          <p>Этот код действителен в течение 15 минут.</p>
+          <p>Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
+        `
+      });
+    } catch(emailError) {
+      console.error('Failed to send email:', emailError);
+      // Still return success to not reveal if email exists
+    }
+    res.json({ ok:true, message:'If email exists, reset code has been sent' });
+  }catch(e){
+    console.error(e);
+    res.status(500).json({ error:e.message });
+  }
+});
+
+// Password reset: verify code and reset password
+app.post('/api/password-reset/verify', async (req,res)=>{
+  try{
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) return res.status(400).json({ error:'Email, code and new password required' });
+    // Validate password strength
+    if(!(newPassword.length>=8 && /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /\d/.test(newPassword))) {
+      return res.status(400).json({ error:'Weak password: must have 8+ chars, uppercase, lowercase, and number' });
+    }
+    // Check code
+    let resetCode;
+    if (db.type === 'postgres') {
+      resetCode = await getAsync('SELECT * FROM password_reset_codes WHERE email = $1 AND code = $2 AND used = 0 AND expires_at > NOW()', [email, code]);
+    } else {
+      resetCode = await getAsync('SELECT * FROM password_reset_codes WHERE email = ? AND code = ? AND used = 0 AND expires_at > datetime(\'now\')', [email, code]);
+    }
+    if (!resetCode) return res.status(400).json({ error:'Invalid or expired code' });
+    // Update password
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await runAsync('UPDATE teams SET password = ? WHERE captain_email = ?', [hashed, email]);
+    // Mark code as used
+    await runAsync('UPDATE password_reset_codes SET used = 1 WHERE id = ?', [resetCode.id]);
+    res.json({ ok:true, message:'Password reset successfully' });
+  }catch(e){
+    console.error(e);
+    res.status(500).json({ error:e.message });
+  }
 });
 function adminAuth(req,res,next){ const token = req.headers['x-admin-token'] || ''; if (!token || !token.startsWith('admin-')) return res.status(403).json({ error:'Forbidden' }); next(); }
 app.get('/api/tests', async (req,res)=>{ try{ const tests = await allAsync('SELECT id,title,description,lang,duration_minutes FROM tests ORDER BY id'); res.json(tests); }catch(e){ res.status(500).json({ error:e.message }); } });
