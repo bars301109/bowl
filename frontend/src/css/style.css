@@ -3624,3 +3624,242 @@ input:focus-visible {
     border-radius: 12px;
   }
 }
+
+/* Password Reset Modal Styles */
+.reset-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.reset-modal-content {
+  background: white;
+  padding: 32px;
+  border-radius: 16px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  animation: slideUp 0.3s ease;
+  position: relative;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.reset-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border);
+}
+
+.reset-modal-header h3 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.reset-close-btn {
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.reset-close-btn:hover {
+  background: var(--bg-light);
+  color: var(--text-dark);
+}
+
+.reset-step {
+  margin-top: 8px;
+}
+
+.reset-description {
+  color: var(--text-light);
+  font-size: 14px;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.reset-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.reset-actions .primary {
+  flex: 1;
+  min-width: 120px;
+}
+
+.reset-actions .nav-btn {
+  flex: 1;
+  min-width: 100px;
+}
+
+.reset-message {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 20px;
+  transition: all 0.3s ease;
+}
+
+.reset-message.error {
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 4px solid var(--danger);
+  color: #b00020;
+}
+
+.reset-message.success {
+  background: rgba(16, 185, 129, 0.1);
+  border-left: 4px solid var(--success);
+  color: #166534;
+}
+
+.reset-message.info {
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 4px solid var(--primary);
+  color: var(--primary);
+}
+
+.reset-timer {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-light);
+  font-weight: 600;
+  padding: 8px;
+  background: var(--bg-light);
+  border-radius: 6px;
+}
+
+/* Reset password requirements */
+#resetPasswordReqs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg-light);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+#resetPasswordReqs .requirement {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-light);
+  transition: color 0.2s ease;
+}
+
+#resetPasswordReqs .requirement::before {
+  content: '✗';
+  color: var(--danger);
+  font-weight: bold;
+  width: 18px;
+  text-align: center;
+}
+
+#resetPasswordReqs .requirement.met {
+  color: var(--success);
+}
+
+#resetPasswordReqs .requirement.met::before {
+  content: '✓';
+  color: var(--success);
+}
+
+/* Code input styling */
+#resetCode {
+  text-align: center;
+  font-size: 24px;
+  letter-spacing: 8px;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  padding: 16px;
+}
+
+#resetCode:focus {
+  letter-spacing: 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .reset-modal-content {
+    padding: 24px;
+    max-width: 100%;
+    margin: 10px;
+  }
+  
+  .reset-modal-header h3 {
+    font-size: 20px;
+  }
+  
+  .reset-actions {
+    flex-direction: column;
+  }
+  
+  .reset-actions .primary,
+  .reset-actions .nav-btn {
+    width: 100%;
+  }
+  
+  #resetPasswordReqs {
+    grid-template-columns: 1fr;
+  }
+  
+  #resetCode {
+    font-size: 20px;
+    letter-spacing: 6px;
+    padding: 14px;
+  }
+}

@@ -26,19 +26,20 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script>
-const adminToken = localStorage.getItem('akylman_admin_token');
+// Use sessionStorage instead of localStorage - cleared when tab closes
+const adminToken = sessionStorage.getItem('akylman_admin_token');
 if (!adminToken) {
   window.location.href = './admin-login.html';
 }
 
 function logoutAdmin() {
   if (confirm('Вы уверены, что хотите выйти?')) {
-    localStorage.removeItem('akylman_admin_token');
+    sessionStorage.removeItem('akylman_admin_token');
     window.location.href = './admin-login.html';
   }
 }
 
-function aHeaders(){ return { 'Content-Type':'application/json', 'X-Admin-Token': localStorage.getItem('akylman_admin_token') || '' }; }
+function aHeaders(){ return { 'Content-Type':'application/json', 'X-Admin-Token': sessionStorage.getItem('akylman_admin_token') || '' }; }
 const content = document.getElementById('content');
 
 // Helper functions for better UI
@@ -304,7 +305,7 @@ async function renderQuestions(testId){
   document.getElementById('importCsv').onclick = async ()=>{
     const f = document.getElementById('csvFile').files[0]; if(!f){ alert('Выберите файл'); return; }
     const form = new FormData(); form.append('file', f);
-    const r = await fetch('/api/admin/tests/'+currentTestId+'/questions/import-csv',{ method:'POST', headers:{ 'X-ADMIN-TOKEN': (localStorage.getItem('akylman_admin_token')||'').trim() }, body: form });
+    const r = await fetch('/api/admin/tests/'+currentTestId+'/questions/import-csv',{ method:'POST', headers:{ 'X-ADMIN-TOKEN': (sessionStorage.getItem('akylman_admin_token')||'').trim() }, body: form });
     if(!r.ok){ alert('Ошибка импорта'); return; }
     renderQuestions(currentTestId);
   };

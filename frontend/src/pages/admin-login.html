@@ -156,7 +156,11 @@
       if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
         messageDiv.className = 'success';
         messageDiv.textContent = 'Вход успешен...';
-        localStorage.setItem('akylman_admin_token', 'admin-' + Date.now());
+        // Don't store token - use session-based auth
+        // Generate temporary token for this session only
+        const sessionToken = 'admin-' + Date.now() + '-' + Math.random().toString(36).substring(7);
+        // Store in sessionStorage (cleared on tab close) instead of localStorage
+        sessionStorage.setItem('akylman_admin_token', sessionToken);
         setTimeout(() => {
           window.location.href = './admin.html';
         }, 600);

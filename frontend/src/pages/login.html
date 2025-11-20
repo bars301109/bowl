@@ -5,7 +5,72 @@
 <div class="form-card">
   <div>
     <h2 data-i18n="login.title" class="grad-text">Вход</h2>
-    <form id="loginForm"><div class="form-row"><label><span data-i18n="login.login">Логин</span><input name="login" placeholder="Введите логин команды" required/></label><label><span data-i18n="login.password">Пароль</span><input type="password" name="password" placeholder="Введите пароль" required/></label></div><div class="mt-2"><button class="primary" type="submit" data-i18n="login.submit">Войти</button> <a class="nav-btn" href="/" data-i18n="nav.home">Главная</a></div></form><div id="msg" class="small-muted"></div>
+    <form id="loginForm">
+      <div class="form-row">
+        <label><span data-i18n="login.email">Email</span><input type="email" name="email" placeholder="Введите email капитана" required/></label>
+        <label><span data-i18n="login.password">Пароль</span><input type="password" name="password" placeholder="Введите пароль" required/></label>
+      </div>
+      <div class="mt-2">
+        <button class="primary" type="submit" data-i18n="login.submit">Войти</button>
+        <a class="nav-btn" href="/" data-i18n="nav.home">Главная</a>
+      </div>
+      <div class="mt-2 text-center">
+        <a href="#" id="forgotPassword" style="color: var(--primary); text-decoration: none; font-size: 14px;" data-i18n="login.forgot_password">Забыли пароль?</a>
+      </div>
+    </form>
+    <div id="msg" class="small-muted"></div>
+    
+    <!-- Password Reset Modal -->
+    <div id="resetModal" class="reset-modal" style="display: none;">
+      <div class="reset-modal-content">
+        <div class="reset-modal-header">
+          <h3 data-i18n="reset.title">Сброс пароля</h3>
+          <button class="reset-close-btn" onclick="closeResetModal()" aria-label="Закрыть">×</button>
+        </div>
+        
+        <div id="resetStep1" class="reset-step">
+          <p class="reset-description" data-i18n="reset.enter_email">Введите email для получения кода сброса:</p>
+          <div class="form-row">
+            <label>
+              <span data-i18n="login.email">Email</span>
+              <input type="email" id="resetEmail" placeholder="your-email@gmail.com" required autocomplete="email"/>
+            </label>
+          </div>
+          <div class="reset-actions">
+            <button class="primary" onclick="requestResetCode()" id="sendCodeBtn" data-i18n="reset.send_code">Отправить код</button>
+            <button class="nav-btn" onclick="closeResetModal()" data-i18n="reset.cancel">Отмена</button>
+          </div>
+        </div>
+        
+        <div id="resetStep2" class="reset-step" style="display: none;">
+          <p class="reset-description" data-i18n="reset.enter_code">Введите код из письма и новый пароль:</p>
+          <div class="form-row">
+            <label>
+              <span data-i18n="reset.code">Код из письма</span>
+              <input type="text" id="resetCode" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required autocomplete="off" style="text-align: center; font-size: 24px; letter-spacing: 8px; font-weight: 600;"/>
+            </label>
+          </div>
+          <div class="form-row">
+            <label>
+              <span data-i18n="reset.new_password">Новый пароль</span>
+              <input type="password" id="resetNewPassword" placeholder="Введите новый пароль" required autocomplete="new-password"/>
+            </label>
+          </div>
+          <div class="password-requirements" id="resetPasswordReqs" style="margin-top: 12px;">
+            <div class="requirement" id="reset-req-length"><span data-i18n="register.password.length">8 символов</span></div>
+            <div class="requirement" id="reset-req-number"><span data-i18n="register.password.number">Цифра</span></div>
+            <div class="requirement" id="reset-req-lowercase"><span data-i18n="register.password.lowercase">Строчная буква</span></div>
+            <div class="requirement" id="reset-req-uppercase"><span data-i18n="register.password.uppercase">Заглавная буква</span></div>
+          </div>
+          <div class="reset-actions">
+            <button class="primary" onclick="verifyResetCode()" id="resetPasswordBtn" data-i18n="reset.reset">Сбросить пароль</button>
+            <button class="nav-btn" onclick="closeResetModal()" data-i18n="reset.cancel">Отмена</button>
+          </div>
+        </div>
+        
+        <div id="resetMsg" class="reset-message"></div>
+      </div>
+    </div>
   </div>
 </div></div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script><script src="../js/i18n.js"></script><script>AkylI18n.initSwitcher();</script>
@@ -18,12 +83,14 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
   msg.style.color = '';
   
   const data = Object.fromEntries(new FormData(e.target).entries());
+  // Change login to email for API
+  data.email = data.email || data.login;
   
   try {
     const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify({ email: data.email, password: data.password })
     });
     const j = await res.json();
     if (!res.ok) {
@@ -44,6 +111,306 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     msg.textContent = 'Сервер недоступен. Проверьте подключение к интернету.';
     msg.style.color = '#b00020';
     msg.className = 'small-muted error';
+  }
+});
+
+// Password reset functionality
+let resetEmail = '';
+let resetTimer = null;
+
+document.getElementById('forgotPassword').onclick = (e) => {
+  e.preventDefault();
+  openResetModal();
+};
+
+function openResetModal() {
+  const modal = document.getElementById('resetModal');
+  modal.style.display = 'flex';
+  document.getElementById('resetStep1').style.display = 'block';
+  document.getElementById('resetStep2').style.display = 'none';
+  document.getElementById('resetMsg').textContent = '';
+  document.getElementById('resetMsg').className = 'reset-message';
+  document.getElementById('resetEmail').value = '';
+  document.getElementById('resetCode').value = '';
+  document.getElementById('resetNewPassword').value = '';
+  resetEmail = '';
+  // Apply translations
+  if (typeof AkylI18n !== 'undefined') {
+    AkylI18n.applyI18n(AkylI18n.getLang(), modal);
+  }
+  // Close on background click
+  modal.onclick = (e) => {
+    if (e.target === modal) closeResetModal();
+  };
+  // Close on Escape key
+  document.addEventListener('keydown', handleResetModalEscape);
+}
+
+function handleResetModalEscape(e) {
+  if (e.key === 'Escape') {
+    closeResetModal();
+  }
+}
+
+function closeResetModal() {
+  document.getElementById('resetModal').style.display = 'none';
+  resetEmail = '';
+  if (resetTimer) {
+    clearInterval(resetTimer);
+    resetTimer = null;
+  }
+  document.removeEventListener('keydown', handleResetModalEscape);
+}
+
+async function requestResetCode() {
+  const emailInput = document.getElementById('resetEmail');
+  const email = emailInput.value.trim();
+  const msg = document.getElementById('resetMsg');
+  const sendBtn = document.getElementById('sendCodeBtn');
+  
+  if (!email) {
+    showResetMessage('Введите email', 'error');
+    emailInput.focus();
+    return;
+  }
+  
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showResetMessage('Введите корректный email', 'error');
+    emailInput.focus();
+    return;
+  }
+  
+  resetEmail = email;
+  sendBtn.disabled = true;
+  sendBtn.textContent = typeof AkylI18n !== 'undefined' ? AkylI18n.t('reset.sending') || 'Отправка...' : 'Отправка...';
+  showResetMessage('Отправка кода на email...', 'info');
+  
+  try {
+    const res = await fetch('/api/password-reset/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const j = await res.json();
+    
+    if (res.ok) {
+      const successMsg = typeof AkylI18n !== 'undefined' ? AkylI18n.t('reset.code_sent') || 'Код отправлен на email (если такой email зарегистрирован)' : 'Код отправлен на email (если такой email зарегистрирован)';
+      showResetMessage(successMsg, 'success');
+      document.getElementById('resetStep1').style.display = 'none';
+      document.getElementById('resetStep2').style.display = 'block';
+      document.getElementById('resetCode').focus();
+      // Start countdown timer
+      startResetTimer();
+    } else {
+      showResetMessage(j.error || 'Ошибка отправки кода', 'error');
+      sendBtn.disabled = false;
+      sendBtn.textContent = typeof AkylI18n !== 'undefined' ? AkylI18n.t('reset.send_code') || 'Отправить код' : 'Отправить код';
+    }
+  } catch (err) {
+    console.error(err);
+    showResetMessage('Ошибка подключения к серверу', 'error');
+    sendBtn.disabled = false;
+    sendBtn.textContent = typeof AkylI18n !== 'undefined' ? AkylI18n.t('reset.send_code') || 'Отправить код' : 'Отправить код';
+  }
+}
+
+function showResetMessage(text, type) {
+  const msg = document.getElementById('resetMsg');
+  msg.textContent = text;
+  msg.className = 'reset-message';
+  if (type === 'error') {
+    msg.classList.add('error');
+    msg.style.color = '#b00020';
+  } else if (type === 'success') {
+    msg.classList.add('success');
+    msg.style.color = '#166534';
+  } else {
+    msg.style.color = '#6b7280';
+  }
+}
+
+let resetCountdown = 900; // 15 minutes in seconds
+function startResetTimer() {
+  resetCountdown = 900;
+  const timerDisplay = document.getElementById('resetTimer');
+  if (!timerDisplay) {
+    const timerEl = document.createElement('div');
+    timerEl.id = 'resetTimer';
+    timerEl.className = 'reset-timer';
+    timerEl.style.marginTop = '12px';
+    timerEl.style.textAlign = 'center';
+    timerEl.style.fontSize = '14px';
+    timerEl.style.color = '#6b7280';
+    document.getElementById('resetStep2').appendChild(timerEl);
+  }
+  
+  resetTimer = setInterval(() => {
+    resetCountdown--;
+    const minutes = Math.floor(resetCountdown / 60);
+    const seconds = resetCountdown % 60;
+    const timerText = typeof AkylI18n !== 'undefined' 
+      ? (AkylI18n.t('reset.timer') || 'Код действителен:') + ` ${minutes}:${String(seconds).padStart(2, '0')}`
+      : `Код действителен: ${minutes}:${String(seconds).padStart(2, '0')}`;
+    document.getElementById('resetTimer').textContent = timerText;
+    
+    if (resetCountdown <= 0) {
+      clearInterval(resetTimer);
+      showResetMessage('Время действия кода истекло. Запросите новый код.', 'error');
+    }
+  }, 1000);
+}
+
+// Password validation for reset
+const resetPasswordInput = document.getElementById('resetNewPassword');
+if (resetPasswordInput) {
+  resetPasswordInput.addEventListener('input', function() {
+    validateResetPassword(this.value);
+  });
+  resetPasswordInput.addEventListener('focus', function() {
+    validateResetPassword(this.value);
+  });
+  resetPasswordInput.addEventListener('paste', function() {
+    setTimeout(() => validateResetPassword(this.value), 10);
+  });
+}
+
+function validateResetPassword(password) {
+  const length = document.getElementById('reset-req-length');
+  const number = document.getElementById('reset-req-number');
+  const lowercase = document.getElementById('reset-req-lowercase');
+  const uppercase = document.getElementById('reset-req-uppercase');
+  
+  if (length) {
+    if (password.length >= 8) {
+      length.classList.add('met');
+    } else {
+      length.classList.remove('met');
+    }
+  }
+  
+  if (number) {
+    if (/\d/.test(password)) {
+      number.classList.add('met');
+    } else {
+      number.classList.remove('met');
+    }
+  }
+  
+  if (lowercase) {
+    if (/[a-z]/.test(password)) {
+      lowercase.classList.add('met');
+    } else {
+      lowercase.classList.remove('met');
+    }
+  }
+  
+  if (uppercase) {
+    if (/[A-Z]/.test(password)) {
+      uppercase.classList.add('met');
+    } else {
+      uppercase.classList.remove('met');
+    }
+  }
+}
+
+async function verifyResetCode() {
+  const codeInput = document.getElementById('resetCode');
+  const passwordInput = document.getElementById('resetNewPassword');
+  const code = codeInput.value.trim();
+  const newPassword = passwordInput.value;
+  const msg = document.getElementById('resetMsg');
+  const resetBtn = document.getElementById('resetPasswordBtn');
+  
+  if (!code || code.length !== 6) {
+    showResetMessage('Введите 6-значный код', 'error');
+    codeInput.focus();
+    return;
+  }
+  
+  if (!newPassword) {
+    showResetMessage('Введите новый пароль', 'error');
+    passwordInput.focus();
+    return;
+  }
+  
+  // Validate password requirements
+  if (!(newPassword.length >= 8 && /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /\d/.test(newPassword))) {
+    showResetMessage('Пароль не соответствует требованиям', 'error');
+    passwordInput.focus();
+    return;
+  }
+  
+  resetBtn.disabled = true;
+  resetBtn.textContent = typeof AkylI18n !== 'undefined' ? AkylI18n.t('reset.resetting') || 'Сброс...' : 'Сброс...';
+  showResetMessage('Сброс пароля...', 'info');
+  
+  try {
+    const res = await fetch('/api/password-reset/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetEmail, code, newPassword })
+    });
+    const j = await res.json();
+    
+    if (res.ok) {
+      const successMsg = typeof AkylI18n !== 'undefined' 
+        ? AkylI18n.t('reset.success') || 'Пароль успешно изменен! Теперь вы можете войти.'
+        : 'Пароль успешно изменен! Теперь вы можете войти.';
+      showResetMessage(successMsg, 'success');
+      if (resetTimer) {
+        clearInterval(resetTimer);
+        resetTimer = null;
+      }
+      setTimeout(() => {
+        closeResetModal();
+        location.reload();
+      }, 2000);
+    } else {
+      showResetMessage(j.error || 'Ошибка сброса пароля', 'error');
+      resetBtn.disabled = false;
+      resetBtn.textContent = typeof AkylI18n !== 'undefined' ? AkylI18n.t('reset.reset') || 'Сбросить пароль' : 'Сбросить пароль';
+      if (j.error && j.error.includes('код')) {
+        codeInput.value = '';
+        codeInput.focus();
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    showResetMessage('Ошибка подключения к серверу', 'error');
+    resetBtn.disabled = false;
+    resetBtn.textContent = typeof AkylI18n !== 'undefined' ? AkylI18n.t('reset.reset') || 'Сбросить пароль' : 'Сбросить пароль';
+  }
+}
+
+// Enter key support
+document.getElementById('resetEmail')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    requestResetCode();
+  }
+});
+
+document.getElementById('resetCode')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('resetNewPassword').focus();
+  }
+});
+
+document.getElementById('resetNewPassword')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    verifyResetCode();
+  }
+});
+
+// Update translations when language changes
+window.addEventListener('akyl-langchange', () => {
+  if (typeof AkylI18n !== 'undefined') {
+    const modal = document.getElementById('resetModal');
+    if (modal && modal.style.display !== 'none') {
+      AkylI18n.applyI18n(AkylI18n.getLang(), modal);
+    }
   }
 });
 </script></body></html>
