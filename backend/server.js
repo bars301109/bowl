@@ -351,14 +351,23 @@ app.post('/api/password-reset/request', async (req,res)=>{
   try{
     const { email } = req.body;
     if (!email) return res.status(400).json({ error:'Email required' });
+    
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error:'Invalid email format' });
+    }
+    
     const team = await getAsync('SELECT id, captain_name FROM teams WHERE captain_email = ?', [email]);
     if (!team) {
-      // Don't reveal if email exists for security
+      // Don't reveal if email exists for security - but still return success after a delay
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing time
       return res.json({ ok:true, message:'If email exists, reset code has been sent' });
     }
+    
     // Generate 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
+    
     // For PostgreSQL, calculate expiration time in JavaScript, for SQLite use datetime function
     let expiresAt;
     if (db.type === 'postgres') {
@@ -368,49 +377,77 @@ app.post('/api/password-reset/request', async (req,res)=>{
     } else {
       expiresAt = null; // Will use SQL function
     }
+    
     // Delete old codes for this email
     await runAsync('DELETE FROM password_reset_codes WHERE email = ?', [email]);
+    
     // Insert new code
     if (db.type === 'postgres') {
       await runAsync(`INSERT INTO password_reset_codes (email, code, expires_at, created_at) VALUES (?,?,?,${nowFunc})`, [email, code, expiresAt]);
     } else {
       await runAsync(`INSERT INTO password_reset_codes (email, code, expires_at, created_at) VALUES (?,?,datetime('now', '+15 minutes'),${nowFunc})`, [email, code]);
     }
-    // Send email
+    
+    console.log(`Password reset code generated for ${email}: ${code}`);
+    
+    // Send email with timeout
+    let emailSent = false;
     try {
-      await emailTransporter.sendMail({
+      const emailPromise = emailTransporter.sendMail({
         from: process.env.SMTP_FROM || process.env.GMAIL_USER || process.env.SMTP_USER || 'noreply@akylman.kg',
         to: email,
         subject: 'Код сброса пароля - Akylman Quiz Bowl',
         html: `
-          <h2>Сброс пароля</h2>
-          <p>Здравствуйте, ${team.captain_name || 'пользователь'}!</p>
-          <p>Вы запросили сброс пароля для вашей команды в Akylman Quiz Bowl.</p>
-          <p><strong>Ваш код для сброса пароля: ${code}</strong></p>
-          <p>Этот код действителен в течение 15 минут.</p>
-          <p>Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1e40af;">Сброс пароля</h2>
+            <p>Здравствуйте, ${team.captain_name || 'пользователь'}!</p>
+            <p>Вы запросили сброс пароля для вашей команды в Akylman Quiz Bowl.</p>
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+              <p style="font-size: 14px; color: #6b7280; margin: 0 0 10px 0;">Ваш код для сброса пароля:</p>
+              <p style="font-size: 32px; font-weight: bold; color: #1e40af; letter-spacing: 8px; margin: 0; font-family: monospace;">${code}</p>
+            </div>
+            <p style="color: #6b7280; font-size: 14px;">Этот код действителен в течение 15 минут.</p>
+            <p style="color: #ef4444; font-size: 14px;">Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
+          </div>
         `
       });
+      
+      // Add timeout to email sending (10 seconds)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Email sending timeout')), 10000)
+      );
+      
+      await Promise.race([emailPromise, timeoutPromise]);
+      emailSent = true;
+      console.log(`Password reset email sent successfully to ${email}`);
     } catch(emailError) {
       console.error('Failed to send email:', emailError);
-      // Still return success to not reveal if email exists
+      // Log detailed error for debugging
+      if (emailError.response) {
+        console.error('Email error response:', emailError.response);
+      }
+      // Don't fail the request - return success to not reveal if email exists
+      // But log the error for admin to see
     }
+    
+    // Always return success (for security), but log if email failed
+    if (!emailSent) {
+      console.warn(`WARNING: Password reset code generated but email not sent to ${email}. Code: ${code}`);
+    }
+    
     res.json({ ok:true, message:'If email exists, reset code has been sent' });
   }catch(e){
-    console.error(e);
-    res.status(500).json({ error:e.message });
+    console.error('Password reset request error:', e);
+    res.status(500).json({ error:'Server error. Please try again later.' });
   }
 });
 
-// Password reset: verify code and reset password
-app.post('/api/password-reset/verify', async (req,res)=>{
+// Password reset: verify code only (step 2)
+app.post('/api/password-reset/verify-code', async (req,res)=>{
   try{
-    const { email, code, newPassword } = req.body;
-    if (!email || !code || !newPassword) return res.status(400).json({ error:'Email, code and new password required' });
-    // Validate password strength
-    if(!(newPassword.length>=8 && /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /\d/.test(newPassword))) {
-      return res.status(400).json({ error:'Weak password: must have 8+ chars, uppercase, lowercase, and number' });
-    }
+    const { email, code } = req.body;
+    if (!email || !code) return res.status(400).json({ error:'Email and code required' });
+    
     // Check code
     let resetCode;
     if (db.type === 'postgres') {
@@ -418,12 +455,49 @@ app.post('/api/password-reset/verify', async (req,res)=>{
     } else {
       resetCode = await getAsync('SELECT * FROM password_reset_codes WHERE email = ? AND code = ? AND used = 0 AND expires_at > datetime(\'now\')', [email, code]);
     }
-    if (!resetCode) return res.status(400).json({ error:'Invalid or expired code' });
+    
+    if (!resetCode) {
+      return res.status(400).json({ error:'Неверный или истекший код' });
+    }
+    
+    res.json({ ok:true, message:'Code verified successfully' });
+  }catch(e){
+    console.error(e);
+    res.status(500).json({ error:e.message });
+  }
+});
+
+// Password reset: verify code and reset password (step 3)
+app.post('/api/password-reset/verify', async (req,res)=>{
+  try{
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) return res.status(400).json({ error:'Email, code and new password required' });
+    
+    // Validate password strength
+    if(!(newPassword.length>=8 && /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /\d/.test(newPassword))) {
+      return res.status(400).json({ error:'Weak password: must have 8+ chars, uppercase, lowercase, and number' });
+    }
+    
+    // Check code
+    let resetCode;
+    if (db.type === 'postgres') {
+      resetCode = await getAsync('SELECT * FROM password_reset_codes WHERE email = $1 AND code = $2 AND used = 0 AND expires_at > NOW()', [email, code]);
+    } else {
+      resetCode = await getAsync('SELECT * FROM password_reset_codes WHERE email = ? AND code = ? AND used = 0 AND expires_at > datetime(\'now\')', [email, code]);
+    }
+    
+    if (!resetCode) {
+      return res.status(400).json({ error:'Неверный или истекший код' });
+    }
+    
     // Update password
     const hashed = await bcrypt.hash(newPassword, 10);
     await runAsync('UPDATE teams SET password = ? WHERE captain_email = ?', [hashed, email]);
+    
     // Mark code as used
     await runAsync('UPDATE password_reset_codes SET used = 1 WHERE id = ?', [resetCode.id]);
+    
+    console.log(`Password reset successful for ${email}`);
     res.json({ ok:true, message:'Password reset successfully' });
   }catch(e){
     console.error(e);

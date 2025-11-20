@@ -43,13 +43,21 @@
         </div>
         
         <div id="resetStep2" class="reset-step" style="display: none;">
-          <p class="reset-description" data-i18n="reset.enter_code">Введите код из письма и новый пароль:</p>
+          <p class="reset-description" data-i18n="reset.enter_code_only">Введите код из письма:</p>
           <div class="form-row">
             <label>
               <span data-i18n="reset.code">Код из письма</span>
               <input type="text" id="resetCode" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required autocomplete="off" style="text-align: center; font-size: 24px; letter-spacing: 8px; font-weight: 600;"/>
             </label>
           </div>
+          <div class="reset-actions">
+            <button class="primary" onclick="verifyCodeOnly()" id="verifyCodeBtn" data-i18n="reset.verify_code">Проверить код</button>
+            <button class="nav-btn" onclick="goBackToStep1()" data-i18n="reset.back">Назад</button>
+          </div>
+        </div>
+        
+        <div id="resetStep3" class="reset-step" style="display: none;">
+          <p class="reset-description" data-i18n="reset.enter_new_password">Введите новый пароль:</p>
           <div class="form-row">
             <label>
               <span data-i18n="reset.new_password">Новый пароль</span>
@@ -64,7 +72,7 @@
           </div>
           <div class="reset-actions">
             <button class="primary" onclick="verifyResetCode()" id="resetPasswordBtn" data-i18n="reset.reset">Сбросить пароль</button>
-            <button class="nav-btn" onclick="closeResetModal()" data-i18n="reset.cancel">Отмена</button>
+            <button class="nav-btn" onclick="goBackToStep2()" data-i18n="reset.back">Назад</button>
           </div>
         </div>
         
@@ -128,6 +136,7 @@ function openResetModal() {
   modal.style.display = 'flex';
   document.getElementById('resetStep1').style.display = 'block';
   document.getElementById('resetStep2').style.display = 'none';
+  document.getElementById('resetStep3').style.display = 'none';
   document.getElementById('resetMsg').textContent = '';
   document.getElementById('resetMsg').className = 'reset-message';
   document.getElementById('resetEmail').value = '';
@@ -144,6 +153,30 @@ function openResetModal() {
   };
   // Close on Escape key
   document.addEventListener('keydown', handleResetModalEscape);
+}
+
+function goBackToStep1() {
+  document.getElementById('resetStep1').style.display = 'block';
+  document.getElementById('resetStep2').style.display = 'none';
+  document.getElementById('resetStep3').style.display = 'none';
+  document.getElementById('resetCode').value = '';
+  document.getElementById('resetMsg').textContent = '';
+  document.getElementById('resetMsg').className = 'reset-message';
+  if (typeof AkylI18n !== 'undefined') {
+    AkylI18n.applyI18n(AkylI18n.getLang(), document.getElementById('resetModal'));
+  }
+}
+
+function goBackToStep2() {
+  document.getElementById('resetStep1').style.display = 'none';
+  document.getElementById('resetStep2').style.display = 'block';
+  document.getElementById('resetStep3').style.display = 'none';
+  document.getElementById('resetNewPassword').value = '';
+  document.getElementById('resetMsg').textContent = '';
+  document.getElementById('resetMsg').className = 'reset-message';
+  if (typeof AkylI18n !== 'undefined') {
+    AkylI18n.applyI18n(AkylI18n.getLang(), document.getElementById('resetModal'));
+  }
 }
 
 function handleResetModalEscape(e) {
@@ -182,15 +215,23 @@ async function requestResetCode() {
   
   resetEmail = email;
   sendBtn.disabled = true;
+  const originalBtnText = sendBtn.textContent;
   sendBtn.textContent = typeof AkylI18n !== 'undefined' ? AkylI18n.t('reset.sending') || 'Отправка...' : 'Отправка...';
   showResetMessage('Отправка кода на email...', 'info');
   
   try {
+    // Add timeout to request (15 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
     const res = await fetch('/api/password-reset/request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ email }),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     const j = await res.json();
     
     if (res.ok) {
@@ -198,19 +239,90 @@ async function requestResetCode() {
       showResetMessage(successMsg, 'success');
       document.getElementById('resetStep1').style.display = 'none';
       document.getElementById('resetStep2').style.display = 'block';
+      document.getElementById('resetStep3').style.display = 'none';
       document.getElementById('resetCode').focus();
+      // Apply translations
+      if (typeof AkylI18n !== 'undefined') {
+        AkylI18n.applyI18n(AkylI18n.getLang(), document.getElementById('resetModal'));
+      }
       // Start countdown timer
       startResetTimer();
     } else {
       showResetMessage(j.error || 'Ошибка отправки кода', 'error');
       sendBtn.disabled = false;
-      sendBtn.textContent = typeof AkylI18n !== 'undefined' ? AkylI18n.t('reset.send_code') || 'Отправить код' : 'Отправить код';
+      sendBtn.textContent = originalBtnText;
     }
   } catch (err) {
     console.error(err);
-    showResetMessage('Ошибка подключения к серверу', 'error');
+    if (err.name === 'AbortError') {
+      showResetMessage('Превышено время ожидания. Проверьте настройки email на сервере.', 'error');
+    } else {
+      showResetMessage('Ошибка подключения к серверу. Проверьте интернет-соединение.', 'error');
+    }
     sendBtn.disabled = false;
-    sendBtn.textContent = typeof AkylI18n !== 'undefined' ? AkylI18n.t('reset.send_code') || 'Отправить код' : 'Отправить код';
+    sendBtn.textContent = originalBtnText;
+  }
+}
+
+async function verifyCodeOnly() {
+  const codeInput = document.getElementById('resetCode');
+  const code = codeInput.value.trim();
+  const verifyBtn = document.getElementById('verifyCodeBtn');
+  const msg = document.getElementById('resetMsg');
+  
+  if (!code || code.length !== 6) {
+    showResetMessage('Введите 6-значный код', 'error');
+    codeInput.focus();
+    return;
+  }
+  
+  if (!/^\d{6}$/.test(code)) {
+    showResetMessage('Код должен содержать только цифры', 'error');
+    codeInput.focus();
+    return;
+  }
+  
+  verifyBtn.disabled = true;
+  const originalBtnText = verifyBtn.textContent;
+  verifyBtn.textContent = typeof AkylI18n !== 'undefined' ? AkylI18n.t('reset.verifying') || 'Проверка...' : 'Проверка...';
+  showResetMessage('Проверка кода...', 'info');
+  
+  try {
+    const res = await fetch('/api/password-reset/verify-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetEmail, code })
+    });
+    
+    const j = await res.json();
+    
+    if (res.ok) {
+      showResetMessage('Код подтвержден! Теперь введите новый пароль.', 'success');
+      document.getElementById('resetStep1').style.display = 'none';
+      document.getElementById('resetStep2').style.display = 'none';
+      document.getElementById('resetStep3').style.display = 'block';
+      document.getElementById('resetNewPassword').focus();
+      // Apply translations
+      if (typeof AkylI18n !== 'undefined') {
+        AkylI18n.applyI18n(AkylI18n.getLang(), document.getElementById('resetModal'));
+      }
+      // Stop timer
+      if (resetTimer) {
+        clearInterval(resetTimer);
+        resetTimer = null;
+      }
+    } else {
+      showResetMessage(j.error || 'Неверный код', 'error');
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = originalBtnText;
+      codeInput.value = '';
+      codeInput.focus();
+    }
+  } catch (err) {
+    console.error(err);
+    showResetMessage('Ошибка проверки кода', 'error');
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = originalBtnText;
   }
 }
 
@@ -393,7 +505,7 @@ document.getElementById('resetEmail')?.addEventListener('keypress', (e) => {
 document.getElementById('resetCode')?.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    document.getElementById('resetNewPassword').focus();
+    verifyCodeOnly();
   }
 });
 
