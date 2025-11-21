@@ -112,9 +112,40 @@ if(OLD_TESTS_DIR !== TESTS_DIR && fs.existsSync(OLD_TESTS_DIR)){
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Static files with caching headers for performance
+// Frontend directory
 const FRONTEND_DIR = path.join(__dirname, '..', 'frontend', 'src');
 
+// Helper function to send page HTML files
+function sendPage(res, pageName) {
+  const filePath = path.join(FRONTEND_DIR, 'pages', `${pageName}.html`);
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+    return true;
+  }
+  return false;
+}
+
+// Clean URLs: /register, /login, /team, /admin, /admin-login, /profile
+// These MUST be BEFORE static middleware to work correctly
+['register', 'login', 'team', 'admin', 'admin-login', 'profile'].forEach(page => {
+  app.get(`/${page}`, (req, res, next) => {
+    if (sendPage(res, page)) {
+      return; // File sent successfully
+    }
+    return next(); // File not found, continue to next middleware
+  });
+});
+
+// Legacy: /pages/<name> (for backward compatibility)
+app.get('/pages/:page', (req, res, next) => {
+  if (sendPage(res, req.params.page)) {
+    return; // File sent successfully
+  }
+  return next(); // File not found, continue to next middleware
+});
+
+// Static files with caching headers for performance
+// This MUST be AFTER page routes
 app.use('/', express.static(FRONTEND_DIR, {
   maxAge: 5000, // 5 seconds
   etag: true,
@@ -124,29 +155,6 @@ app.use('/', express.static(FRONTEND_DIR, {
     res.setHeader('Cache-Control', 'public, max-age=5');
   }
 }));
-
-// Pretty URLs for pages without .html
-function sendPage(res, pageName) {
-  const filePath = path.join(FRONTEND_DIR, 'pages', `${pageName}.html`);
-  if (fs.existsSync(filePath)) {
-    return res.sendFile(filePath);
-  }
-  return null;
-}
-
-// Legacy: /pages/<name>
-app.get('/pages/:page', (req, res, next) => {
-  if (sendPage(res, req.params.page)) return;
-  return next();
-});
-
-// Clean URLs: /register, /login, /team, /admin, /admin-login, /profile
-['register', 'login', 'team', 'admin', 'admin-login', 'profile'].forEach(page => {
-  app.get(`/${page}`, (req, res, next) => {
-    if (sendPage(res, page)) return;
-    return next();
-  });
-});
 
 // Use database adapter methods
 const runAsync = db.runAsync.bind(db);
