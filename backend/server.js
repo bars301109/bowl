@@ -129,11 +129,19 @@ function sendPage(res, pageName) {
 // These MUST be BEFORE static middleware to work correctly
 ['register', 'login', 'team', 'admin', 'admin-login', 'profile'].forEach(page => {
   app.get(`/${page}`, (req, res, next) => {
-    if (sendPage(res, page)) {
+    if (sendPage(res, page === 'team' ? 'team' : page)) {
       return; // File sent successfully
     }
     return next(); // File not found, continue to next middleware
   });
+});
+
+// Nested team pages: /team/<section> -> always serve team.html (frontend router handles section)
+app.get('/team/:section', (req, res, next) => {
+  if (sendPage(res, 'team')) {
+    return; // File sent successfully
+  }
+  return next(); // File not found, continue to next middleware
 });
 
 // Legacy: /pages/<name> (for backward compatibility)
@@ -723,6 +731,76 @@ app.get('/api/me', teamAuth, async (req,res)=>{
     res.json({ ok:true, team: t });
   }catch(e){
     res.status(500).json({ error:e.message });
+  }
+});
+
+// Update current team profile (except email & login)
+app.put('/api/me', teamAuth, async (req, res) => {
+  try {
+    const allowedFields = ['team_name', 'captain_name', 'captain_phone', 'school', 'city', 'members'];
+    const updates = [];
+    const params = [];
+
+    for (const field of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+        if (field === 'members') {
+          const members = Array.isArray(req.body.members) ? req.body.members : [];
+          updates.push('members = ?');
+          params.push(JSON.stringify(members));
+        } else {
+          updates.push(`${field} = ?`);
+          params.push(req.body[field] ?? null);
+        }
+      }
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    params.push(req.team.id);
+    await runAsync(`UPDATE teams SET ${updates.join(', ')} WHERE id = ?`, params);
+
+    const t = await getAsync('SELECT id, team_name, login, captain_name, captain_email, captain_phone, members, school, city FROM teams WHERE id=?',[req.team.id]);
+    if (t && t.members && typeof t.members === 'string') {
+      try { t.members = JSON.parse(t.members); } catch { t.members = []; }
+    }
+    res.json({ ok: true, team: t });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Change password for current team (requires old password)
+app.post('/api/me/change-password', teamAuth, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body || {};
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ error: 'Old and new password required' });
+    }
+
+    // Validate new password strength
+    if (!(newPassword.length >= 8 && /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /\d/.test(newPassword))) {
+      return res.status(400).json({ error: 'Пароль не соответствует требованиям: минимум 8 символов, заглавная, строчная буква и цифра' });
+    }
+
+    const team = await getAsync('SELECT id, password FROM teams WHERE id = ?', [req.team.id]);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    const ok = await bcrypt.compare(oldPassword, team.password);
+    if (!ok) {
+      return res.status(400).json({ error: 'Старый пароль неверен' });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await runAsync('UPDATE teams SET password = ? WHERE id = ?', [hashed, req.team.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
   }
 });
 app.get('/api/me/results', teamAuth, async (req,res)=>{ try{ const rows = await allAsync('SELECT r.id, r.test_id, r.score, r.taken_at, t.title FROM results r LEFT JOIN tests t ON t.id = r.test_id WHERE r.team_id = ? ORDER BY r.taken_at DESC',[req.team.id]); res.json(rows);}catch(e){ res.status(500).json({ error:e.message }); } });

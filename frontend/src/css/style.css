@@ -2111,10 +2111,11 @@ body.admin-panel {
 
 .team-tabs {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
-  flex-wrap: wrap;
   margin: 16px 0;
-  border-bottom: 2px solid var(--border);
+  border-bottom: none;
 }
 
 .tab-btn {
@@ -2128,6 +2129,83 @@ body.admin-panel {
   cursor: pointer;
   transition: all 0.2s;
   margin-bottom: -2px;
+}
+
+.team-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.team-main {
+  flex: 1;
+}
+
+.team-tabs {
+  min-width: 220px;
+  max-width: 260px;
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 12px 10px;
+  border: 1px solid var(--border);
+}
+
+.team-tabs .tab-btn {
+  width: 100%;
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.info-item.editable dd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.inline-edit-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--primary);
+  background: #ffffff;
+  color: var(--primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.inline-edit-btn:hover {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.account-section {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.account-section h4 {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 768px) {
+  .team-layout {
+    flex-direction: column;
+  }
+
+  .team-tabs {
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .team-tabs .tab-btn {
+    flex: 1 1 auto;
+    text-align: center;
+  }
 }
 
 .tab-btn:hover {

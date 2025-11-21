@@ -25,16 +25,17 @@
     <h1 data-i18n="team.title" class="sr-only">Кабинет команды</h1>
     <h2 data-i18n="team.title" class="visually-hidden">Кабинет команды</h2>
     <div id="teamInfo" role="region" aria-live="polite" aria-label="Информация о команде"></div>
-    <nav class="team-tabs" role="tablist" aria-label="Навигация по разделам">
-      <button id="tabHome" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tabContent" data-i18n="team.tab.home" tabindex="0">Главная</button> 
-      <button id="tabTests" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-i18n="team.tab.tests" tabindex="-1">Тесты</button> 
-      <button id="tabResults" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-i18n="team.tab.results" tabindex="-1">Результаты</button> 
-      <button id="tabSettings" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-i18n="team.tab.settings" tabindex="-1">Настройки</button> 
-      <button id="tabPractice" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-i18n="team.tab.practice" tabindex="-1">Практика</button> 
-      <button id="tabRules" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-i18n="team.tab.rules" tabindex="-1">Правила</button>
-    </nav>
-    <hr aria-hidden="true"/>
-    <div id="tabContent" role="tabpanel" aria-labelledby="tabHome" aria-live="polite"></div>
+    <div class="team-layout">
+      <nav class="team-tabs" role="tablist" aria-label="Навигация по разделам">
+        <button id="tabHome" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tabContent" data-section="main" data-i18n="team.tab.home" tabindex="0">Главная</button> 
+        <button id="tabTests" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="tests" data-i18n="team.tab.tests" tabindex="-1">Тесты</button> 
+        <button id="tabResults" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="results" data-i18n="team.tab.results" tabindex="-1">Результаты</button> 
+        <button id="tabSettings" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="settings" data-i18n="team.tab.settings" tabindex="-1">Настройки</button> 
+        <button id="tabPractice" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="practice" data-i18n="team.tab.practice" tabindex="-1">Практика</button> 
+        <button id="tabRules" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="rules" data-i18n="team.tab.rules" tabindex="-1">Правила</button>
+      </nav>
+      <div id="tabContent" class="team-main" role="tabpanel" aria-labelledby="tabHome" aria-live="polite"></div>
+    </div>
   </main>
 </div>
 
@@ -87,8 +88,8 @@ function setActiveTab(btn) {
   document.getElementById('tabContent').setAttribute('aria-labelledby', btn.id);
 }
 
-document.getElementById('tabHome').onclick = async (e) => {
-  setActiveTab(e.currentTarget);
+async function renderHomeSection(btn) {
+  if (btn) setActiveTab(btn);
   const out = document.getElementById('tabContent');
   out.setAttribute('aria-busy', 'true');
   out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка...</span></div><p data-i18n="team.loading">Загрузка...</p>';
@@ -124,54 +125,117 @@ document.getElementById('tabHome').onclick = async (e) => {
         <h3 id="welcome-heading" data-i18n="team.welcome">Добро пожаловать в кабинет команды!</h3>
         <div class="team-info" role="region" aria-label="Информация о команде">
           <dl class="info-list">
-            <div class="info-item">
+            <div class="info-item editable" data-field="team_name">
               <dt data-i18n="team.team_name">Название команды:</dt>
-              <dd>${escapeHtml(teamData.team_name || '')}</dd>
+              <dd>
+                <span class="info-value">${escapeHtml(teamData.team_name || '')}</span>
+                <button type="button" class="inline-edit-btn" data-field="team_name">Изменить</button>
+              </dd>
             </div>
-            <div class="info-item">
+            <div class="info-item editable" data-field="captain_name">
               <dt data-i18n="team.captain">Капитан:</dt>
-              <dd>${escapeHtml(teamData.captain_name || '')}</dd>
+              <dd>
+                <span class="info-value">${escapeHtml(teamData.captain_name || '')}</span>
+                <button type="button" class="inline-edit-btn" data-field="captain_name">Изменить</button>
+              </dd>
             </div>
-            ${teamData.captain_email ? `
-            <div class="info-item">
-              <dt data-i18n="team.email">Email:</dt>
-              <dd><a href="mailto:${escapeHtml(teamData.captain_email)}" aria-label="Отправить email капитану">${escapeHtml(teamData.captain_email)}</a></dd>
-            </div>
-            ` : ''}
             ${teamData.captain_phone ? `
-            <div class="info-item">
+            <div class="info-item editable" data-field="captain_phone">
               <dt data-i18n="team.phone">Телефон:</dt>
-              <dd><a href="tel:${escapeHtml(teamData.captain_phone)}" aria-label="Позвонить капитану">${escapeHtml(teamData.captain_phone)}</a></dd>
+              <dd>
+                <span class="info-value"><a href="tel:${escapeHtml(teamData.captain_phone)}" aria-label="Позвонить капитану">${escapeHtml(teamData.captain_phone)}</a></span>
+                <button type="button" class="inline-edit-btn" data-field="captain_phone">Изменить</button>
+              </dd>
             </div>
-            ` : ''}
+            ` : `
+            <div class="info-item editable" data-field="captain_phone">
+              <dt data-i18n="team.phone">Телефон:</dt>
+              <dd>
+                <span class="info-value small-muted">Не указан</span>
+                <button type="button" class="inline-edit-btn" data-field="captain_phone">Изменить</button>
+              </dd>
+            </div>
+            `}
             ${teamData.school ? `
-            <div class="info-item">
+            <div class="info-item editable" data-field="school">
               <dt data-i18n="team.school">Школа:</dt>
-              <dd>${escapeHtml(teamData.school)}</dd>
+              <dd>
+                <span class="info-value">${escapeHtml(teamData.school)}</span>
+                <button type="button" class="inline-edit-btn" data-field="school">Изменить</button>
+              </dd>
             </div>
-            ` : ''}
+            ` : `
+            <div class="info-item editable" data-field="school">
+              <dt data-i18n="team.school">Школа:</dt>
+              <dd>
+                <span class="info-value small-muted">Не указана</span>
+                <button type="button" class="inline-edit-btn" data-field="school">Изменить</button>
+              </dd>
+            </div>
+            `}
             ${teamData.city ? `
-            <div class="info-item">
+            <div class="info-item editable" data-field="city">
               <dt data-i18n="team.city">Город:</dt>
-              <dd>${escapeHtml(teamData.city)}</dd>
+              <dd>
+                <span class="info-value">${escapeHtml(teamData.city)}</span>
+                <button type="button" class="inline-edit-btn" data-field="city">Изменить</button>
+              </dd>
             </div>
-            ` : ''}
+            ` : `
+            <div class="info-item editable" data-field="city">
+              <dt data-i18n="team.city">Город:</dt>
+              <dd>
+                <span class="info-value small-muted">Не указан</span>
+                <button type="button" class="inline-edit-btn" data-field="city">Изменить</button>
+              </dd>
+            </div>
+            `}
           </dl>
+
           <section aria-labelledby="members-heading">
             <h4 id="members-heading" data-i18n="team.members">Участники команды:</h4>
             <ul class="members-list" role="list">
               ${membersHtml}
             </ul>
           </section>
+
+          <section class="account-section" aria-labelledby="account-heading">
+            <h4 id="account-heading">Аккаунт</h4>
+            <dl class="info-list">
+              ${teamData.captain_email ? `
+              <div class="info-item">
+                <dt data-i18n="team.email">Email капитана:</dt>
+                <dd><a href="mailto:${escapeHtml(teamData.captain_email)}" aria-label="Отправить email капитану">${escapeHtml(teamData.captain_email)}</a></dd>
+              </div>
+              ` : ''}
+              <div class="info-item">
+                <dt>Пароль:</dt>
+                <dd>
+                  <span class="info-value">••••••••</span>
+                  <button type="button" class="inline-edit-btn" data-field="password">Изменить</button>
+                </dd>
+              </div>
+            </dl>
+          </section>
         </div>
       </section>
     `;
+
+    // Навесить обработчики на кнопки "Изменить"
+    out.querySelectorAll('.inline-edit-btn').forEach(btn => {
+      const field = btn.getAttribute('data-field');
+      if (field === 'password') {
+        btn.addEventListener('click', handlePasswordChange);
+      } else {
+        btn.addEventListener('click', () => handleInlineEdit(field));
+      }
+    });
   } else {
     out.innerHTML = '<div class="empty-state" role="status"><p data-i18n="team.loading">Загрузка...</p></div>';
   }
   
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
-};
+}
 
 // Функция для экранирования HTML
 function escapeHtml(text) {
@@ -708,6 +772,90 @@ async function startTest(id) {
   }
 }
 
+// Редактирование полей профиля (кроме email)
+async function handleInlineEdit(field) {
+  if (!teamData) return;
+  const fieldNames = {
+    team_name: 'Название команды',
+    captain_name: 'Имя капитана',
+    captain_phone: 'Телефон капитана',
+    school: 'Школа',
+    city: 'Город'
+  };
+  const current = (teamData[field] || '').toString();
+  const label = fieldNames[field] || field;
+  const next = window.prompt(`Введите новое значение для поля "${label}":`, current);
+  if (next === null) return;
+
+  try {
+    const body = {};
+    body[field] = next.trim();
+    const res = await fetch('/api/me', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify(body)
+    });
+    const j = await res.json();
+    if (!res.ok || !j.ok) {
+      const msg = j && j.error ? j.error : 'Не удалось сохранить изменения';
+      alert(msg);
+      return;
+    }
+    teamData = j.team || teamData;
+    // Обновляем локальное хранилище team, если оно есть
+    try {
+      const currentStored = JSON.parse(localStorage.getItem('team') || 'null');
+      if (currentStored && Number(currentStored.id) === Number(teamData.id)) {
+        localStorage.setItem('team', JSON.stringify({ ...currentStored, ...teamData }));
+      }
+    } catch {}
+    // Перерисовываем главную секцию
+    renderHomeSection(document.getElementById('tabHome'));
+  } catch (err) {
+    console.error(err);
+    alert('Произошла ошибка при сохранении. Попробуйте ещё раз.');
+  }
+}
+
+// Смена пароля
+async function handlePasswordChange() {
+  const oldPassword = window.prompt('Введите текущий пароль:');
+  if (oldPassword === null || oldPassword === '') return;
+  
+  const newPassword = window.prompt('Введите новый пароль (минимум 8 символов, заглавная, строчная буква и цифра):');
+  if (newPassword === null || newPassword === '') return;
+
+  const confirmPassword = window.prompt('Повторите новый пароль:');
+  if (confirmPassword === null || confirmPassword !== newPassword) {
+    alert('Пароли не совпадают.');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/me/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ oldPassword, newPassword })
+    });
+    const j = await res.json();
+    if (!res.ok || !j.ok) {
+      const msg = j && j.error ? j.error : 'Не удалось изменить пароль';
+      alert(msg);
+      return;
+    }
+    alert('Пароль успешно изменён.');
+  } catch (err) {
+    console.error(err);
+    alert('Произошла ошибка при изменении пароля. Попробуйте ещё раз.');
+  }
+}
+
 // Клавиатурная навигация для вкладок
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('keydown', (e) => {
@@ -736,8 +884,34 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// Инициализация - открываем вкладку "Главная"
-document.getElementById('tabHome').click();
+// Привязываем вкладку "Главная" к новой функции
+document.getElementById('tabHome').onclick = (e) => {
+  renderHomeSection(e.currentTarget);
+};
+
+// Router для подстраниц: /team, /team/main, /team/tests, /team/results, /team/settings, /team/practice, /team/rules
+function initTeamSectionFromUrl() {
+  const path = window.location.pathname || '';
+  const match = path.match(/^\/team\/([^/]+)/);
+  const section = match ? match[1] : 'main';
+  const map = {
+    main: 'tabHome',
+    tests: 'tabTests',
+    results: 'tabResults',
+    settings: 'tabSettings',
+    practice: 'tabPractice',
+    rules: 'tabRules'
+  };
+  const btnId = map[section] || 'tabHome';
+  const btn = document.getElementById(btnId);
+  if (btn) {
+    btn.click();
+  } else {
+    document.getElementById('tabHome').click();
+  }
+}
+
+initTeamSectionFromUrl();
 
 // Обработчик изменения языка
 window.addEventListener('akyl-langchange', () => {
