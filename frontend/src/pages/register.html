@@ -84,12 +84,12 @@
       <h2 data-i18n="register.title" class="grad-text">Регистрация команды</h2>
       <form id="regForm">
         <div class="form-row">
-          <label><span data-i18n="register.team_name">Название команды</span><input name="team_name" placeholder="Например: Команда А" required/></label>
+          <label><span data-i18n="register.team_name">Название команды</span><input name="team_name" placeholder="Например: Шумкарлар" data-i18n-ph="register.team_name.placeholder" required/></label>
         </div>
         <div class="form-row">
           <label>
             <span data-i18n="register.password">Пароль</span>
-            <input type="password" name="password" id="passwordInput" placeholder="Введите пароль" required/>
+            <input type="password" name="password" id="passwordInput" placeholder="Введите пароль" data-i18n-ph="register.password.placeholder" required/>
             <div class="password-requirements" id="passwordReqs">
               <div class="requirement" id="req-length"><span data-i18n="register.password.length">8 символов</span></div>
               <div class="requirement" id="req-number"><span data-i18n="register.password.number">Цифра</span></div>
@@ -97,18 +97,18 @@
               <div class="requirement" id="req-uppercase"><span data-i18n="register.password.uppercase">Заглавная буква</span></div>
             </div>
           </label>
-          <label><span data-i18n="register.password2">Повтор пароля</span><input type="password" name="password2" placeholder="Повторите пароль" required/></label>
+          <label><span data-i18n="register.password2">Повтор пароля</span><input type="password" name="password2" placeholder="Повторите пароль" data-i18n-ph="register.password2.placeholder" required/></label>
         </div>
         <div class="form-row">
-          <label><span data-i18n="register.captain_name">ФИО капитана</span><input name="captain_name" placeholder="Иванов Иван Иванович" required/></label>
-          <label><span data-i18n="register.captain_email">Email капитана</span><input type="email" name="captain_email" placeholder="example@email.com"/></label>
+          <label><span data-i18n="register.captain_name">ФИО капитана</span><input name="captain_name" placeholder="Иванов Иван Иванович" data-i18n-ph="register.captain_name.placeholder" required/></label>
+          <label><span data-i18n="register.captain_email">Email капитана</span><input type="email" name="captain_email" placeholder="example@email.com" data-i18n-ph="register.captain_email.placeholder"/></label>
         </div>
         <div class="form-row">
-          <label><span data-i18n="register.captain_phone">Телефон капитана</span><input name="captain_phone" type="tel" placeholder="+996 555 123456"/></label>
-          <label><span data-i18n="register.school">Школа</span><input name="school" placeholder="Название школы"/></label>
+          <label><span data-i18n="register.captain_phone">Телефон капитана</span><input name="captain_phone" type="tel" placeholder="+996 555 123456" data-i18n-ph="register.captain_phone.placeholder"/></label>
+          <label><span data-i18n="register.school">Школа</span><input name="school" placeholder="Название школы" data-i18n-ph="register.school.placeholder"/></label>
         </div>
         <div class="form-row">
-          <label><span data-i18n="register.city">Город</span><input name="city" placeholder="Город"/></label>
+          <label><span data-i18n="register.city">Город</span><input name="city" placeholder="Город" data-i18n-ph="register.city.placeholder"/></label>
           <label><span data-i18n="register.members_count">Количество участников</span><select id="members_count" name="members_count"><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
         </div>
         <div id="members_fields"></div>
@@ -182,7 +182,9 @@ function renderMembers(n) {
       memberLabel = `ФИО ${ordinals[i] || i + '-го'} участника`;
       classLabel = AkylI18n.t('register.member_class');
     }
-    wrapper.innerHTML = `<label><span>${memberLabel}</span><input name="member_${i}_name" placeholder="ФИО участника" required/></label><label><span>${classLabel}</span><input name="member_${i}_info" placeholder="Класс"/></label>`;
+    const memberPh = AkylI18n.t('register.member_name.placeholder');
+    const classPh = AkylI18n.t('register.member_class.placeholder');
+    wrapper.innerHTML = `<label><span>${memberLabel}</span><input name="member_${i}_name" placeholder="${memberPh}" required/></label><label><span>${classLabel}</span><input name="member_${i}_info" placeholder="${classPh}"/></label>`;
     membersDiv.appendChild(wrapper);
   }
 }
