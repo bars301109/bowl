@@ -13,24 +13,26 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'super-secret-token';
+// Email provider: 'resend' (HTTP API) или 'gmail' (SMTP через nodemailer)
+const EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || (process.env.RESEND_API_KEY ? 'resend' : 'gmail');
 
-// Email configuration for password reset (Gmail by default)
+// Email configuration for password reset (Gmail SMTP, используется только если выбран провайдер gmail)
+// На Render мы будем использовать HTTP‑API (Resend), чтобы обойти блокировку SMTP,
+// поэтому этот транспорт нужен в основном для локальной разработки.
 const emailTransporter = nodemailer.createTransport({
   service: process.env.SMTP_SERVICE || 'gmail',
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+  port: parseInt(process.env.SMTP_PORT || '465'),
+  secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : true,
   auth: {
     user: process.env.SMTP_USER || process.env.GMAIL_USER || '',
     pass: process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || ''
   },
-  // Increase timeouts for Gmail (can be slow on Render)
-  connectionTimeout: 20000, // 20 seconds to establish connection
-  greetingTimeout: 20000, // 20 seconds to receive greeting
-  socketTimeout: 60000, // 60 seconds for socket operations
-  // Retry configuration
-  pool: false, // Don't pool connections for better reliability
-  // Debug mode (only in development)
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
+  socketTimeout: 60000,
+  pool: false,
+  tls: { rejectUnauthorized: false },
   debug: process.env.NODE_ENV === 'development',
   logger: process.env.NODE_ENV === 'development'
 });
@@ -343,19 +345,37 @@ app.post('/api/register', async (req,res)=>{
 
 // Test email configuration on startup
 async function testEmailConfig() {
+  // HTTP‑API (Resend) – основной вариант для продакшена на Render
+  if (EMAIL_PROVIDER === 'resend') {
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = process.env.RESEND_FROM || 'Akylman Quiz <onboarding@resend.dev>';
+    
+    if (!apiKey) {
+      console.warn('⚠️  Email provider set to "resend", но RESEND_API_KEY не задан.');
+      console.warn('   Письма для сброса пароля отправляться не будут.');
+      console.warn('   См. docs/EMAIL_SETUP.md для настроек Resend.');
+      return false;
+    }
+    
+    console.log('✓ Email provider: Resend (HTTP API)');
+    console.log(`   From: ${from}`);
+    return true;
+  }
+
+  // Gmail SMTP – используется в основном для локальной разработки
   const hasUser = process.env.SMTP_USER || process.env.GMAIL_USER;
   const hasPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
   
   if (!hasUser || !hasPass) {
-    console.warn('⚠️  Email configuration missing:');
+    console.warn('⚠️  Email configuration missing for Gmail SMTP:');
     console.warn('   GMAIL_USER or SMTP_USER not set');
     console.warn('   GMAIL_APP_PASSWORD or SMTP_PASS not set');
-    console.warn('   Password reset emails will not be sent!');
-    console.warn('   See docs/EMAIL_SETUP.md for configuration instructions');
+    console.warn('   Password reset emails will not be sent (Gmail).');
+    console.warn('   См. docs/EMAIL_SETUP.md для настроек Gmail или используйте Resend.');
     return false;
   }
   
-  console.log('✓ Email configuration found');
+  console.log('✓ Email provider: Gmail SMTP');
   console.log(`   User: ${hasUser}`);
   console.log(`   Password: ${hasPass.substring(0, 4)}...`);
   
@@ -385,6 +405,90 @@ app.post('/api/login', async (req,res)=>{
     res.status(500).json({ error:e.message });
   }
 });
+
+// Helper: build HTML for password reset email
+function buildPasswordResetEmailHtml(team, code) {
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #1e40af;">Сброс пароля</h2>
+      <p>Здравствуйте, ${team.captain_name || 'пользователь'}!</p>
+      <p>Вы запросили сброс пароля для вашей команды в Akylman Quiz Bowl.</p>
+      <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+        <p style="font-size: 14px; color: #6b7280; margin: 0 0 10px 0;">Ваш код для сброса пароля:</p>
+        <p style="font-size: 32px; font-weight: bold; color: #1e40af; letter-spacing: 8px; margin: 0; font-family: monospace;">${code}</p>
+      </div>
+      <p style="color: #6b7280; font-size: 14px;">Этот код действителен в течение 15 минут.</p>
+      <p style="color: #ef4444; font-size: 14px;">Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
+    </div>
+  `;
+}
+
+// Helper: send password reset email via selected provider
+async function sendPasswordResetEmail({ email, team, code }) {
+  const subject = 'Код сброса пароля - Akylman Quiz Bowl';
+  const html = buildPasswordResetEmailHtml(team, code);
+
+  // Preferred provider: Resend (HTTP API, отлично подходит для Render)
+  if (EMAIL_PROVIDER === 'resend') {
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = process.env.RESEND_FROM || 'Akylman Quiz <onboarding@resend.dev>';
+
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY is not set');
+    }
+
+    console.log(`Attempting to send password reset email via Resend to ${email}...`);
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from,
+        to: email,
+        subject,
+        html
+      })
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      console.error('✗ Resend API error:', response.status, text);
+      throw new Error(`Resend API error: ${response.status}`);
+    }
+
+    console.log(`✓ Password reset email sent via Resend to ${email}`);
+    return;
+  }
+
+  // Fallback: Gmail SMTP через nodemailer (локальная разработка)
+  const emailUser = process.env.SMTP_USER || process.env.GMAIL_USER;
+  const emailPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+
+  if (!emailUser || !emailPass) {
+    throw new Error('Gmail SMTP is not configured');
+  }
+
+  console.log(`Attempting to send password reset email via Gmail SMTP to ${email}...`);
+
+  const emailPromise = emailTransporter.sendMail({
+    from: process.env.SMTP_FROM || emailUser,
+    to: email,
+    subject,
+    html
+  });
+
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Email sending timeout (30s)')), 30000)
+  );
+
+  const startTime = Date.now();
+  await Promise.race([emailPromise, timeoutPromise]);
+  const duration = Date.now() - startTime;
+  console.log(`✓ Password reset email sent via Gmail SMTP to ${email} (took ${duration}ms)`);
+}
 
 // Password reset: request code
 app.post('/api/password-reset/request', async (req,res)=>{
@@ -430,79 +534,13 @@ app.post('/api/password-reset/request', async (req,res)=>{
     
     console.log(`Password reset code generated for ${email}: ${code}`);
     
-    // Send email with increased timeout and better error handling
     let emailSent = false;
     try {
-      // Verify transporter configuration first
-      const emailUser = process.env.SMTP_USER || process.env.GMAIL_USER;
-      const emailPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
-      
-      if (!emailUser || !emailPass) {
-        console.warn('⚠️  Email configuration missing: GMAIL_USER or GMAIL_APP_PASSWORD not set');
-        throw new Error('Email service not configured');
-      }
-      
-      console.log(`Attempting to send email to ${email}...`);
-      
-      const emailPromise = emailTransporter.sendMail({
-        from: process.env.SMTP_FROM || emailUser,
-        to: email,
-        subject: 'Код сброса пароля - Akylman Quiz Bowl',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #1e40af;">Сброс пароля</h2>
-            <p>Здравствуйте, ${team.captain_name || 'пользователь'}!</p>
-            <p>Вы запросили сброс пароля для вашей команды в Akylman Quiz Bowl.</p>
-            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
-              <p style="font-size: 14px; color: #6b7280; margin: 0 0 10px 0;">Ваш код для сброса пароля:</p>
-              <p style="font-size: 32px; font-weight: bold; color: #1e40af; letter-spacing: 8px; margin: 0; font-family: monospace;">${code}</p>
-            </div>
-            <p style="color: #6b7280; font-size: 14px;">Этот код действителен в течение 15 минут.</p>
-            <p style="color: #ef4444; font-size: 14px;">Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
-          </div>
-        `
-      });
-      
-      // Increase timeout to 30 seconds for Gmail (can be slow on Render)
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Email sending timeout (30s)')), 30000)
-      );
-      
-      const startTime = Date.now();
-      await Promise.race([emailPromise, timeoutPromise]);
-      const duration = Date.now() - startTime;
+      await sendPasswordResetEmail({ email, team, code });
       emailSent = true;
-      console.log(`✓ Password reset email sent successfully to ${email} (took ${duration}ms)`);
-    } catch(emailError) {
+    } catch (emailError) {
       const errorMsg = emailError.message || 'Unknown error';
-      console.error('✗ Failed to send email:', errorMsg);
-      
-      // Log detailed error for debugging
-      if (emailError.response) {
-        console.error('  Email error response:', JSON.stringify(emailError.response, null, 2));
-      }
-      if (emailError.code) {
-        console.error('  Email error code:', emailError.code);
-      }
-      if (emailError.command) {
-        console.error('  Email error command:', emailError.command);
-      }
-      if (emailError.responseCode) {
-        console.error('  Email response code:', emailError.responseCode);
-      }
-      
-      // Common Gmail errors
-      if (errorMsg.includes('Invalid login') || errorMsg.includes('535')) {
-        console.error('  → Check Gmail credentials: GMAIL_USER and GMAIL_APP_PASSWORD');
-        console.error('  → Make sure you\'re using App Password, not regular password');
-      }
-      if (errorMsg.includes('timeout')) {
-        console.error('  → Email sending timed out. Gmail may be slow or unreachable.');
-        console.error('  → Check network connectivity and Gmail service status');
-      }
-      
-      // Don't fail the request - return success to not reveal if email exists
-      // But log the error for admin to see
+      console.error('✗ Failed to send password reset email:', errorMsg);
     }
     
     // Always return success (for security), but log if email failed
