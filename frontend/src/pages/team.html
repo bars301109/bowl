@@ -21,12 +21,12 @@
     <a class="nav-btn" href="/" data-i18n="nav.home" aria-label="Перейти на главную страницу">Главная</a>
     <button class="link-pill" id="logout" data-i18n="nav.logout" aria-label="Выйти из аккаунта" type="button">Выход</button>
   </nav>
-  <main class="form-card" role="main">
+  <main class="team-page-main" role="main">
     <h1 data-i18n="team.title" class="sr-only">Кабинет команды</h1>
     <h2 data-i18n="team.title" class="visually-hidden">Кабинет команды</h2>
-    <div id="teamInfo" role="region" aria-live="polite" aria-label="Информация о команде"></div>
     <div class="team-layout">
       <nav class="team-tabs" role="tablist" aria-label="Навигация по разделам">
+        <h2 id="teamNameHeader" class="team-name-header">Загрузка...</h2>
         <button id="tabHome" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tabContent" data-section="main" data-i18n="team.tab.home" tabindex="0">Главная</button> 
         <button id="tabTests" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="tests" data-i18n="team.tab.tests" tabindex="-1">Тесты</button> 
         <button id="tabResults" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="results" data-i18n="team.tab.results" tabindex="-1">Результаты</button> 
@@ -56,6 +56,13 @@ function t(key) {
   return key;
 }
 
+function updateTeamNameHeader() {
+  const teamNameHeader = document.getElementById('teamNameHeader');
+  if (teamNameHeader && teamData) {
+    teamNameHeader.textContent = teamData.team_name || 'Команда';
+  }
+}
+
 async function load() {
   const res = await fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
   const j = await res.json();
@@ -65,7 +72,7 @@ async function load() {
     return;
   }
   teamData = j.team;
-  document.getElementById('teamInfo').innerHTML = `<p><strong>${j.team.team_name}</strong> — ${j.team.captain_name}</p>`;
+  updateTeamNameHeader();
 }
 
 load();
@@ -100,7 +107,10 @@ async function renderHomeSection(btn) {
     try {
       const res = await fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
       const j = await res.json();
-      if (j.ok) teamData = j.team;
+      if (j.ok) {
+        teamData = j.team;
+        updateTeamNameHeader();
+      }
     } catch (err) {
       console.error(err);
       out.setAttribute('aria-busy', 'false');
@@ -468,7 +478,10 @@ async function renderSettingsSection(btn) {
     try {
       const res = await fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
       const j = await res.json();
-      if (j.ok) teamData = j.team;
+      if (j.ok) {
+        teamData = j.team;
+        updateTeamNameHeader();
+      }
     } catch (err) {
       console.error(err);
       out.setAttribute('aria-busy', 'false');
@@ -805,6 +818,7 @@ async function handleInlineEdit(field) {
       return;
     }
     teamData = j.team || teamData;
+    updateTeamNameHeader();
     // Обновляем локальное хранилище team, если оно есть
     try {
       const currentStored = JSON.parse(localStorage.getItem('team') || 'null');

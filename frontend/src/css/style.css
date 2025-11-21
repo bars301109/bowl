@@ -2131,15 +2131,27 @@ body.admin-panel {
   margin-bottom: -2px;
 }
 
+.team-page-main {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  max-width: none;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+}
+
 .team-layout {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   gap: 32px;
   align-items: flex-start;
+  width: 100%;
 }
 
 .team-main {
   flex: 1;
+  padding: 0 24px 24px 0;
 }
 
 .team-tabs {
@@ -2150,6 +2162,18 @@ body.admin-panel {
   padding-right: 24px;
   border-right: 1px solid var(--border);
   margin-right: 0;
+}
+
+.team-name-header {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 0 0 24px 0;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 .team-tabs .tab-btn {
@@ -2208,12 +2232,25 @@ body.admin-panel {
     gap: 16px;
   }
 
+  .team-main {
+    padding: 0;
+  }
+
   .team-tabs {
     flex-direction: row;
     flex-wrap: wrap;
     padding-right: 0;
+    padding-bottom: 16px;
     border-right: none;
     border-bottom: 1px solid var(--border);
+  }
+
+  .team-name-header {
+    width: 100%;
+    font-size: 22px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    order: -1;
   }
 
   .team-tabs .tab-btn {
