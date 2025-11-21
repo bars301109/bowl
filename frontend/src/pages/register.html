@@ -77,7 +77,7 @@
   <a href="/"><img src="../images/logo.png" class="logo-center img-fluid"/></a>
   <div class="topbar d-flex justify-content-end gap-2 flex-wrap">
     <a class="nav-btn" href="/" data-i18n="nav.home">Главная</a>
-    <a class="link-pill" href="./login.html" data-i18n="nav.login">Войти</a>
+    <a class="link-pill" href="/login" data-i18n="nav.login">Войти</a>
   </div>
   <div class="form-card">
     <div>
@@ -288,7 +288,7 @@ document.getElementById('regForm').addEventListener('submit', async e => {
     msg.textContent = 'Успешно зарегистрированы! Перенаправление...';
     msg.style.color = '#166534';
     msg.className = 'small-muted success';
-    setTimeout(() => location.href = '/pages/login.html', 800);
+    setTimeout(() => location.href = '/login', 800);
   } catch (err) {
     console.error(err);
     msg.textContent = 'Сервер недоступен. Проверьте подключение к интернету.';

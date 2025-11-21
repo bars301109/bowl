@@ -29,13 +29,13 @@
 // Use sessionStorage instead of localStorage - cleared when tab closes
 const adminToken = sessionStorage.getItem('akylman_admin_token');
 if (!adminToken) {
-  window.location.href = './admin-login.html';
+  window.location.href = '/admin-login';
 }
 
 function logoutAdmin() {
   if (confirm('Вы уверены, что хотите выйти?')) {
     sessionStorage.removeItem('akylman_admin_token');
-    window.location.href = './admin-login.html';
+    window.location.href = '/admin-login';
   }
 }
 

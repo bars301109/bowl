@@ -43,7 +43,7 @@
 <script>AkylI18n.initSwitcher();</script>
 <script>
 const token = localStorage.getItem('akylman_token');
-if (!token) location.href = '/pages/login.html';
+if (!token) location.href = '/login';
 
 let teamData = null;
 
@@ -60,7 +60,7 @@ async function load() {
   const j = await res.json();
   if (!j.ok) {
     localStorage.removeItem('akylman_token');
-    location.href = '/pages/login.html';
+    location.href = '/login';
     return;
   }
   teamData = j.team;

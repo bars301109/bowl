@@ -162,7 +162,7 @@
         // Store in sessionStorage (cleared on tab close) instead of localStorage
         sessionStorage.setItem('akylman_admin_token', sessionToken);
         setTimeout(() => {
-          window.location.href = './admin.html';
+          window.location.href = '/admin';
         }, 600);
       } else {
         messageDiv.className = 'error';
