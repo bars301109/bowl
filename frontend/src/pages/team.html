@@ -244,8 +244,8 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-document.getElementById('tabRules').onclick = (e) => {
-  setActiveTab(e.currentTarget);
+function renderRulesSection(btn) {
+  if (btn) setActiveTab(btn);
   const out = document.getElementById('tabContent');
   out.innerHTML = `
     <section aria-labelledby="rules-heading">
@@ -262,10 +262,10 @@ document.getElementById('tabRules').onclick = (e) => {
     </section>
   `;
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
-};
+}
 
-document.getElementById('tabPractice').onclick = (e) => {
-  setActiveTab(e.currentTarget);
+function renderPracticeSection(btn) {
+  if (btn) setActiveTab(btn);
   const out = document.getElementById('tabContent');
   out.innerHTML = `
     <section aria-labelledby="practice-heading">
@@ -292,10 +292,10 @@ document.getElementById('tabPractice').onclick = (e) => {
     </section>
   `;
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
-};
+}
 
-document.getElementById('tabTests').onclick = async (e) => {
-  setActiveTab(e.currentTarget);
+async function renderTestsSection(btn) {
+  if (btn) setActiveTab(btn);
   const out = document.getElementById('tabContent');
   out.setAttribute('aria-busy', 'true');
   out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка тестов...</span></div><p data-i18n="team.loading">Загрузка...</p>';
@@ -376,10 +376,10 @@ document.getElementById('tabTests').onclick = async (e) => {
       </div>
     `;
   }
-};
+}
 
-document.getElementById('tabResults').onclick = async (e) => {
-  setActiveTab(e.currentTarget);
+async function renderResultsSection(btn) {
+  if (btn) setActiveTab(btn);
   const out = document.getElementById('tabContent');
   out.setAttribute('aria-busy', 'true');
   out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка результатов...</span></div><p data-i18n="team.loading_results">Загрузка результатов...</p>';
@@ -456,8 +456,8 @@ document.getElementById('tabResults').onclick = async (e) => {
   }
 };
 
-document.getElementById('tabSettings').onclick = async (e) => {
-  setActiveTab(e.currentTarget);
+async function renderSettingsSection(btn) {
+  if (btn) setActiveTab(btn);
   const out = document.getElementById('tabContent');
   out.setAttribute('aria-busy', 'true');
   out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка настроек...</span></div><p data-i18n="team.loading">Загрузка...</p>';
@@ -533,7 +533,7 @@ document.getElementById('tabSettings').onclick = async (e) => {
   }
   
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
-};
+}
 
 async function startTest(id) {
   const out = document.getElementById('tabContent');
@@ -884,10 +884,32 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// Привязываем вкладку "Главная" к новой функции
-document.getElementById('tabHome').onclick = (e) => {
-  renderHomeSection(e.currentTarget);
-};
+// Обработчики вкладок + обновление URL (/team/<section>)
+function attachTabHandlers() {
+  const map = {
+    tabHome: { section: 'main', render: renderHomeSection },
+    tabTests: { section: 'tests', render: renderTestsSection },
+    tabResults: { section: 'results', render: renderResultsSection },
+    tabSettings: { section: 'settings', render: renderSettingsSection },
+    tabPractice: { section: 'practice', render: renderPracticeSection },
+    tabRules: { section: 'rules', render: renderRulesSection }
+  };
+
+  Object.keys(map).forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    const { section, render } = map[id];
+    btn.onclick = (e) => {
+      const targetBtn = e.currentTarget;
+      // Меняем URL, не перезагружая страницу
+      const newPath = section === 'main' ? '/team/main' : `/team/${section}`;
+      if (window.location.pathname !== newPath && window.history && window.history.pushState) {
+        window.history.pushState({ section }, '', newPath);
+      }
+      render(targetBtn);
+    };
+  });
+}
 
 // Router для подстраниц: /team, /team/main, /team/tests, /team/results, /team/settings, /team/practice, /team/rules
 function initTeamSectionFromUrl() {
@@ -911,6 +933,7 @@ function initTeamSectionFromUrl() {
   }
 }
 
+attachTabHandlers();
 initTeamSectionFromUrl();
 
 // Обработчик изменения языка

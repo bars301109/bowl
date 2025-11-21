@@ -2132,8 +2132,9 @@ body.admin-panel {
 }
 
 .team-layout {
-  display: flex;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 32px;
   align-items: flex-start;
 }
 
@@ -2142,18 +2143,29 @@ body.admin-panel {
 }
 
 .team-tabs {
-  min-width: 220px;
-  max-width: 260px;
-  background: #f9fafb;
-  border-radius: 12px;
-  padding: 12px 10px;
-  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding-right: 24px;
+  border-right: 1px solid var(--border);
+  margin-right: 0;
 }
 
 .team-tabs .tab-btn {
   width: 100%;
   text-align: left;
   justify-content: flex-start;
+  background: transparent;
+  border-radius: 999px 0 0 999px;
+  border: none;
+  border-left: 4px solid transparent;
+}
+
+.team-tabs .tab-btn.active {
+  background: rgba(37, 99, 235, 0.06);
+  border-color: var(--primary);
+  font-weight: 700;
 }
 
 .info-item.editable dd {
@@ -2192,19 +2204,27 @@ body.admin-panel {
 
 @media (max-width: 768px) {
   .team-layout {
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .team-tabs {
     flex-direction: row;
     flex-wrap: wrap;
-    min-width: 0;
-    max-width: none;
+    padding-right: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
   }
 
   .team-tabs .tab-btn {
     flex: 1 1 auto;
     text-align: center;
+    border-left: none;
+    border-radius: 999px;
+  }
+
+  .team-tabs .tab-btn.active {
+    border-left: none;
   }
 }
 
