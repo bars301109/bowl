@@ -985,16 +985,32 @@ app.delete('/api/admin/tests/:id', adminAuth, async (req,res)=>{
 // Delete ALL tests, questions and results (dangerous)
 app.delete('/api/admin/tests', adminAuth, async (req,res)=>{
   try{
-    if (db.type === 'postgres') {
-      // В PostgreSQL используем TRUNCATE CASCADE для эффективного удаления всех записей
-      // CASCADE автоматически удалит связанные записи из дочерних таблиц
-      await runAsync('TRUNCATE TABLE results, questions, tests CASCADE', []);
-    } else {
-      // SQLite - удаляем по порядку (TRUNCATE не поддерживается в SQLite)
-      await runAsync('DELETE FROM results', []);
-      await runAsync('DELETE FROM questions', []);
-      await runAsync('DELETE FROM tests', []);
+    // Удаляем в правильном порядке из-за внешних ключей:
+    // 1. Сначала results (ссылается на tests)
+    // 2. Потом questions (ссылается на tests)  
+    // 3. В конце tests
+    
+    // Удаляем результаты
+    try {
+      const result1 = await runAsync('DELETE FROM results', []);
+      console.log(`Deleted ${result1.changes || 0} results`);
+    } catch (e) {
+      console.warn('Warning deleting results:', e.message);
+      // Продолжаем даже если ошибка
     }
+    
+    // Удаляем вопросы
+    try {
+      const result2 = await runAsync('DELETE FROM questions', []);
+      console.log(`Deleted ${result2.changes || 0} questions`);
+    } catch (e) {
+      console.warn('Warning deleting questions:', e.message);
+      // Продолжаем даже если ошибка
+    }
+    
+    // Удаляем тесты (это должно работать после удаления зависимостей)
+    const result3 = await runAsync('DELETE FROM tests', []);
+    console.log(`Deleted ${result3.changes || 0} tests`);
     
     // best-effort: clear JSON files directory
     try{
@@ -1013,7 +1029,8 @@ app.delete('/api/admin/tests', adminAuth, async (req,res)=>{
     res.json({ ok:true });
   }catch(e){
     console.error('Error deleting all tests:', e);
-    res.status(500).json({ error:e.message });
+    console.error('Error stack:', e.stack);
+    res.status(500).json({ error:e.message || 'Не удалось удалить все тесты' });
   }
 });
 
