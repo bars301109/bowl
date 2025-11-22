@@ -43,7 +43,7 @@
   <div class="reset-modal-content">
     <div class="reset-modal-header">
       <h3>Изменение пароля</h3>
-      <button class="reset-close-btn" onclick="closePasswordChangeModal()" aria-label="Закрыть">×</button>
+      <button class="reset-close-btn" onclick="closePasswordChangeModal(event)" aria-label="Закрыть">×</button>
     </div>
     
     <div id="passwordStep1" class="reset-step">
@@ -57,7 +57,7 @@
       <div id="passwordStep1Message" class="reset-message" style="display: none;"></div>
       <div class="reset-actions">
         <button class="primary" onclick="verifyOldPassword()" id="verifyOldPasswordBtn">Проверить</button>
-        <button class="nav-btn" onclick="closePasswordChangeModal()">Отмена</button>
+        <button class="nav-btn" onclick="closePasswordChangeModal(event)">Отмена</button>
       </div>
     </div>
     
@@ -83,8 +83,56 @@
       </div>
       <div id="passwordStep2Message" class="reset-message" style="display: none;"></div>
       <div class="reset-actions">
-        <button class="primary" onclick="changePassword()" id="changePasswordBtn">Изменить пароль</button>
+        <button class="primary" onclick="changePassword()" id="changePasswordBtn" data-i18n="team.change_password">Изменить пароль</button>
         <button class="nav-btn" onclick="goBackToPasswordStep1()">Назад</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Field Edit Modal -->
+<div id="fieldEditModal" class="reset-modal" style="display: none;">
+  <div class="reset-modal-content" style="max-width: 500px;">
+    <div class="reset-modal-header">
+      <h3 id="fieldEditTitle">Редактирование</h3>
+      <button class="reset-close-btn" onclick="closeFieldEditModal(event)" aria-label="Закрыть">×</button>
+    </div>
+    
+    <div class="reset-step">
+      <p class="reset-description" id="fieldEditDescription">Введите новое значение:</p>
+      <div class="form-row">
+        <label>
+          <span id="fieldEditLabel">Значение</span>
+          <input type="text" id="fieldEditInput" placeholder="" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 15px;"/>
+        </label>
+      </div>
+      <div id="fieldEditMessage" class="reset-message" style="display: none;"></div>
+      <div class="reset-actions">
+        <button class="primary" onclick="saveFieldEdit()" id="saveFieldBtn" data-i18n="team.save">Сохранить</button>
+        <button class="nav-btn" onclick="closeFieldEditModal(event)" data-i18n="team.cancel">Отмена</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Members Edit Modal -->
+<div id="membersEditModal" class="reset-modal" style="display: none;">
+  <div class="reset-modal-content" style="max-width: 600px;">
+    <div class="reset-modal-header">
+      <h3 data-i18n="team.edit_members">Редактирование участников</h3>
+      <button class="reset-close-btn" onclick="closeMembersEditModal(event)" aria-label="Закрыть">×</button>
+    </div>
+    
+    <div class="reset-step">
+      <p class="reset-description" data-i18n="team.edit_members_description">Добавьте или измените участников команды:</p>
+      <div id="membersEditList" style="margin-bottom: 16px;">
+        <!-- Список участников будет добавлен динамически -->
+      </div>
+      <button type="button" class="nav-btn" onclick="addMemberRow()" style="margin-bottom: 16px;" data-i18n="team.add_member">+ Добавить участника</button>
+      <div id="membersEditMessage" class="reset-message" style="display: none;"></div>
+      <div class="reset-actions">
+        <button class="primary" onclick="saveMembers()" id="saveMembersBtn" data-i18n="team.save">Сохранить</button>
+        <button class="nav-btn" onclick="closeMembersEditModal(event)" data-i18n="team.cancel">Отмена</button>
       </div>
     </div>
   </div>
@@ -183,21 +231,21 @@ async function renderHomeSection(btn) {
     
     out.innerHTML = `
       <section aria-labelledby="welcome-heading">
-        <h3 id="welcome-heading" data-i18n="team.welcome">Добро пожаловать в кабинет команды!</h3>
+        <h3 id="welcome-heading" data-i18n="team.welcome">Кабинет команды</h3>
         <div class="team-info" role="region" aria-label="Информация о команде">
           <dl class="info-list">
             <div class="info-item editable" data-field="team_name">
               <dt data-i18n="team.team_name">Название команды:</dt>
               <dd>
                 <span class="info-value">${escapeHtml(teamData.team_name || '')}</span>
-                <button type="button" class="inline-edit-btn" data-field="team_name">Изменить</button>
+                <button type="button" class="inline-edit-btn" data-field="team_name" data-i18n="team.edit">Изменить</button>
               </dd>
             </div>
             <div class="info-item editable" data-field="captain_name">
               <dt data-i18n="team.captain">Капитан:</dt>
               <dd>
                 <span class="info-value">${escapeHtml(teamData.captain_name || '')}</span>
-                <button type="button" class="inline-edit-btn" data-field="captain_name">Изменить</button>
+                <button type="button" class="inline-edit-btn" data-field="captain_name" data-i18n="team.edit">Изменить</button>
               </dd>
             </div>
             ${teamData.captain_phone ? `
@@ -205,7 +253,7 @@ async function renderHomeSection(btn) {
               <dt data-i18n="team.phone">Телефон:</dt>
               <dd>
                 <span class="info-value"><a href="tel:${escapeHtml(teamData.captain_phone)}" aria-label="Позвонить капитану">${escapeHtml(teamData.captain_phone)}</a></span>
-                <button type="button" class="inline-edit-btn" data-field="captain_phone">Изменить</button>
+                <button type="button" class="inline-edit-btn" data-field="captain_phone" data-i18n="team.edit">Изменить</button>
               </dd>
             </div>
             ` : `
@@ -213,7 +261,7 @@ async function renderHomeSection(btn) {
               <dt data-i18n="team.phone">Телефон:</dt>
               <dd>
                 <span class="info-value small-muted">Не указан</span>
-                <button type="button" class="inline-edit-btn" data-field="captain_phone">Изменить</button>
+                <button type="button" class="inline-edit-btn" data-field="captain_phone" data-i18n="team.edit">Изменить</button>
               </dd>
             </div>
             `}
@@ -222,7 +270,7 @@ async function renderHomeSection(btn) {
               <dt data-i18n="team.school">Школа:</dt>
               <dd>
                 <span class="info-value">${escapeHtml(teamData.school)}</span>
-                <button type="button" class="inline-edit-btn" data-field="school">Изменить</button>
+                <button type="button" class="inline-edit-btn" data-field="school" data-i18n="team.edit">Изменить</button>
               </dd>
             </div>
             ` : `
@@ -230,7 +278,7 @@ async function renderHomeSection(btn) {
               <dt data-i18n="team.school">Школа:</dt>
               <dd>
                 <span class="info-value small-muted">Не указана</span>
-                <button type="button" class="inline-edit-btn" data-field="school">Изменить</button>
+                <button type="button" class="inline-edit-btn" data-field="school" data-i18n="team.edit">Изменить</button>
               </dd>
             </div>
             `}
@@ -239,7 +287,7 @@ async function renderHomeSection(btn) {
               <dt data-i18n="team.city">Город:</dt>
               <dd>
                 <span class="info-value">${escapeHtml(teamData.city)}</span>
-                <button type="button" class="inline-edit-btn" data-field="city">Изменить</button>
+                <button type="button" class="inline-edit-btn" data-field="city" data-i18n="team.edit">Изменить</button>
               </dd>
             </div>
             ` : `
@@ -247,14 +295,17 @@ async function renderHomeSection(btn) {
               <dt data-i18n="team.city">Город:</dt>
               <dd>
                 <span class="info-value small-muted">Не указан</span>
-                <button type="button" class="inline-edit-btn" data-field="city">Изменить</button>
+                <button type="button" class="inline-edit-btn" data-field="city" data-i18n="team.edit">Изменить</button>
               </dd>
             </div>
             `}
           </dl>
 
           <section aria-labelledby="members-heading">
-            <h4 id="members-heading" data-i18n="team.members">Участники команды:</h4>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <h4 id="members-heading" data-i18n="team.members" style="margin: 0;">Участники команды:</h4>
+              <button type="button" class="inline-edit-btn" onclick="handleMembersEdit(event)" data-i18n="team.edit">Изменить</button>
+            </div>
             <ul class="members-list" role="list">
               ${membersHtml}
             </ul>
@@ -273,7 +324,7 @@ async function renderHomeSection(btn) {
                 <dt>Пароль:</dt>
                 <dd>
                   <span class="info-value">••••••••</span>
-                  <button type="button" class="inline-edit-btn" data-field="password">Изменить</button>
+                  <button type="button" class="inline-edit-btn" data-field="password" data-i18n="team.edit">Изменить</button>
                 </dd>
               </div>
             </dl>
@@ -284,10 +335,14 @@ async function renderHomeSection(btn) {
 
     // Навесить обработчики на кнопки "Изменить"
     out.querySelectorAll('.inline-edit-btn').forEach(btn => {
+      // Пропускаем кнопки, которые уже имеют onclick (например, для участников)
+      if (btn.hasAttribute('onclick')) {
+        return;
+      }
       const field = btn.getAttribute('data-field');
       if (field === 'password') {
         btn.addEventListener('click', handlePasswordChange);
-      } else {
+      } else if (field) {
         btn.addEventListener('click', () => handleInlineEdit(field));
       }
     });
@@ -755,23 +810,68 @@ async function startTest(id) {
 }
 
 // Редактирование полей профиля (кроме email)
-async function handleInlineEdit(field) {
-  if (!teamData) return;
-  const fieldNames = {
-    team_name: 'Название команды',
-    captain_name: 'Имя капитана',
-    captain_phone: 'Телефон капитана',
-    school: 'Школа',
-    city: 'Город'
-  };
-  const current = (teamData[field] || '').toString();
-  const label = fieldNames[field] || field;
-  const next = window.prompt(`Введите новое значение для поля "${label}":`, current);
-  if (next === null) return;
+let currentEditField = null;
 
+function handleInlineEdit(field) {
+  if (!teamData) return;
+  
+  currentEditField = field;
+  
+  const fieldNames = {
+    team_name: { label: t('team.team_name') || 'Название команды', title: t('team.edit_field') || 'Редактирование' },
+    captain_name: { label: t('team.captain') || 'Капитан', title: t('team.edit_field') || 'Редактирование' },
+    captain_phone: { label: t('team.phone') || 'Телефон', title: t('team.edit_field') || 'Редактирование' },
+    school: { label: t('team.school') || 'Школа', title: t('team.edit_field') || 'Редактирование' },
+    city: { label: t('team.city') || 'Город', title: t('team.edit_field') || 'Редактирование' }
+  };
+  
+  const fieldInfo = fieldNames[field] || { label: field, title: t('team.edit_field') || 'Редактирование' };
+  const current = (teamData[field] || '').toString();
+  
+  const modal = document.getElementById('fieldEditModal');
+  if (!modal) return;
+  
+  document.getElementById('fieldEditTitle').textContent = fieldInfo.title;
+  document.getElementById('fieldEditLabel').textContent = fieldInfo.label;
+  document.getElementById('fieldEditInput').value = current;
+  document.getElementById('fieldEditInput').placeholder = t('team.enter_value') || 'Введите значение';
+  document.getElementById('fieldEditMessage').style.display = 'none';
+  document.getElementById('fieldEditMessage').textContent = '';
+  
+  modal.style.display = 'flex';
+  document.getElementById('fieldEditInput').focus();
+  document.getElementById('fieldEditInput').select();
+  
+  AkylI18n.applyI18n(AkylI18n.getLang(), modal);
+}
+
+function closeFieldEditModal(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const modal = document.getElementById('fieldEditModal');
+  if (modal) {
+    modal.style.display = 'none';
+    currentEditField = null;
+  }
+}
+
+async function saveFieldEdit() {
+  if (!currentEditField || !teamData) return;
+  
+  const input = document.getElementById('fieldEditInput');
+  const newValue = (input?.value || '').trim();
+  const messageEl = document.getElementById('fieldEditMessage');
+  const btn = document.getElementById('saveFieldBtn');
+  
+  btn.disabled = true;
+  btn.textContent = t('team.saving') || 'Сохранение...';
+  
   try {
     const body = {};
-    body[field] = next.trim();
+    body[currentEditField] = newValue;
+    
     const res = await fetch('/api/me', {
       method: 'PUT',
       headers: {
@@ -780,14 +880,22 @@ async function handleInlineEdit(field) {
       },
       body: JSON.stringify(body)
     });
+    
     const j = await res.json();
+    
     if (!res.ok || !j.ok) {
-      const msg = j && j.error ? j.error : 'Не удалось сохранить изменения';
-      alert(msg);
+      const msg = j && j.error ? j.error : (t('team.save_error') || 'Не удалось сохранить изменения');
+      messageEl.textContent = msg;
+      messageEl.className = 'reset-message error';
+      messageEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = t('team.save') || 'Сохранить';
       return;
     }
+    
     teamData = j.team || teamData;
     updateTeamNameHeader();
+    
     // Обновляем локальное хранилище team, если оно есть
     try {
       const currentStored = JSON.parse(localStorage.getItem('team') || 'null');
@@ -795,11 +903,25 @@ async function handleInlineEdit(field) {
         localStorage.setItem('team', JSON.stringify({ ...currentStored, ...teamData }));
       }
     } catch {}
-    // Перерисовываем главную секцию
-    renderHomeSection(document.getElementById('tabHome'));
+    
+    // Успешно
+    messageEl.textContent = t('team.save_success') || 'Изменения успешно сохранены';
+    messageEl.className = 'reset-message success';
+    messageEl.style.display = 'block';
+    
+    setTimeout(() => {
+      closeFieldEditModal();
+      // Перерисовываем главную секцию
+      renderHomeSection(document.getElementById('tabHome'));
+    }, 1000);
+    
   } catch (err) {
     console.error(err);
-    alert('Произошла ошибка при сохранении. Попробуйте ещё раз.');
+    messageEl.textContent = t('team.save_error') || 'Произошла ошибка при сохранении. Попробуйте ещё раз.';
+    messageEl.className = 'reset-message error';
+    messageEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = t('team.save') || 'Сохранить';
   }
 }
 
@@ -820,7 +942,11 @@ function handlePasswordChange() {
 }
 
 // Закрыть модальное окно смены пароля
-function closePasswordChangeModal() {
+function closePasswordChangeModal(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
   const modal = document.getElementById('passwordChangeModal');
   if (modal) {
     modal.style.display = 'none';
@@ -977,7 +1103,7 @@ async function changePassword() {
       messageEl.className = 'reset-message error';
       messageEl.style.display = 'block';
       btn.disabled = false;
-      btn.textContent = 'Изменить пароль';
+      btn.textContent = t('team.change_password');
       return;
     }
     
@@ -997,6 +1123,184 @@ async function changePassword() {
     messageEl.style.display = 'block';
     btn.disabled = false;
     btn.textContent = 'Изменить пароль';
+  }
+}
+
+// Редактирование участников команды
+function handleMembersEdit(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  
+  const modal = document.getElementById('membersEditModal');
+  if (!modal || !teamData) {
+    console.error('Modal or teamData not found');
+    return;
+  }
+  
+  modal.style.display = 'flex';
+  const listContainer = document.getElementById('membersEditList');
+  if (!listContainer) {
+    console.error('membersEditList not found');
+    return;
+  }
+
+  // Сбрасываем состояние сообщений и кнопки сохранения
+  const messageEl = document.getElementById('membersEditMessage');
+  const btn = document.getElementById('saveMembersBtn');
+  if (messageEl) {
+    messageEl.style.display = 'none';
+    messageEl.textContent = '';
+  }
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = t('team.save') || 'Сохранить';
+  }
+  
+  listContainer.innerHTML = '';
+  
+  // Загружаем текущих участников
+  const members = teamData.members || [];
+  if (Array.isArray(members)) {
+    members.forEach((member, index) => {
+      addMemberRow(member.name || '', member.class || '', index);
+    });
+  }
+  
+  // Если участников нет, добавляем одну пустую строку
+  if (members.length === 0) {
+    addMemberRow('', '', 0);
+  }
+  
+  if (typeof AkylI18n !== 'undefined' && AkylI18n.applyI18n) {
+    AkylI18n.applyI18n(AkylI18n.getLang(), modal);
+  }
+}
+
+function addMemberRow(name = '', className = '', index = null) {
+  const listContainer = document.getElementById('membersEditList');
+  if (!listContainer) return;
+  
+  const rowIndex = index !== null ? index : listContainer.children.length;
+  const row = document.createElement('div');
+  row.className = 'member-edit-row';
+  row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-start;';
+  row.innerHTML = `
+    <div style="flex: 1;">
+      <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600;" data-i18n="team.member_name">Имя участника</label>
+      <input type="text" class="member-name-input" placeholder="${t('team.member_name') || 'Имя участника'}" value="${escapeHtml(name)}" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px;"/>
+    </div>
+    <div style="flex: 1;">
+      <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600;" data-i18n="team.member_class">Класс</label>
+      <input type="text" class="member-class-input" placeholder="${t('team.member_class') || 'Класс'}" value="${escapeHtml(className)}" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px;"/>
+    </div>
+    <button type="button" onclick="removeMemberRow(this)" style="margin-top: 24px; padding: 8px 12px; background: var(--danger); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; min-width: 40px;" aria-label="Удалить участника" title="Удалить">×</button>
+  `;
+  listContainer.appendChild(row);
+  
+  // Применяем переводы к новой строке
+  if (typeof AkylI18n !== 'undefined' && AkylI18n.applyI18n) {
+    AkylI18n.applyI18n(AkylI18n.getLang(), row);
+  }
+}
+
+function removeMemberRow(btn) {
+  const row = btn.closest('.member-edit-row');
+  if (row) {
+    row.remove();
+  }
+}
+
+function closeMembersEditModal(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const modal = document.getElementById('membersEditModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+async function saveMembers() {
+  const listContainer = document.getElementById('membersEditList');
+  if (!listContainer) return;
+  
+  const rows = listContainer.querySelectorAll('.member-edit-row');
+  const members = [];
+  
+  rows.forEach(row => {
+    const nameInput = row.querySelector('.member-name-input');
+    const classInput = row.querySelector('.member-class-input');
+    const name = (nameInput?.value || '').trim();
+    const className = (classInput?.value || '').trim();
+    
+    // Добавляем только участников с указанным именем
+    if (name) {
+      members.push({
+        name: name,
+        class: className || null
+      });
+    }
+  });
+  
+  const messageEl = document.getElementById('membersEditMessage');
+  const btn = document.getElementById('saveMembersBtn');
+  
+  btn.disabled = true;
+  btn.textContent = t('team.saving') || 'Сохранение...';
+  
+  try {
+    const res = await fetch('/api/me', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ members: members })
+    });
+    
+    const j = await res.json();
+    
+    if (!res.ok || !j.ok) {
+      const msg = j && j.error ? j.error : 'Не удалось сохранить изменения';
+      messageEl.textContent = msg;
+      messageEl.className = 'reset-message error';
+      messageEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = t('team.save') || 'Сохранить';
+      return;
+    }
+    
+    // Обновляем данные команды
+    teamData = j.team || teamData;
+    if (teamData.members && typeof teamData.members === 'string') {
+      try {
+        teamData.members = JSON.parse(teamData.members);
+      } catch {
+        teamData.members = [];
+      }
+    }
+    
+    // Успешно
+    messageEl.textContent = 'Участники успешно обновлены';
+    messageEl.className = 'reset-message success';
+    messageEl.style.display = 'block';
+    
+    setTimeout(() => {
+      closeMembersEditModal();
+      // Перерисовываем главную секцию
+      renderHomeSection(document.getElementById('tabHome'));
+    }, 1000);
+    
+  } catch (err) {
+    console.error(err);
+    messageEl.textContent = 'Произошла ошибка при сохранении. Попробуйте ещё раз.';
+    messageEl.className = 'reset-message error';
+    messageEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = t('team.save') || 'Сохранить';
   }
 }
 
@@ -1077,6 +1381,66 @@ function initTeamSectionFromUrl() {
 
 attachTabHandlers();
 initTeamSectionFromUrl();
+
+// Обработчики для закрытия модальных окон при клике вне их
+document.addEventListener('click', (e) => {
+  const fieldModal = document.getElementById('fieldEditModal');
+  const membersModal = document.getElementById('membersEditModal');
+  const passwordModal = document.getElementById('passwordChangeModal');
+  
+  // Закрываем только если клик был на самом модальном окне (фон), а не на содержимом
+  if (fieldModal && fieldModal.style.display === 'flex' && e.target === fieldModal) {
+    closeFieldEditModal();
+  }
+  if (membersModal && membersModal.style.display === 'flex' && e.target === membersModal) {
+    closeMembersEditModal();
+  }
+  if (passwordModal && passwordModal.style.display === 'flex' && e.target === passwordModal) {
+    closePasswordChangeModal();
+  }
+});
+
+// Предотвращаем закрытие при клике на содержимое модального окна
+// Выполняем после загрузки DOM
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.reset-modal-content').forEach(content => {
+      content.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    });
+  });
+} else {
+  document.querySelectorAll('.reset-modal-content').forEach(content => {
+    content.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+  });
+}
+
+// Обработчик Enter для сохранения в модальном окне редактирования поля
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && currentEditField) {
+    const modal = document.getElementById('fieldEditModal');
+    if (modal && modal.style.display === 'flex') {
+      e.preventDefault();
+      saveFieldEdit();
+    }
+  }
+  if (e.key === 'Escape') {
+    const fieldModal = document.getElementById('fieldEditModal');
+    const membersModal = document.getElementById('membersEditModal');
+    const passwordModal = document.getElementById('passwordChangeModal');
+    
+    if (fieldModal && fieldModal.style.display === 'flex') {
+      closeFieldEditModal();
+    } else if (membersModal && membersModal.style.display === 'flex') {
+      closeMembersEditModal();
+    } else if (passwordModal && passwordModal.style.display === 'flex') {
+      closePasswordChangeModal();
+    }
+  }
+});
 
 // Обработчик изменения языка
 window.addEventListener('akyl-langchange', () => {

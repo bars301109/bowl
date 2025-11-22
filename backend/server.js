@@ -152,18 +152,6 @@ app.get('/pages/:page', (req, res, next) => {
   return next(); // File not found, continue to next middleware
 });
 
-// Static files with caching headers for performance
-// This MUST be AFTER page routes
-app.use('/', express.static(FRONTEND_DIR, {
-  maxAge: 5000, // 5 seconds
-  etag: true,
-  lastModified: true,
-  setHeaders: (res, path) => {
-    // Cache all files for 5 seconds
-    res.setHeader('Cache-Control', 'public, max-age=5');
-  }
-}));
-
 // Use database adapter methods
 const runAsync = db.runAsync.bind(db);
 const allAsync = db.allAsync.bind(db);
@@ -1215,6 +1203,19 @@ app.put('/api/admin/settings', adminAuth, async (req,res)=>{
     res.json({ ok:true });
   }catch(e){ res.status(500).json({ error:e.message }); }
 });
+
+// Static files with caching headers for performance
+// This MUST be AFTER all API routes to avoid intercepting API requests
+app.use('/', express.static(FRONTEND_DIR, {
+  maxAge: 5000, // 5 seconds
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, path) => {
+    // Cache all files for 5 seconds
+    res.setHeader('Cache-Control', 'public, max-age=5');
+  }
+}));
+
 ensureSchema().then(() => {
   const dbExists = fs.existsSync(DB_FILE);
   const testsDirExists = fs.existsSync(TESTS_DIR);
