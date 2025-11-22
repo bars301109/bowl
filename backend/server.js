@@ -681,7 +681,25 @@ app.get('/api/tests', async (req,res)=>{
         'SELECT id,title,description,lang,duration_minutes,window_start,window_end,category_id FROM tests ORDER BY id'
       );
     }
-    res.json(tests);
+    // Фильтрация по окнам времени
+    const now = new Date();
+    const filtered = tests.filter(t => {
+      if (!t.window_start && !t.window_end) return true;
+      let start = null;
+      let end = null;
+      if (t.window_start) {
+        start = new Date(t.window_start);
+        if (isNaN(start.getTime())) start = null;
+      }
+      if (t.window_end) {
+        end = new Date(t.window_end);
+        if (isNaN(end.getTime())) end = null;
+      }
+      if (start && now < start) return false;
+      if (end && now > end) return false;
+      return true;
+    });
+    res.json(filtered);
   }catch(e){
     res.status(500).json({ error:e.message });
   }
@@ -689,6 +707,27 @@ app.get('/api/tests', async (req,res)=>{
 app.get('/api/tests/:id', async (req,res)=>{
   try{
     const testId = req.params.id;
+    // Проверяем окно доступности теста
+    const meta = await getAsync('SELECT window_start, window_end FROM tests WHERE id = ?', [testId]);
+    if (meta) {
+      const now = new Date();
+      let start = null;
+      let end = null;
+      if (meta.window_start) {
+        start = new Date(meta.window_start);
+        if (isNaN(start.getTime())) start = null;
+      }
+      if (meta.window_end) {
+        end = new Date(meta.window_end);
+        if (isNaN(end.getTime())) end = null;
+      }
+      if (start && now < start) {
+        return res.status(403).json({ error: 'Тест ещё недоступен' });
+      }
+      if (end && now > end) {
+        return res.status(403).json({ error: 'Окно теста уже закрыто' });
+      }
+    }
     // Основной источник — таблица questions; файл используется только для очень старых данных
     let rows = await allAsync(
       'SELECT id, ordinal, text, options, points, correct, category_id, lang FROM questions WHERE test_id=? ORDER BY ordinal',
@@ -946,9 +985,17 @@ app.delete('/api/admin/tests/:id', adminAuth, async (req,res)=>{
 // Delete ALL tests, questions and results (dangerous)
 app.delete('/api/admin/tests', adminAuth, async (req,res)=>{
   try{
-    await runAsync('DELETE FROM results', []);
-    await runAsync('DELETE FROM questions', []);
-    await runAsync('DELETE FROM tests', []);
+    if (db.type === 'postgres') {
+      // В PostgreSQL используем TRUNCATE CASCADE для эффективного удаления всех записей
+      // CASCADE автоматически удалит связанные записи из дочерних таблиц
+      await runAsync('TRUNCATE TABLE results, questions, tests CASCADE', []);
+    } else {
+      // SQLite - удаляем по порядку (TRUNCATE не поддерживается в SQLite)
+      await runAsync('DELETE FROM results', []);
+      await runAsync('DELETE FROM questions', []);
+      await runAsync('DELETE FROM tests', []);
+    }
+    
     // best-effort: clear JSON files directory
     try{
       if (fs.existsSync(TESTS_DIR)) {
@@ -965,7 +1012,7 @@ app.delete('/api/admin/tests', adminAuth, async (req,res)=>{
     }
     res.json({ ok:true });
   }catch(e){
-    console.error(e);
+    console.error('Error deleting all tests:', e);
     res.status(500).json({ error:e.message });
   }
 });

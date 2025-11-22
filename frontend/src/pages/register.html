@@ -85,6 +85,12 @@
       <form id="regForm">
         <div class="form-row">
           <label><span data-i18n="register.team_name">Название команды</span><input name="team_name" placeholder="Например: Шумкарлар" data-i18n-ph="register.team_name.placeholder" required/></label>
+          <label>
+            <span data-i18n="register.category">Категория</span>
+            <select id="team_category" name="category_id" class="admin-input" required>
+              <option value="">Выберите категорию</option>
+            </select>
+          </label>
         </div>
         <div class="form-row">
           <label>
@@ -109,12 +115,6 @@
         </div>
         <div class="form-row">
           <label><span data-i18n="register.city">Город</span><input name="city" placeholder="Город" data-i18n-ph="register.city.placeholder"/></label>
-          <label>
-            <span data-i18n="register.category">Категория</span>
-            <select id="team_category" name="category_id" class="admin-input">
-              <option value="" data-i18n="register.category_placeholder">Выберите категорию</option>
-            </select>
-          </label>
         </div>
         <div class="form-row">
           <label><span data-i18n="register.members_count">Количество участников</span><select id="members_count" name="members_count"><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
@@ -207,8 +207,10 @@ async function loadCategoriesForTeams() {
     const res = await fetch('/api/categories');
     if (!res.ok) return;
     const cats = await res.json();
-    categorySelect.innerHTML = `<option value="">${AkylI18n.t('register.category_placeholder') || 'Выберите категорию'}</option>` +
-      cats.map(c => `<option value="${c.id}">${AkylI18n.getLang()==='ky' ? escHtml(c.name_ky) : escHtml(c.name_ru)}</option>`).join('');
+    const lang = AkylI18n.getLang();
+    const placeholder = lang === 'ky' ? 'Категорияны тандаңыз' : 'Выберите категорию';
+    categorySelect.innerHTML = `<option value="">${placeholder}</option>` +
+      cats.map(c => `<option value="${c.id}">${lang==='ky' ? escHtml(c.name_ky) : escHtml(c.name_ru)}</option>`).join('');
   } catch (e) {
     console.error('Failed to load categories', e);
   }
@@ -265,6 +267,13 @@ document.getElementById('regForm').addEventListener('submit', async e => {
 
   const data = Object.fromEntries(new FormData(e.target).entries());
 
+  if (!data.category_id) {
+    msg.textContent = AkylI18n.t('register.category.placeholder') || 'Выберите категорию';
+    msg.style.color = '#b00020';
+    msg.className = 'small-muted error';
+    return;
+  }
+
   if (!isValidEmail(data.captain_email || '')) {
     msg.textContent = 'Некорректный email';
     msg.style.color = '#b00020';
@@ -302,8 +311,8 @@ document.getElementById('regForm').addEventListener('submit', async e => {
     captain_phone: data.captain_phone,
     members,
     school: data.school,
-    city: data.city
-  
+    city: data.city,
+    category_id: data.category_id
   };
 
   try {

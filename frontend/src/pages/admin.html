@@ -351,6 +351,9 @@ async function renderQuestions(testId){
       </div>
     </div>
     <div id="qList" class="q-list" style="display:flex;flex-direction:column;gap:12px;margin-top:12px"></div>
+    <div style="margin-top:20px; padding-top:20px; border-top:2px solid var(--border, #e2e8f0);">
+      <button id="saveAllQuestions" class="admin-button success" style="font-size:16px; padding:12px 24px">💾 Сохранить все вопросы</button>
+    </div>
   `;
   document.getElementById('backTests').onclick = renderTests;
   document.getElementById('exportCsv').onclick = ()=>{ window.location = '/api/admin/tests/'+currentTestId+'/questions/export-csv'; };
@@ -364,14 +367,97 @@ async function renderQuestions(testId){
 
   const qList = document.getElementById('qList');
 
+  async function saveAllQuestions(){
+    const btn = document.getElementById('saveAllQuestions');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '💾 Сохранение...';
+    
+    const cards = Array.from(qList.querySelectorAll('.card'));
+    let errors = [];
+    let saved = 0;
+    
+    for(let i = 0; i < cards.length; i++){
+      const card = cards[i];
+      const qid = card.dataset.qid;
+      const typeSel = card.querySelector('.q-type');
+      const type = typeSel ? typeSel.value : 'mcq';
+      const text = (card.querySelector('.q-text')?.value || '').trim();
+      const points = parseInt(card.querySelector('.q-points')?.value || '1', 10) || 1;
+      const category_id = parseInt(card.querySelector('.q-cat')?.value || '0', 10) || null;
+      
+      let options = null;
+      let correct = '';
+      
+      if(type === 'mcq'){
+        const optsWrap = card.querySelector('.opts');
+        if(optsWrap){
+          const res = collectOptionsFrom(optsWrap);
+          options = res.options;
+          correct = res.correct;
+        }
+      } else {
+        correct = (card.querySelector('.q-correct-text')?.value || '').trim();
+      }
+      
+      if(!text){
+        continue; // Пропускаем пустые вопросы
+      }
+      
+      // Если options пустой массив, отправляем null
+      if(Array.isArray(options) && options.length === 0){
+        options = null;
+      }
+      
+      const ordinal = i + 1;
+      
+      try{
+        if(qid){
+          // Обновление существующего вопроса
+          const payload = { ordinal, text, options, correct, points, category_id };
+          const r = await fetch('/api/admin/questions/'+qid, { method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
+          if(!r.ok){
+            errors.push(`Вопрос #${ordinal}: ошибка сохранения`);
+            continue;
+          }
+        } else {
+          // Создание нового вопроса
+          const payload = { ordinal, text, options, correct, points, category_id };
+          const r = await fetch('/api/admin/tests/'+currentTestId+'/questions', { method:'POST', headers:aHeaders(), body: JSON.stringify(payload) });
+          if(!r.ok){
+            errors.push(`Вопрос #${ordinal}: ошибка создания`);
+            continue;
+          }
+        }
+        saved++;
+      } catch(e){
+        errors.push(`Вопрос #${ordinal}: ${e.message}`);
+      }
+    }
+    
+    btn.disabled = false;
+    btn.textContent = originalText;
+    
+    if(errors.length > 0){
+      showAlert(`Сохранено: ${saved}, ошибок: ${errors.length}`, 'error');
+    } else {
+      showAlert(`Все вопросы сохранены (${saved})`, 'success');
+    }
+    
+    // Перерисовываем список для обновления ordinals и удаления пустых карточек
+    renderQuestions(currentTestId);
+  }
+  
+  document.getElementById('saveAllQuestions').onclick = saveAllQuestions;
+
   function createOptionRow(initialValue='', groupName, isChecked=false){
     const row = document.createElement('div');
     row.className = 'form-row';
     row.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;width:100%">
-        <input type="radio" class="q-correct-radio" name="${groupName}" ${isChecked?'checked':''} title="Правильный"/>
-        <input class="admin-input opt" placeholder="Вариант ответа" value="${esc(initialValue)}" style="flex:1; min-width:720px; max-width:100%"/>
-        <button class="admin-button danger opt-del" title="Удалить вариант" style="padding:8px 10px">✖</button>
+        <input type="radio" class="q-correct-radio" name="${groupName}" ${isChecked?'checked':''} title="Правильный" style="flex-shrink:0"/>
+        <input class="admin-input opt" placeholder="Вариант ответа" value="${esc(initialValue)}" style="flex:1; min-width:0; max-width:calc(100% - 100px)"/>
+        <button class="admin-button danger opt-del" title="Удалить вариант" style="padding:8px 12px; flex-shrink:0; white-space:nowrap">✖ Удалить</button>
       </div>
     `;
     const input = row.querySelector('input.opt');
@@ -470,9 +556,6 @@ async function renderQuestions(testId){
         <label>Баллы<input class="admin-input q-points" type="number" value="${q.points||1}" style="width:80px"/></label>
         <label>Категория<select class="admin-input q-cat">${cs.map(c=>`<option value="${c.id}" ${q.category_id===c.id?'selected':''}>${c.name_ru}</option>`).join('')}</select></label>
       </div>
-      <div class="mt-2 d-flex" style="gap:8px">
-        <button class="admin-button success q-save">💾 Сохранить</button>
-      </div>
     `;
     const optsWrap = card.querySelector('.opts');
     const groupName = 'g'+Math.random().toString(36).slice(2);
@@ -490,7 +573,7 @@ async function renderQuestions(testId){
       textBlock.style.display = isText ? '' : 'none';
     };
     card.querySelector('.add-opt').onclick = (e)=>{ e.preventDefault(); optsWrap.appendChild(createOptionRow('', groupName, false)); };
-    card.querySelector('.q-del').onclick = async ()=>{ if(!confirm('Удалить вопрос?')) return; const r=await fetch('/api/admin/questions/'+q.id,{ method:'DELETE', headers:aHeaders() }); if(!r.ok){ showAlert('Ошибка удаления', 'error'); return; } renderQuestions(currentTestId); };
+    card.querySelector('.q-del').onclick = async ()=>{ const r=await fetch('/api/admin/questions/'+q.id,{ method:'DELETE', headers:aHeaders() }); if(!r.ok){ showAlert('Ошибка удаления', 'error'); return; } renderQuestions(currentTestId); };
     card.querySelector('.q-dup').onclick = async ()=>{
       const type = typeSel.value;
       const text = card.querySelector('.q-text').value.trim();
@@ -507,25 +590,6 @@ async function renderQuestions(testId){
       const payload = { ordinal: qs.length+1, text, options, correct, points, category_id };
       const r = await fetch('/api/admin/tests/'+currentTestId+'/questions',{ method:'POST', headers:aHeaders(), body: JSON.stringify(payload) });
       if(!r.ok){ showAlert('Ошибка дублирования', 'error'); return; }
-      renderQuestions(currentTestId);
-    };
-    card.querySelector('.q-save').onclick = async ()=>{
-      const type = typeSel.value;
-      const text = card.querySelector('.q-text').value.trim();
-      const points = parseInt(card.querySelector('.q-points').value||'1',10)||1;
-      const category_id = parseInt(card.querySelector('.q-cat').value,10)||null;
-      let options = null; let correct = '';
-      if(type==='mcq'){
-        const res = collectOptionsFrom(optsWrap);
-        options = res.options;
-        correct = res.correct;
-      } else {
-        correct = (card.querySelector('.q-correct-text').value||'').trim();
-      }
-      const payload = { ordinal: q.ordinal, text, options, correct, points, category_id };
-      const r = await fetch('/api/admin/questions/'+q.id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
-      if(!r.ok){ showAlert('Ошибка сохранения', 'error'); return; }
-      showAlert('Вопрос сохранен', 'success');
       renderQuestions(currentTestId);
     };
 
