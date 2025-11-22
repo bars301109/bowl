@@ -109,6 +109,14 @@
         </div>
         <div class="form-row">
           <label><span data-i18n="register.city">Город</span><input name="city" placeholder="Город" data-i18n-ph="register.city.placeholder"/></label>
+          <label>
+            <span data-i18n="register.category">Категория</span>
+            <select id="team_category" name="category_id" class="admin-input">
+              <option value="" data-i18n="register.category_placeholder">Выберите категорию</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-row">
           <label><span data-i18n="register.members_count">Количество участников</span><select id="members_count" name="members_count"><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
         </div>
         <div id="members_fields"></div>
@@ -128,6 +136,7 @@
 <script>
 const membersDiv = document.getElementById('members_fields');
 const passwordInput = document.getElementById('passwordInput');
+const categorySelect = document.getElementById('team_category');
 
 const requirements = {
   length: /^.{8,}$/,
@@ -191,12 +200,36 @@ function renderMembers(n) {
 
 renderMembers(3);
 
+// Загрузка категорий для выбора команды
+async function loadCategoriesForTeams() {
+  if (!categorySelect) return;
+  try {
+    const res = await fetch('/api/categories');
+    if (!res.ok) return;
+    const cats = await res.json();
+    categorySelect.innerHTML = `<option value="">${AkylI18n.t('register.category_placeholder') || 'Выберите категорию'}</option>` +
+      cats.map(c => `<option value="${c.id}">${AkylI18n.getLang()==='ky' ? escHtml(c.name_ky) : escHtml(c.name_ru)}</option>`).join('');
+  } catch (e) {
+    console.error('Failed to load categories', e);
+  }
+}
+
+function escHtml(s){
+  const div = document.createElement('div');
+  div.textContent = s || '';
+  return div.innerHTML;
+}
+
+loadCategoriesForTeams();
+
 document.getElementById('members_count').addEventListener('change', e => renderMembers(parseInt(e.target.value)));
 
 window.addEventListener('akyl-langchange', () => {
   renderMembers(parseInt(document.getElementById('members_count').value));
   // Update password requirements text
   AkylI18n.applyI18n(AkylI18n.getLang());
+  // Перерисовать список категорий с учётом языка
+  loadCategoriesForTeams();
 });
 
 // Update password requirements on input
@@ -270,6 +303,7 @@ document.getElementById('regForm').addEventListener('submit', async e => {
     members,
     school: data.school,
     city: data.city
+  
   };
 
   try {

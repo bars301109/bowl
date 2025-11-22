@@ -104,9 +104,13 @@ async function renderSettings(){
 async function renderTests(){
   setActiveTab(document.getElementById('tabTests'));
   showLoading('Загрузка тестов...');
-  const res = await fetch('/api/admin/tests',{ headers: aHeaders() });
-  if(!res.ok){ showAlert('Нет доступа. Проверьте токен.', 'error'); return; }
-  const tests = await res.json();
+  const [testsRes, catsRes] = await Promise.all([
+    fetch('/api/admin/tests',{ headers: aHeaders() }),
+    fetch('/api/admin/categories',{ headers: aHeaders() })
+  ]);
+  if(!testsRes.ok){ showAlert('Нет доступа. Проверьте токен.', 'error'); return; }
+  const tests = await testsRes.json();
+  const cats = catsRes.ok ? await catsRes.json() : [];
   content.innerHTML = `
     <div class="admin-form">
       <h3>📝 Управление тестами</h3>
@@ -122,7 +126,18 @@ async function renderTests(){
         <label>🕐 Начало окна<input id="t_start" class="admin-input" type="datetime-local"/></label>
         <label>🕐 Конец окна<input id="t_end" class="admin-input" type="datetime-local"/></label>
       </div>
-      <div style="margin-top:8px"><button class="admin-button success" id="addTest">➕ Создать тест</button></div>
+      <div class="form-row">
+        <label>📂 Категория
+          <select id="t_category" class="admin-input">
+            <option value="">Без категории</option>
+            ${cats.map(c=>`<option value="${c.id}">${esc(c.name_ru || '')}</option>`).join('')}
+          </select>
+        </label>
+      </div>
+      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="admin-button success" id="addTest">➕ Создать тест</button>
+        <button class="admin-button danger" id="resetTests">🧹 Удалить все тесты</button>
+      </div>
     </div>
     <div class="admin-table-wrapper">
       <table class="admin-table">
@@ -133,6 +148,7 @@ async function renderTests(){
             <th>Язык</th>
             <th>Длит.</th>
             <th>Окно</th>
+            <th>Категория</th>
             <th>Действия</th>
           </tr>
         </thead>
@@ -143,6 +159,7 @@ async function renderTests(){
             <td>${esc(t.lang||'ru')}</td>
             <td>${t.duration_minutes||60} мин</td>
             <td>${esc(t.window_start||'-')} → ${esc(t.window_end||'-')}</td>
+            <td>${esc(t.category_name_ru || '')}</td>
             <td>
               <div class="admin-table-actions">
                 <button data-id="${t.id}" class="admin-button secondary edit">✏️ Редакт.</button>
@@ -158,10 +175,25 @@ async function renderTests(){
   document.getElementById('addTest').onclick = async ()=>{
     const titleV = val('t_title');
     if(!titleV){ showAlert('Введите название теста', 'error'); return; }
-    const body = { title: titleV, description: val('t_desc'), lang: val('t_lang'), duration_minutes: num('t_dur'), window_start: val('t_start')||null, window_end: val('t_end')||null };
+    const body = {
+      title: titleV,
+      description: val('t_desc'),
+      lang: val('t_lang'),
+      duration_minutes: num('t_dur'),
+      window_start: val('t_start')||null,
+      window_end: val('t_end')||null,
+      category_id: val('t_category') || null
+    };
     const r = await fetch('/api/admin/tests',{ method:'POST', headers: aHeaders(), body: JSON.stringify(body) });
     if(!r.ok){ let msg=''; try{ msg = await r.text(); }catch{} showAlert('Ошибка создания'+(msg?': '+msg:''), 'error'); return; }
     showAlert('Тест создан!', 'success');
+    renderTests();
+  };
+  document.getElementById('resetTests').onclick = async ()=>{
+    if(!confirm('🧹 Удалить ВСЕ тесты, вопросы и результаты? Это действие нельзя отменить!')) return;
+    const r = await fetch('/api/admin/tests',{ method:'DELETE', headers: aHeaders() });
+    if(!r.ok){ showAlert('Ошибка удаления всех тестов', 'error'); return; }
+    showAlert('Все тесты и результаты удалены', 'success');
     renderTests();
   };
   content.querySelectorAll('button.edit').forEach(b=> b.onclick = ()=> editTest(b.dataset.id));
@@ -169,8 +201,12 @@ async function renderTests(){
   content.querySelectorAll('button.qs').forEach(b=> b.onclick = ()=> renderQuestions(parseInt(b.dataset.id,10)));
 }
 async function editTest(id){
-  const res = await fetch('/api/admin/tests',{ headers: aHeaders() });
-  const tests = await res.json();
+  const [testsRes, catsRes] = await Promise.all([
+    fetch('/api/admin/tests',{ headers: aHeaders() }),
+    fetch('/api/admin/categories',{ headers: aHeaders() })
+  ]);
+  const tests = await testsRes.json();
+  const cats = catsRes.ok ? await catsRes.json() : [];
   const t = tests.find(x=> x.id==id);
   if(!t){ showAlert('Тест не найден', 'error'); return; }
   content.innerHTML = `
@@ -179,6 +215,14 @@ async function editTest(id){
       <div class="form-row"><label>📝 Название<input id="t_title" class="admin-input" value="${esc(t.title)}"/></label><label>📄 Описание<input id="t_desc" class="admin-input" value="${esc(t.description||'')}"/></label></div>
       <div class="form-row"><label>🌐 Язык<select id="t_lang" class="admin-input"><option value="ru" ${t.lang==='ru'?'selected':''}>🇷🇺 RU</option><option value="ky" ${t.lang==='ky'?'selected':''}>🇰🇬 KY</option></select></label><label>⏱️ Длительность<input id="t_dur" class="admin-input" type="number" value="${t.duration_minutes}"/></label></div>
       <div class="form-row"><label>🕐 Начало окна<input id="t_start" class="admin-input" type="datetime-local" value="${toDatetimeLocalValue(t.window_start)}"/></label><label>🕐 Конец окна<input id="t_end" class="admin-input" type="datetime-local" value="${toDatetimeLocalValue(t.window_end)}"/></label></div>
+      <div class="form-row">
+        <label>📂 Категория
+          <select id="t_category" class="admin-input">
+            <option value="">Без категории</option>
+            ${cats.map(c=>`<option value="${c.id}" ${t.category_id===c.id?'selected':''}>${esc(c.name_ru || '')}</option>`).join('')}
+          </select>
+        </label>
+      </div>
       <div style="margin-top:8px"><button class="admin-button success" id="save">💾 Сохранить</button> <button class="admin-button secondary" id="back">⬅️ Назад</button></div>
     </div>
   `;
@@ -186,7 +230,15 @@ async function editTest(id){
   document.getElementById('save').onclick = async ()=>{
     const titleV = val('t_title');
     if(!titleV){ showAlert('Введите название теста', 'error'); return; }
-    const body = { title: titleV, description: val('t_desc'), lang: val('t_lang'), duration_minutes: num('t_dur'), window_start: val('t_start')||null, window_end: val('t_end')||null };
+    const body = {
+      title: titleV,
+      description: val('t_desc'),
+      lang: val('t_lang'),
+      duration_minutes: num('t_dur'),
+      window_start: val('t_start')||null,
+      window_end: val('t_end')||null,
+      category_id: val('t_category') || null
+    };
     const r = await fetch('/api/admin/tests/'+id,{ method:'PUT', headers: aHeaders(), body: JSON.stringify(body) });
     if(!r.ok){ let msg=''; try{ msg = await r.text(); }catch{} showAlert('Ошибка сохранения'+(msg?': '+msg:''), 'error'); return; }
     showAlert('Тест обновлен!', 'success');

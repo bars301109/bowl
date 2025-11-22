@@ -174,6 +174,7 @@ async function ensureSchema(){
       members ${textType},
       school ${textType},
       city ${textType},
+      category_id INTEGER,
       created_at ${textType}
     )`);
     // Password reset codes table
@@ -193,13 +194,16 @@ async function ensureSchema(){
       duration_minutes INTEGER DEFAULT 60,
       window_start ${textType},
       window_end ${textType},
+      category_id INTEGER,
       created_at ${textType}
     )`);
-    // best-effort schema upgrades for tests (in case of older DBs)
+    // best-effort schema upgrades for existing DBs
+    try{ await runAsync('ALTER TABLE teams ADD COLUMN category_id INTEGER'); }catch(e){}
     try{ await runAsync(`ALTER TABLE tests ADD COLUMN lang ${textType} DEFAULT 'ru'`); }catch(e){}
     try{ await runAsync('ALTER TABLE tests ADD COLUMN duration_minutes INTEGER DEFAULT 60'); }catch(e){}
     try{ await runAsync(`ALTER TABLE tests ADD COLUMN window_start ${textType}`); }catch(e){}
     try{ await runAsync(`ALTER TABLE tests ADD COLUMN window_end ${textType}`); }catch(e){}
+    try{ await runAsync('ALTER TABLE tests ADD COLUMN category_id INTEGER'); }catch(e){}
     await runAsync(`CREATE TABLE IF NOT EXISTS categories (
       id ${autoIncrement},
       name_ru ${textType} NOT NULL,
@@ -377,7 +381,12 @@ app.post('/api/register', async (req,res)=>{
     const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
     // Generate a random login for backward compatibility (not used for auth)
     const randomLogin = 'team_' + Math.random().toString(36).substring(2, 15);
-    await runAsync(`INSERT INTO teams (team_name, login, password, captain_name, captain_email, captain_phone, members, school, city, created_at) VALUES (?,?,?,?,?,?,?,?,?,${nowFunc})`, [data.team_name, randomLogin, hashed, data.captain_name, data.captain_email, data.captain_phone, members_json, data.school, data.city]);
+    const categoryId = data.category_id ? parseInt(data.category_id, 10) || null : null;
+    await runAsync(
+      `INSERT INTO teams (team_name, login, password, captain_name, captain_email, captain_phone, members, school, city, category_id, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,${nowFunc})`,
+      [data.team_name, randomLogin, hashed, data.captain_name, data.captain_email, data.captain_phone, members_json, data.school, data.city, categoryId]
+    );
     console.log(`✓ Team registered: ${data.team_name} (${email})`);
     res.json({ ok:true });
   }catch(e){ console.error(e); res.status(500).json({ error:e.message }); }
@@ -658,18 +667,52 @@ app.post('/api/password-reset/verify', async (req,res)=>{
   }
 });
 function adminAuth(req,res,next){ const token = req.headers['x-admin-token'] || ''; if (!token || !token.startsWith('admin-')) return res.status(403).json({ error:'Forbidden' }); next(); }
-app.get('/api/tests', async (req,res)=>{ try{ const tests = await allAsync('SELECT id,title,description,lang,duration_minutes FROM tests ORDER BY id'); res.json(tests); }catch(e){ res.status(500).json({ error:e.message }); } });
+app.get('/api/tests', async (req,res)=>{
+  try{
+    const categoryId = req.query.category_id ? parseInt(req.query.category_id, 10) || null : null;
+    let tests;
+    if (categoryId) {
+      tests = await allAsync(
+        'SELECT id,title,description,lang,duration_minutes,window_start,window_end,category_id FROM tests WHERE category_id = ? ORDER BY id',
+        [categoryId]
+      );
+    } else {
+      tests = await allAsync(
+        'SELECT id,title,description,lang,duration_minutes,window_start,window_end,category_id FROM tests ORDER BY id'
+      );
+    }
+    res.json(tests);
+  }catch(e){
+    res.status(500).json({ error:e.message });
+  }
+});
 app.get('/api/tests/:id', async (req,res)=>{
   try{
-    // Prefer file-backed questions; fallback to DB if file empty
     const testId = req.params.id;
-    let qs = readQuestionsFile(testId).map(q=>({ id:q.id, ordinal:q.ordinal||0, text:q.text||'', options:(Array.isArray(q.options)?q.options:[]), points:q.points||1 }));
-    if(qs.length===0){
-      const rows = await allAsync('SELECT id, ordinal, text, options, points FROM questions WHERE test_id=? ORDER BY ordinal',[testId]);
-      rows.forEach(r=>{ try{ r.options = JSON.parse(r.options||'[]'); }catch{} });
-      qs = rows;
+    // Основной источник — таблица questions; файл используется только для очень старых данных
+    let rows = await allAsync(
+      'SELECT id, ordinal, text, options, points, correct, category_id, lang FROM questions WHERE test_id=? ORDER BY ordinal',
+      [testId]
+    );
+    if (!rows.length) {
+      // Fallback: импорт из JSON‑файла (для старых БД)
+      const fileQs = readQuestionsFile(testId);
+      rows = fileQs.map(q => ({
+        id: q.id,
+        ordinal: q.ordinal || 0,
+        text: q.text || '',
+        options: q.options || [],
+        points: q.points || 1,
+        correct: q.correct || '',
+        category_id: q.category_id || null,
+        lang: q.lang || 'ru'
+      }));
+    } else {
+      rows.forEach(r => {
+        try { r.options = JSON.parse(r.options || '[]'); } catch { r.options = []; }
+      });
     }
-    res.json(qs);
+    res.json(rows);
   }catch(e){ res.status(500).json({ error:e.message }); }
 });
 // Public categories (for homepage rendering)
@@ -679,32 +722,59 @@ app.post('/api/tests/:id/submit', teamAuth, async (req,res)=>{
   try{
     const testId = req.params.id;
     const answers = req.body.answers || {};
-    const qs = readQuestionsFile(testId);
+
+    // Берём вопросы так же, как в /api/tests/:id: сначала из файла, затем (если нужно) из БД
+    let qs = readQuestionsFile(testId);
+    if (!Array.isArray(qs) || qs.length === 0) {
+      const rows = await allAsync('SELECT id, ordinal, text, options, correct, points FROM questions WHERE test_id=? ORDER BY ordinal',[testId]);
+      rows.forEach(r => { try { r.options = JSON.parse(r.options || '[]'); } catch {} });
+      qs = rows;
+    }
+
     let score = 0;
     const answersArr = [];
+
     for (const q of qs){
-      const given = answers[q.id] !== undefined ? answers[q.id] : null;
+      const qid = q.id;
+      const given = Object.prototype.hasOwnProperty.call(answers, qid) ? answers[qid] : null;
       const correct = q.correct;
       let qok = false;
-      if (correct===null||correct===undefined){
-        qok=false;
-      } else if (String(correct).match(/^\d+$/)){
-        if (String(given) === String(correct)) qok=true;
+
+      if (correct === null || correct === undefined || correct === '') {
+        qok = false;
+      } else if (String(correct).match(/^\d+$/)) {
+        // Вариант с единственным правильным вариантом ответа (индекс опции)
+        if (given !== null && given !== undefined && String(given) === String(correct)) {
+          qok = true;
+        }
       } else {
-        if (String(given||'').trim().toLowerCase() === String(correct).trim().toLowerCase()) qok=true;
+        // Текстовый ответ: сравнение без учёта регистра и пробелов по краям
+        const givenText = String(given || '').trim().toLowerCase();
+        const correctText = String(correct).trim().toLowerCase();
+        if (givenText && givenText === correctText) {
+          qok = true;
+        }
       }
-      if (qok) score += (q.points||1);
-      answersArr.push({ question_id: q.id, given, correct });
+
+      if (qok) score += (q.points || 1);
+      answersArr.push({ question_id: qid, given, correct });
     }
+
     const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
-    await runAsync(`INSERT INTO results (team_id, test_id, score, answers, taken_at) VALUES (?,?,?,?,${nowFunc})`, [req.team.id, testId, score, JSON.stringify(answersArr)]);
+    await runAsync(
+      `INSERT INTO results (team_id, test_id, score, answers, taken_at) VALUES (?,?,?,?,${nowFunc})`,
+      [req.team.id, testId, score, JSON.stringify(answersArr)]
+    );
     console.log(`✓ Test submitted: team_id=${req.team.id}, test_id=${testId}, score=${score}`);
     res.json({ ok:true, score });
-  }catch(e){ res.status(500).json({ error:e.message }); }
+  }catch(e){
+    console.error('Error in /api/tests/:id/submit', e);
+    res.status(500).json({ error:e.message });
+  }
 });
 app.get('/api/me', teamAuth, async (req,res)=>{
   try{
-    const t = await getAsync('SELECT id, team_name, login, captain_name, captain_email, captain_phone, members, school, city FROM teams WHERE id=?',[req.team.id]);
+    const t = await getAsync('SELECT id, team_name, login, captain_name, captain_email, captain_phone, members, school, city, category_id FROM teams WHERE id=?',[req.team.id]);
     if (!t) return res.status(404).json({ error:'Team not found' });
     // Parse members JSON string to array
     if (t.members && typeof t.members === 'string') {
@@ -725,7 +795,7 @@ app.get('/api/me', teamAuth, async (req,res)=>{
 // Update current team profile (except email & login)
 app.put('/api/me', teamAuth, async (req, res) => {
   try {
-    const allowedFields = ['team_name', 'captain_name', 'captain_phone', 'school', 'city', 'members'];
+    const allowedFields = ['team_name', 'captain_name', 'captain_phone', 'school', 'city', 'members', 'category_id'];
     const updates = [];
     const params = [];
 
@@ -816,15 +886,49 @@ app.post('/api/me/change-password', teamAuth, async (req, res) => {
   }
 });
 app.get('/api/me/results', teamAuth, async (req,res)=>{ try{ const rows = await allAsync('SELECT r.id, r.test_id, r.score, r.taken_at, t.title FROM results r LEFT JOIN tests t ON t.id = r.test_id WHERE r.team_id = ? ORDER BY r.taken_at DESC',[req.team.id]); res.json(rows);}catch(e){ res.status(500).json({ error:e.message }); } });
-app.get('/api/admin/tests', adminAuth, async (req,res)=>{ try{ const tests = await allAsync('SELECT * FROM tests ORDER BY id DESC'); res.json(tests);}catch(e){ res.status(500).json({ error:e.message }); } });
-app.post('/api/admin/tests', adminAuth, async (req,res)=>{ try{ const { title, description, lang, duration_minutes, window_start, window_end, window_range } = req.body; const range = parseHumanWindow(window_range); const ws = range.start || window_start || null; const we = range.end || window_end || null; const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')'; const stmt = await runAsync(`INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, created_at) VALUES (?,?,?,?,?,?,${nowFunc})${db.type === 'postgres' ? ' RETURNING id' : ''}`,[title,description,lang||'ru',duration_minutes||30, ws, we]); const testId = db.type === 'postgres' ? (stmt.rows?.[0]?.id || stmt.id) : stmt.lastID; try{ writeQuestionsFile(testId, []); }catch(e){} res.json({ ok:true, id: testId }); }catch(e){ res.status(500).json({ error:e.message }); } });
-app.put('/api/admin/tests/:id', adminAuth, async (req,res)=>{
+app.get('/api/admin/tests', adminAuth, async (req,res)=>{
   try{
-    const { title, description, lang, duration_minutes, window_start, window_end, window_range } = req.body;
+    const tests = await allAsync(
+      `SELECT t.*, c.name_ru AS category_name_ru, c.name_ky AS category_name_ky
+       FROM tests t
+       LEFT JOIN categories c ON c.id = t.category_id
+       ORDER BY t.id DESC`
+    );
+    res.json(tests);
+  }catch(e){
+    res.status(500).json({ error:e.message });
+  }
+});
+app.post('/api/admin/tests', adminAuth, async (req,res)=>{
+  try{
+    const { title, description, lang, duration_minutes, window_start, window_end, window_range, category_id } = req.body;
     const range = parseHumanWindow(window_range);
     const ws = range.start || window_start || null;
     const we = range.end || window_end || null;
-    await runAsync('UPDATE tests SET title=?, description=?, lang=?, duration_minutes=?, window_start=?, window_end=? WHERE id=?',[title,description,lang||'ru',duration_minutes||30, ws, we, req.params.id]);
+    const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
+    const catId = category_id ? parseInt(category_id, 10) || null : null;
+    const stmt = await runAsync(
+      `INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, category_id, created_at)
+       VALUES (?,?,?,?,?,?,?,${nowFunc})${db.type === 'postgres' ? ' RETURNING id' : ''}`,
+      [title, description, lang || 'ru', duration_minutes || 30, ws, we, catId]
+    );
+    const testId = db.type === 'postgres' ? (stmt.rows?.[0]?.id || stmt.id) : stmt.lastID;
+    res.json({ ok:true, id: testId });
+  }catch(e){
+    res.status(500).json({ error:e.message });
+  }
+});
+app.put('/api/admin/tests/:id', adminAuth, async (req,res)=>{
+  try{
+    const { title, description, lang, duration_minutes, window_start, window_end, window_range, category_id } = req.body;
+    const range = parseHumanWindow(window_range);
+    const ws = range.start || window_start || null;
+    const we = range.end || window_end || null;
+    const catId = category_id ? parseInt(category_id, 10) || null : null;
+    await runAsync(
+      'UPDATE tests SET title=?, description=?, lang=?, duration_minutes=?, window_start=?, window_end=?, category_id=? WHERE id=?',
+      [title, description, lang || 'ru', duration_minutes || 30, ws, we, catId, req.params.id]
+    );
     res.json({ ok:true });
   }catch(e){ res.status(500).json({ error:e.message }); }
 });
@@ -839,67 +943,116 @@ app.delete('/api/admin/tests/:id', adminAuth, async (req,res)=>{
   }catch(e){ res.status(500).json({ error:e.message }); }
 });
 
+// Delete ALL tests, questions and results (dangerous)
+app.delete('/api/admin/tests', adminAuth, async (req,res)=>{
+  try{
+    await runAsync('DELETE FROM results', []);
+    await runAsync('DELETE FROM questions', []);
+    await runAsync('DELETE FROM tests', []);
+    // best-effort: clear JSON files directory
+    try{
+      if (fs.existsSync(TESTS_DIR)) {
+        const files = fs.readdirSync(TESTS_DIR);
+        for (const f of files) {
+          const fp = path.join(TESTS_DIR, f);
+          try{
+            if (fs.lstatSync(fp).isFile()) fs.unlinkSync(fp);
+          }catch(e){}
+        }
+      }
+    }catch(e){
+      console.warn('Failed to clear tests directory:', e.message);
+    }
+    res.json({ ok:true });
+  }catch(e){
+    console.error(e);
+    res.status(500).json({ error:e.message });
+  }
+});
+
 // Categories CRUD
 app.get('/api/admin/categories', adminAuth, async (req,res)=>{ try{ const rows = await allAsync('SELECT * FROM categories ORDER BY id'); res.json(rows); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.post('/api/admin/categories', adminAuth, async (req,res)=>{ try{ const { name_ru, name_ky, desc_ru, desc_ky } = req.body; const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')'; const stmt = await runAsync(`INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES (?,?,?,?,${nowFunc})${db.type === 'postgres' ? ' RETURNING id' : ''}`,[name_ru, name_ky, desc_ru||null, desc_ky||null]); const catId = db.type === 'postgres' ? (stmt.rows?.[0]?.id || stmt.id) : stmt.lastID; res.json({ ok:true, id: catId }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.put('/api/admin/categories/:id', adminAuth, async (req,res)=>{ try{ const { name_ru, name_ky, desc_ru, desc_ky } = req.body; await runAsync('UPDATE categories SET name_ru=?, name_ky=?, desc_ru=?, desc_ky=? WHERE id=?',[name_ru, name_ky, desc_ru||null, desc_ky||null, req.params.id]); res.json({ ok:true }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.delete('/api/admin/categories/:id', adminAuth, async (req,res)=>{ try{ await runAsync('DELETE FROM categories WHERE id=?',[req.params.id]); res.json({ ok:true }); }catch(e){ res.status(500).json({ error:e.message }); } });
 
-// Questions update/delete (file-backed)
+// Questions CRUD (DB-backed)
 app.get('/api/admin/tests/:id/questions', adminAuth, async (req,res)=>{
-  try{ const qs = readQuestionsFile(req.params.id).sort((a,b)=> (a.ordinal||0)-(b.ordinal||0)); res.json(qs); }catch(e){ res.status(500).json({ error:e.message }); }
-});
-app.post('/api/admin/tests/:id/questions', adminAuth, async (req,res)=>{
   try{
     const testId = req.params.id;
-    const { ordinal, text, options, correct, points, category_id, lang } = req.body;
-    const qs = readQuestionsFile(testId);
-    const id = nextQuestionId(qs);
-    const q = { id, test_id: Number(testId), ordinal: ordinal||0, text: text||'', options: (Array.isArray(options)? options : null), correct: (correct??''), points: points||1, lang: lang||'ru', category_id: category_id||null };
-    qs.push(q);
-    writeQuestionsFile(testId, qs);
-    res.json({ ok:true, id });
-  }catch(e){ res.status(500).json({ error:e.message }); }
+    const rows = await allAsync(
+      'SELECT id, test_id, ordinal, text, options, correct, points, category_id, lang FROM questions WHERE test_id=? ORDER BY ordinal',
+      [testId]
+    );
+    rows.forEach(r => {
+      try { r.options = JSON.parse(r.options || '[]'); } catch { r.options = []; }
+    });
+    res.json(rows);
+  }catch(e){
+    console.error(e);
+    res.status(500).json({ error:e.message });
+  }
 });
+
+app.post('/api/admin/tests/:id/questions', adminAuth, async (req,res)=>{
+  try{
+    const testId = parseInt(req.params.id, 10);
+    const { ordinal, text, options, correct, points, category_id, lang } = req.body;
+    const optsJson = JSON.stringify(Array.isArray(options) ? options : []);
+    const ord = ordinal || 0;
+    const catId = category_id ? parseInt(category_id, 10) || null : null;
+    const stmt = await runAsync(
+      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id) VALUES (?,?,?,?,?,?,?,?)',
+      [testId, ord, text || '', optsJson, (correct ?? ''), points || 1, lang || 'ru', catId]
+    );
+    const qid = db.type === 'postgres' ? (stmt.rows?.[0]?.id || stmt.id) : stmt.lastID;
+    res.json({ ok:true, id: qid });
+  }catch(e){
+    console.error(e);
+    res.status(500).json({ error:e.message });
+  }
+});
+
 app.put('/api/admin/questions/:qid', adminAuth, async (req,res)=>{
   try{
     const qid = parseInt(req.params.qid,10);
-    // find which test file contains this question
-    const files = fs.readdirSync(TESTS_DIR).filter(f=> f.endsWith('.json'));
-    for(const f of files){
-      const testId = (f.match(/test_(\d+)\.json$/)||[])[1];
-      if(!testId) continue;
-      const qs = readQuestionsFile(testId);
-      const idx = qs.findIndex(x=> Number(x.id)===qid);
-      if(idx>=0){
-        const { ordinal, text, options, correct, points, category_id } = req.body;
-        qs[idx] = { ...qs[idx], ordinal, text, options: (Array.isArray(options)? options : null), correct, points: points||1, category_id: category_id||null };
-        writeQuestionsFile(testId, qs);
-        return res.json({ ok:true });
-      }
+    const { ordinal, text, options, correct, points, category_id } = req.body;
+    const fields = [];
+    const params = [];
+
+    if (ordinal !== undefined) { fields.push('ordinal = ?'); params.push(ordinal || 0); }
+    if (text !== undefined)    { fields.push('text = ?'); params.push(text || ''); }
+    if (options !== undefined) {
+      const optsJson = JSON.stringify(Array.isArray(options) ? options : []);
+      fields.push('options = ?'); params.push(optsJson);
     }
-    res.status(404).json({ error:'Question not found' });
-  }catch(e){ res.status(500).json({ error:e.message }); }
+    if (correct !== undefined) { fields.push('correct = ?'); params.push(correct ?? ''); }
+    if (points !== undefined)  { fields.push('points = ?'); params.push(points || 1); }
+    if (category_id !== undefined) {
+      const catId = category_id ? parseInt(category_id, 10) || null : null;
+      fields.push('category_id = ?'); params.push(catId);
+    }
+
+    if (!fields.length) return res.json({ ok:true });
+
+    params.push(qid);
+    await runAsync(`UPDATE questions SET ${fields.join(', ')} WHERE id = ?`, params);
+    res.json({ ok:true });
+  }catch(e){
+    console.error(e);
+    res.status(500).json({ error:e.message });
+  }
 });
+
 app.delete('/api/admin/questions/:qid', adminAuth, async (req,res)=>{
   try{
     const qid = parseInt(req.params.qid,10);
-    const files = fs.readdirSync(TESTS_DIR).filter(f=> f.endsWith('.json'));
-    for(const f of files){
-      const testId = (f.match(/test_(\d+)\.json$/)||[])[1];
-      if(!testId) continue;
-      const qs = readQuestionsFile(testId);
-      const idx = qs.findIndex(x=> Number(x.id)===qid);
-      if(idx>=0){
-        qs.splice(idx,1);
-        // re-pack ordinals to be consecutive
-        qs.sort((a,b)=> (a.ordinal||0)-(b.ordinal||0)).forEach((qq,i)=>{ qq.ordinal = i+1; });
-        writeQuestionsFile(testId, qs);
-        return res.json({ ok:true });
-      }
-    }
-    res.status(404).json({ error:'Question not found' });
-  }catch(e){ res.status(500).json({ error:e.message }); }
+    await runAsync('DELETE FROM questions WHERE id = ?', [qid]);
+    res.json({ ok:true });
+  }catch(e){
+    console.error(e);
+    res.status(500).json({ error:e.message });
+  }
 });
 
 // CSV helpers and routes
@@ -910,8 +1063,92 @@ function toCsvValue(v){
   return '"' + s.replace(/"/g, '""') + '"';
 }
 function parseCsv(text){ const rows=[]; let i=0, field=''; let row=[]; let inq=false; const s=text.replace(/\r/g,''); function pushField(){ row.push(field); field=''; } function pushRow(){ rows.push(row); row=[]; } while(i<s.length){ const ch=s[i++]; if(inq){ if(ch==='"'){ if(s[i]==='"'){ field+='"'; i++; } else { inq=false; } } else { field+=ch; } } else { if(ch===','){ pushField(); } else if(ch==='\n'){ pushField(); pushRow(); } else if(ch==='"'){ inq=true; } else { field+=ch; } } } if(field.length>0 || row.length>0){ pushField(); pushRow(); } return rows; }
-app.get('/api/admin/tests/:id/questions/export-csv', adminAuth, async (req,res)=>{ try{ const qs = readQuestionsFile(req.params.id).sort((a,b)=> (a.ordinal||0)-(b.ordinal||0)); const header = 'ordinal,text,options,correct,points,category_id\n'; const lines = qs.map(q=>[ q.ordinal, toCsvValue(q.text||''), toCsvValue(Array.isArray(q.options)? JSON.stringify(q.options) : ''), toCsvValue(q.correct||''), q.points||1, q.category_id||'' ].join(',')); const csv = header + lines.join('\n'); res.setHeader('Content-Type','text/csv; charset=utf-8'); res.setHeader('Content-Disposition',`attachment; filename="test_${req.params.id}_questions.csv"`); res.send(csv); }catch(e){ res.status(500).json({ error:e.message }); } });
-app.post('/api/admin/tests/:id/questions/import-csv', adminAuth, upload.single('file'), async (req,res)=>{ try{ const filePath = req.file?.path; if(!filePath) return res.status(400).json({ error:'No file' }); const text = fs.readFileSync(filePath,'utf8'); const rows = parseCsv(text); const header = rows.shift()||[]; const idx = { ordinal: header.indexOf('ordinal'), text: header.indexOf('text'), options: header.indexOf('options'), correct: header.indexOf('correct'), points: header.indexOf('points'), category_id: header.indexOf('category_id') }; const qs = readQuestionsFile(req.params.id); for (const r of rows){ if(!r.length) continue; const ordinal = parseInt(r[idx.ordinal]||'0')||0; const textv = r[idx.text]||''; const optionsRaw = r[idx.options]||''; const correct = r[idx.correct]||''; const points = parseInt(r[idx.points]||'1')||1; const category_id = r[idx.category_id] ? parseInt(r[idx.category_id]) : null; const options = optionsRaw ? (optionsRaw.trim().startsWith('[') ? JSON.parse(optionsRaw) : optionsRaw.split('|').map(s=>s.trim()).filter(Boolean)) : null; const id = nextQuestionId(qs); qs.push({ id, test_id:Number(req.params.id), ordinal, text:textv, options, correct, points, lang:'ru', category_id }); } writeQuestionsFile(req.params.id, qs); res.json({ ok:true, imported: rows.length }); }catch(e){ res.status(500).json({ error:e.message }); } });
+app.get('/api/admin/tests/:id/questions/export-csv', adminAuth, async (req,res)=>{
+  try{
+    const testId = req.params.id;
+    const qs = await allAsync(
+      'SELECT ordinal, text, options, correct, points, category_id FROM questions WHERE test_id=? ORDER BY ordinal',
+      [testId]
+    );
+    const header = 'ordinal,text,options,correct,points,category_id\n';
+    const lines = qs.map(q => {
+      let opts = '';
+      if (q.options) {
+        try{
+          const arr = JSON.parse(q.options);
+          opts = JSON.stringify(arr);
+        }catch{
+          opts = q.options;
+        }
+      }
+      return [
+        q.ordinal,
+        toCsvValue(q.text || ''),
+        toCsvValue(opts),
+        toCsvValue(q.correct || ''),
+        q.points || 1,
+        q.category_id || ''
+      ].join(',');
+    });
+    const csv = header + lines.join('\n');
+    res.setHeader('Content-Type','text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition',`attachment; filename="test_${testId}_questions.csv"`);
+    res.send(csv);
+  }catch(e){
+    res.status(500).json({ error:e.message });
+  }
+});
+
+app.post('/api/admin/tests/:id/questions/import-csv', adminAuth, upload.single('file'), async (req,res)=>{
+  try{
+    const testId = parseInt(req.params.id, 10);
+    const filePath = req.file?.path;
+    if(!filePath) return res.status(400).json({ error:'No file' });
+
+    const text = fs.readFileSync(filePath,'utf8');
+    const rows = parseCsv(text);
+    const header = rows.shift()||[];
+    const idx = {
+      ordinal: header.indexOf('ordinal'),
+      text: header.indexOf('text'),
+      options: header.indexOf('options'),
+      correct: header.indexOf('correct'),
+      points: header.indexOf('points'),
+      category_id: header.indexOf('category_id')
+    };
+
+    // Очищаем старые вопросы этого теста
+    await runAsync('DELETE FROM questions WHERE test_id=?',[testId]);
+
+    let imported = 0;
+    for (const r of rows){
+      if(!r.length) continue;
+      const ordinal = parseInt(r[idx.ordinal]||'0')||0;
+      const textv = r[idx.text]||'';
+      const optionsRaw = r[idx.options]||'';
+      const correct = r[idx.correct]||'';
+      const points = parseInt(r[idx.points]||'1')||1;
+      const category_id = idx.category_id >= 0 && r[idx.category_id] ? parseInt(r[idx.category_id]) : null;
+      let options = [];
+      if (optionsRaw) {
+        try{
+          options = optionsRaw.trim().startsWith('[') ? JSON.parse(optionsRaw) : optionsRaw.split('|').map(s=>s.trim()).filter(Boolean);
+        }catch{
+          options = optionsRaw.split('|').map(s=>s.trim()).filter(Boolean);
+        }
+      }
+      const optsJson = JSON.stringify(options);
+      await runAsync(
+        'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id) VALUES (?,?,?,?,?,?,?,?)',
+        [testId, ordinal, textv, optsJson, correct, points, 'ru', category_id || null]
+      );
+      imported++;
+    }
+    res.json({ ok:true, imported });
+  }catch(e){
+    res.status(500).json({ error:e.message });
+  }
+});
 app.get('/api/ping', (req,res)=>res.json({ ok:true, time: new Date().toISOString() }));
 
 // Admin endpoints for teams and results

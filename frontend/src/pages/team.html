@@ -418,7 +418,11 @@ async function renderTestsSection(btn) {
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
   
   try {
-    const res = await fetch('/api/tests');
+    let url = '/api/tests';
+    if (teamData && teamData.category_id) {
+      url += `?category_id=${encodeURIComponent(teamData.category_id)}`;
+    }
+    const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
@@ -593,7 +597,8 @@ async function startTest(id) {
     }
     
   let remainingSec = 0;
-    const testMetaRes = await fetch('/api/tests', { headers: {} });
+    // Получаем метаданные конкретного теста
+    const testMetaRes = await fetch('/api/tests');
     const allTests = await testMetaRes.json();
     const testMeta = allTests.find(x => String(x.id) === String(id));
   const durMins = (testMeta && testMeta.duration_minutes) ? testMeta.duration_minutes : 60;
