@@ -773,6 +773,30 @@ app.put('/api/me', teamAuth, async (req, res) => {
 });
 
 // Change password for current team (requires old password)
+app.post('/api/me/verify-password', teamAuth, async (req, res) => {
+  try {
+    const { password } = req.body || {};
+    if (!password) {
+      return res.status(400).json({ error: 'Password required' });
+    }
+
+    const team = await getAsync('SELECT id, password FROM teams WHERE id = ?', [req.team.id]);
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    const ok = await bcrypt.compare(password, team.password);
+    if (!ok) {
+      return res.status(400).json({ error: 'Неверный пароль' });
+    }
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/me/change-password', teamAuth, async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body || {};
