@@ -221,6 +221,16 @@ async function renderHomeSection(btn) {
   out.setAttribute('aria-busy', 'false');
   
   if (teamData) {
+    const lang = AkylI18n.getLang();
+    let categoryLabel = '';
+    if (teamData.category_name_ru || teamData.category_name_ky) {
+      categoryLabel = lang === 'ky'
+        ? (teamData.category_name_ky || teamData.category_name_ru || '')
+        : (teamData.category_name_ru || teamData.category_name_ky || '');
+    } else if (teamData.category_id) {
+      categoryLabel = 'ID: ' + teamData.category_id;
+    }
+    
     // Получаем участников команды
     let membersHtml = '';
     if (teamData.members && teamData.members.length > 0) {
@@ -239,6 +249,12 @@ async function renderHomeSection(btn) {
               <dd>
                 <span class="info-value">${escapeHtml(teamData.team_name || '')}</span>
                 <button type="button" class="inline-edit-btn" data-field="team_name" data-i18n="team.edit">Изменить</button>
+              </dd>
+            </div>
+            <div class="info-item">
+              <dt data-i18n="team.category">Категория:</dt>
+              <dd>
+                <span class="info-value">${categoryLabel ? escapeHtml(categoryLabel) : 'Не выбрана'}</span>
               </dd>
             </div>
             <div class="info-item editable" data-field="captain_name">
@@ -766,15 +782,19 @@ async function startTest(id) {
           AkylI18n.applyI18n(AkylI18n.getLang(), out);
           return;
         }
-        const maxScore = qs.length * 10; // Предполагаем 10 баллов за вопрос
-        const percentage = Math.round(((j.score || 0) / maxScore) * 100);
+        // Используем данные, возвращённые сервером
+        const totalQuestions = typeof j.total === 'number' ? j.total : qs.length;
+        const maxScore = typeof j.maxScore === 'number' ? j.maxScore : totalQuestions;
+        const rawScore = typeof j.score === 'number' ? j.score : 0;
+        const correctCount = typeof j.correct === 'number' ? j.correct : rawScore;
+        const percentage = maxScore > 0 ? Math.round((rawScore / maxScore) * 100) : 0;
         out.innerHTML = `
           <div class="test-result" role="region" aria-live="polite" aria-label="Результат теста">
             <div class="result-icon" aria-hidden="true">${percentage >= 70 ? '🎉' : percentage >= 50 ? '👍' : '📝'}</div>
             <h3 data-i18n="team.done">Готово</h3>
             <div class="result-score">
               <p class="result-label">Ваш результат:</p>
-              <p class="result-value"><strong>${j.score || 0}</strong> <span class="result-max">из ${maxScore}</span></p>
+              <p class="result-value"><strong>${correctCount}</strong> <span class="result-max">из ${totalQuestions}</span></p>
               <div class="result-percentage" aria-label="Процент правильных ответов: ${percentage}%">
                 <div class="percentage-bar">
                   <div class="percentage-fill" style="width: ${percentage}%"></div>

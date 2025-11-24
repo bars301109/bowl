@@ -762,19 +762,39 @@ app.post('/api/tests/:id/submit', teamAuth, async (req,res)=>{
     const testId = req.params.id;
     const answers = req.body.answers || {};
 
-    // Берём вопросы так же, как в /api/tests/:id: сначала из файла, затем (если нужно) из БД
-    let qs = readQuestionsFile(testId);
+    // Берём вопросы так же, как в /api/tests/:id: сначала из БД, затем (если нужно) из файла
+    let qs = await allAsync(
+      'SELECT id, ordinal, text, options, correct, points, category_id, lang FROM questions WHERE test_id=? ORDER BY ordinal',
+      [testId]
+    );
     if (!Array.isArray(qs) || qs.length === 0) {
-      const rows = await allAsync('SELECT id, ordinal, text, options, correct, points FROM questions WHERE test_id=? ORDER BY ordinal',[testId]);
-      rows.forEach(r => { try { r.options = JSON.parse(r.options || '[]'); } catch {} });
-      qs = rows;
+      const fileQs = readQuestionsFile(testId);
+      qs = fileQs.map(q => ({
+        id: q.id,
+        ordinal: q.ordinal || 0,
+        text: q.text || '',
+        options: Array.isArray(q.options) ? q.options : [],
+        correct: q.correct,
+        points: q.points || 1,
+        category_id: q.category_id || null,
+        lang: q.lang || 'ru'
+      }));
+    } else {
+      qs.forEach(r => {
+        try { r.options = JSON.parse(r.options || '[]'); } catch { r.options = []; }
+      });
     }
 
     let score = 0;
+    let maxScore = 0;
+    let correctCount = 0;
     const answersArr = [];
 
     for (const q of qs){
       const qid = q.id;
+      const pts = q.points || 1;
+      maxScore += pts;
+
       const given = Object.prototype.hasOwnProperty.call(answers, qid) ? answers[qid] : null;
       const correct = q.correct;
       let qok = false;
@@ -795,8 +815,11 @@ app.post('/api/tests/:id/submit', teamAuth, async (req,res)=>{
         }
       }
 
-      if (qok) score += (q.points || 1);
-      answersArr.push({ question_id: qid, given, correct });
+      if (qok) {
+        score += pts;
+        correctCount += 1;
+      }
+      answersArr.push({ question_id: qid, given, correct, ok: qok, points: pts });
     }
 
     const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
@@ -804,8 +827,8 @@ app.post('/api/tests/:id/submit', teamAuth, async (req,res)=>{
       `INSERT INTO results (team_id, test_id, score, answers, taken_at) VALUES (?,?,?,?,${nowFunc})`,
       [req.team.id, testId, score, JSON.stringify(answersArr)]
     );
-    console.log(`✓ Test submitted: team_id=${req.team.id}, test_id=${testId}, score=${score}`);
-    res.json({ ok:true, score });
+    console.log(`✓ Test submitted: team_id=${req.team.id}, test_id=${testId}, score=${score}, correct=${correctCount}/${qs.length}`);
+    res.json({ ok:true, score, maxScore, correct: correctCount, total: qs.length });
   }catch(e){
     console.error('Error in /api/tests/:id/submit', e);
     res.status(500).json({ error:e.message });
@@ -813,7 +836,25 @@ app.post('/api/tests/:id/submit', teamAuth, async (req,res)=>{
 });
 app.get('/api/me', teamAuth, async (req,res)=>{
   try{
-    const t = await getAsync('SELECT id, team_name, login, captain_name, captain_email, captain_phone, members, school, city, category_id FROM teams WHERE id=?',[req.team.id]);
+    const t = await getAsync(
+      `SELECT 
+         t.id,
+         t.team_name,
+         t.login,
+         t.captain_name,
+         t.captain_email,
+         t.captain_phone,
+         t.members,
+         t.school,
+         t.city,
+         t.category_id,
+         c.name_ru AS category_name_ru,
+         c.name_ky AS category_name_ky
+       FROM teams t
+       LEFT JOIN categories c ON c.id = t.category_id
+       WHERE t.id = ?`,
+      [req.team.id]
+    );
     if (!t) return res.status(404).json({ error:'Team not found' });
     // Parse members JSON string to array
     if (t.members && typeof t.members === 'string') {
@@ -941,11 +982,15 @@ app.get('/api/admin/tests', adminAuth, async (req,res)=>{
 app.post('/api/admin/tests', adminAuth, async (req,res)=>{
   try{
     const { title, description, lang, duration_minutes, window_start, window_end, window_range, category_id } = req.body;
+    // Категория обязательна
+    const catId = category_id ? parseInt(category_id, 10) || null : null;
+    if (!catId) {
+      return res.status(400).json({ error: 'category_id is required' });
+    }
     const range = parseHumanWindow(window_range);
     const ws = range.start || window_start || null;
     const we = range.end || window_end || null;
     const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
-    const catId = category_id ? parseInt(category_id, 10) || null : null;
     const stmt = await runAsync(
       `INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, category_id, created_at)
        VALUES (?,?,?,?,?,?,?,${nowFunc})${db.type === 'postgres' ? ' RETURNING id' : ''}`,
@@ -960,10 +1005,14 @@ app.post('/api/admin/tests', adminAuth, async (req,res)=>{
 app.put('/api/admin/tests/:id', adminAuth, async (req,res)=>{
   try{
     const { title, description, lang, duration_minutes, window_start, window_end, window_range, category_id } = req.body;
+    // Категория обязательна при обновлении
+    const catId = category_id ? parseInt(category_id, 10) || null : null;
+    if (!catId) {
+      return res.status(400).json({ error: 'category_id is required' });
+    }
     const range = parseHumanWindow(window_range);
     const ws = range.start || window_start || null;
     const we = range.end || window_end || null;
-    const catId = category_id ? parseInt(category_id, 10) || null : null;
     await runAsync(
       'UPDATE tests SET title=?, description=?, lang=?, duration_minutes=?, window_start=?, window_end=?, category_id=? WHERE id=?',
       [title, description, lang || 'ru', duration_minutes || 30, ws, we, catId, req.params.id]
@@ -1245,30 +1294,56 @@ app.get('/api/admin/results', adminAuth, async (req,res)=>{
   }catch(e){ res.status(500).json({ error:e.message }); } 
 });
 
-// Export teams to CSV
+// Export teams to CSV (упрощённый формат для импорта)
 app.get('/api/admin/teams/export-csv', adminAuth, async (req,res)=>{
   try{
-    const teams = await allAsync('SELECT id, team_name, login, captain_name, captain_email, captain_phone, members, school, city, created_at FROM teams ORDER BY id DESC');
+    const teams = await allAsync(`
+      SELECT 
+        t.id,
+        t.team_name,
+        t.captain_email,
+        t.captain_phone,
+        t.members,
+        t.school,
+        t.city,
+        t.created_at,
+        c.name_ru AS category_name_ru
+      FROM teams t
+      LEFT JOIN categories c ON c.id = t.category_id
+      ORDER BY t.id ASC
+    `);
+    const header = ['№', 'Название команды', 'Email', 'Телефон', 'Участники', 'Школа', 'Адрес', 'Дата регистрации', 'Категория'].map(toCsvValue).join(',');
     if(!teams || teams.length === 0){
-      const header = ['ID', 'Название команды', 'Логин', 'Капитан', 'Email', 'Телефон', 'Участники', 'Школа', 'Город', 'Дата регистрации'].map(toCsvValue).join(',');
       res.setHeader('Content-Type','text/csv; charset=utf-8');
       res.setHeader('Content-Disposition','attachment; filename="teams_export.csv"');
       return res.send('\ufeff' + header + '\n');
     }
-    const header = ['ID', 'Название команды', 'Логин', 'Капитан', 'Email', 'Телефон', 'Участники', 'Школа', 'Город', 'Дата регистрации'].map(toCsvValue).join(',');
-    const lines = teams.map(t=>{
+    const lines = teams.map((t, index)=>{
       try{
+        let membersStr = '';
+        if (t.members) {
+          try{
+            const arr = JSON.parse(t.members);
+            if (Array.isArray(arr)) {
+              membersStr = arr.map(m => m && m.name ? String(m.name).trim() : '')
+                              .filter(Boolean)
+                              .join(', ');
+            }
+          }catch(e){
+            membersStr = String(t.members);
+          }
+        }
+        const categoryName = t.category_name_ru || '';
         return [
-          t.id || '',
+          index + 1,
           t.team_name || '',
-          t.login || '',
-          t.captain_name || '',
           t.captain_email || '',
           t.captain_phone || '',
-          t.members || '',
+          membersStr || '',
           t.school || '',
           t.city || '',
-          t.created_at || ''
+          t.created_at || '',
+          categoryName
         ].map(toCsvValue).join(',');
       }catch(err){
         console.error('Error processing team', t.id, err);
@@ -1278,7 +1353,7 @@ app.get('/api/admin/teams/export-csv', adminAuth, async (req,res)=>{
     const csv = header + '\n' + lines.join('\n');
     res.setHeader('Content-Type','text/csv; charset=utf-8');
     res.setHeader('Content-Disposition','attachment; filename="teams_export.csv"');
-    res.send('\ufeff' + csv); // BOM for Excel
+    res.send('\ufeff' + csv);
   }catch(e){ 
     console.error('Teams export error:', e);
     res.status(500).json({ error:e.message }); 

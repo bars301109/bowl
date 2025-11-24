@@ -147,7 +147,7 @@ async function renderTests(){
       <div class="form-row">
         <label>📂 Категория
           <select id="t_category" class="admin-input">
-            <option value="">Без категории</option>
+            <option value="">Выберите категорию</option>
             ${cats.map(c=>`<option value="${c.id}">${esc(c.name_ru || '')}</option>`).join('')}
           </select>
         </label>
@@ -193,6 +193,11 @@ async function renderTests(){
   document.getElementById('addTest').onclick = async ()=>{
     const titleV = val('t_title');
     if(!titleV){ showAlert('Введите название теста', 'error'); return; }
+    const catV = val('t_category');
+    if (!catV) {
+      showAlert('Выберите категорию для теста', 'error');
+      return;
+    }
     const body = {
       title: titleV,
       description: val('t_desc'),
@@ -200,7 +205,7 @@ async function renderTests(){
       duration_minutes: num('t_dur'),
       window_start: val('t_start')||null,
       window_end: val('t_end')||null,
-      category_id: val('t_category') || null
+      category_id: catV
     };
     const r = await fetch('/api/admin/tests',{ method:'POST', headers: aHeaders(), body: JSON.stringify(body) });
     if(!r.ok){ let msg=''; try{ msg = await r.text(); }catch{} showAlert('Ошибка создания'+(msg?': '+msg:''), 'error'); return; }
@@ -253,7 +258,7 @@ async function editTest(id){
       <div class="form-row">
         <label>📂 Категория
           <select id="t_category" class="admin-input">
-            <option value="">Без категории</option>
+            <option value="">Выберите категорию</option>
             ${cats.map(c=>`<option value="${c.id}" ${t.category_id===c.id?'selected':''}>${esc(c.name_ru || '')}</option>`).join('')}
           </select>
         </label>
@@ -265,6 +270,11 @@ async function editTest(id){
   document.getElementById('save').onclick = async ()=>{
     const titleV = val('t_title');
     if(!titleV){ showAlert('Введите название теста', 'error'); return; }
+    const catV = val('t_category');
+    if (!catV) {
+      showAlert('Выберите категорию для теста', 'error');
+      return;
+    }
     const body = {
       title: titleV,
       description: val('t_desc'),
@@ -272,7 +282,7 @@ async function editTest(id){
       duration_minutes: num('t_dur'),
       window_start: val('t_start')||null,
       window_end: val('t_end')||null,
-      category_id: val('t_category') || null
+      category_id: catV
     };
     const r = await fetch('/api/admin/tests/'+id,{ method:'PUT', headers: aHeaders(), body: JSON.stringify(body) });
     if(!r.ok){ let msg=''; try{ msg = await r.text(); }catch{} showAlert('Ошибка сохранения'+(msg?': '+msg:''), 'error'); return; }
