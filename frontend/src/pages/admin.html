@@ -203,8 +203,8 @@ async function renderTests(){
       description: val('t_desc'),
       lang: val('t_lang'),
       duration_minutes: num('t_dur'),
-      window_start: val('t_start')||null,
-      window_end: val('t_end')||null,
+      window_start: val('t_start') ? new Date(val('t_start')).toISOString() : null,
+      window_end: val('t_end') ? new Date(val('t_end')).toISOString() : null,
       category_id: catV
     };
     const r = await fetch('/api/admin/tests',{ method:'POST', headers: aHeaders(), body: JSON.stringify(body) });
@@ -280,8 +280,8 @@ async function editTest(id){
       description: val('t_desc'),
       lang: val('t_lang'),
       duration_minutes: num('t_dur'),
-      window_start: val('t_start')||null,
-      window_end: val('t_end')||null,
+      window_start: val('t_start') ? new Date(val('t_start')).toISOString() : null,
+      window_end: val('t_end') ? new Date(val('t_end')).toISOString() : null,
       category_id: catV
     };
     const r = await fetch('/api/admin/tests/'+id,{ method:'PUT', headers: aHeaders(), body: JSON.stringify(body) });
