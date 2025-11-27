@@ -8,7 +8,7 @@
   --danger: #ef4444;
   --warning: #f97316;
   --text-dark: #1f2937;
-  --text-light: #6b7280;
+  --text-light: #333333;
   --bg-light: #f9fafb;
   --bg-light-alt: #f3f4f6;
   --bg-white: #ffffff;
@@ -162,6 +162,12 @@ header.header .container {
   box-shadow: 0 2px 8px rgba(30, 64, 175, 0.25);
   display: inline-block;
   white-space: nowrap;
+}
+
+.nav a:hover {
+  text-decoration: underline;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.4);
 }
 
 .nav a::before {
@@ -1096,6 +1102,34 @@ header.header .container {
   min-width: calc((100vw - 96px) / 3);
   margin: 0;
   display: flex;
+}
+
+@media (min-width: 1025px) {
+  .carousel-item {
+    min-width: 100vw;
+  }
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.carousel-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.carousel-dot.active {
+  background: white;
+}
   flex-direction: column;
   background: var(--bg-white);
   border-radius: 12px;

@@ -158,6 +158,7 @@
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
           </button>
+          <div class="carousel-dots"></div>
         </div>
       </div>
     </section>
@@ -492,6 +493,8 @@
         this.items = element.querySelectorAll('.carousel-item');
         this.prevBtn = element.querySelector('.carousel-prev');
         this.nextBtn = element.querySelector('.carousel-next');
+        this.dotsContainer = element.querySelector('.carousel-dots');
+        this.dots = [];
         this.currentIndex = 0;
         this.touchStartX = 0;
         this.touchEndX = 0;
@@ -505,13 +508,15 @@
           this.updateItemWidth();
           if (!this.isMobile) {
             this.updateSlide();
+            this.updateDots();
           }
         });
       }
 
       init() {
         this.updateItemWidth();
-        
+        this.createDots();
+
         this.prevBtn.addEventListener('click', () => this.prev());
         this.nextBtn.addEventListener('click', () => this.next());
         this.track.addEventListener('touchstart', (e) => {
@@ -535,6 +540,29 @@
         this.track.style.transform = `translateX(${offset}px)`;
       }
 
+      createDots() {
+        this.items.forEach((_, index) => {
+          const dot = document.createElement('button');
+          dot.className = 'carousel-dot';
+          dot.addEventListener('click', () => this.goToSlide(index));
+          this.dotsContainer.appendChild(dot);
+          this.dots.push(dot);
+        });
+        this.updateDots();
+      }
+
+      updateDots() {
+        this.dots.forEach((dot, index) => {
+          dot.classList.toggle('active', index === this.currentIndex);
+        });
+      }
+
+      goToSlide(index) {
+        this.currentIndex = index;
+        this.updateSlide();
+        this.updateDots();
+      }
+
       next() {
         const wrapper = this.element.querySelector('.carousel-wrapper');
         const visibleItems = Math.round(wrapper.offsetWidth / this.itemWidth);
@@ -547,6 +575,7 @@
         }
         
         this.updateSlide();
+        this.updateDots();
       }
 
       prev() {
@@ -559,6 +588,7 @@
         }
         
         this.updateSlide();
+        this.updateDots();
       }
 
       handleTouchStart(e) {
