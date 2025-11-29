@@ -498,56 +498,85 @@
         this.currentIndex = 0;
         this.touchStartX = 0;
         this.touchEndX = 0;
-        this.itemWidth = 0;
-        this.isMobile = window.innerWidth <= 1024;
+        this.autoplayInterval = null;
+        this.autoplayDelay = 5000;
 
         this.init();
         window.addEventListener('resize', () => {
-          const wasMobile = this.isMobile;
-          this.isMobile = window.innerWidth <= 1024;
-          this.updateItemWidth();
-          if (!this.isMobile) {
-            this.updateSlide();
-            this.updateDots();
-          }
+          this.updateSlide();
         });
       }
 
       init() {
-        this.updateItemWidth();
         this.createDots();
 
-        this.prevBtn.addEventListener('click', () => this.prev());
-        this.nextBtn.addEventListener('click', () => this.next());
+        this.prevBtn.addEventListener('click', () => {
+          this.prev();
+          this.resetAutoplay();
+        });
+        this.nextBtn.addEventListener('click', () => {
+          this.next();
+          this.resetAutoplay();
+        });
+        
         this.track.addEventListener('touchstart', (e) => {
-          if (this.isMobile) this.handleTouchStart(e);
+          this.handleTouchStart(e);
         }, false);
         this.track.addEventListener('touchend', (e) => {
-          if (this.isMobile) this.handleTouchEnd(e);
+          this.handleTouchEnd(e);
         }, false);
-      }
 
-      updateItemWidth() {
-        const firstItem = this.items[0];
-        if (!firstItem) return;
-        const computedStyle = window.getComputedStyle(this.track);
-        const gap = parseFloat(computedStyle.gap) || 16;
-        this.itemWidth = firstItem.offsetWidth + gap;
+        this.track.addEventListener('mouseenter', () => {
+          this.stopAutoplay();
+        });
+        this.element.addEventListener('mouseleave', () => {
+          this.startAutoplay();
+        });
+
+        this.startAutoplay();
       }
 
       updateSlide() {
-        const offset = -this.currentIndex * this.itemWidth;
+        const wrapper = this.element.querySelector('.carousel-wrapper');
+        const offset = -this.currentIndex * wrapper.offsetWidth;
         this.track.style.transform = `translateX(${offset}px)`;
       }
 
       createDots() {
+        this.dotsContainer.innerHTML = '';
+        this.dots = [];
+        
+        const prevDot = document.createElement('button');
+        prevDot.className = 'carousel-dot carousel-dot-prev';
+        prevDot.textContent = '←';
+        prevDot.addEventListener('click', () => {
+          this.prev();
+          this.resetAutoplay();
+        });
+        this.dotsContainer.appendChild(prevDot);
+
         this.items.forEach((_, index) => {
           const dot = document.createElement('button');
           dot.className = 'carousel-dot';
-          dot.addEventListener('click', () => this.goToSlide(index));
+          dot.textContent = (index + 1);
+          dot.dataset.index = index;
+          dot.addEventListener('click', () => {
+            this.goToSlide(index);
+            this.resetAutoplay();
+          });
           this.dotsContainer.appendChild(dot);
           this.dots.push(dot);
         });
+
+        const nextDot = document.createElement('button');
+        nextDot.className = 'carousel-dot carousel-dot-next';
+        nextDot.textContent = '→';
+        nextDot.addEventListener('click', () => {
+          this.next();
+          this.resetAutoplay();
+        });
+        this.dotsContainer.appendChild(nextDot);
+
         this.updateDots();
       }
 
@@ -558,35 +587,21 @@
       }
 
       goToSlide(index) {
-        this.currentIndex = index;
-        this.updateSlide();
-        this.updateDots();
+        if (index >= 0 && index < this.items.length) {
+          this.currentIndex = index;
+          this.updateSlide();
+          this.updateDots();
+        }
       }
 
       next() {
-        const wrapper = this.element.querySelector('.carousel-wrapper');
-        const visibleItems = Math.round(wrapper.offsetWidth / this.itemWidth);
-        const maxIndex = Math.max(0, this.items.length - visibleItems);
-        
-        if (this.currentIndex < maxIndex) {
-          this.currentIndex++;
-        } else {
-          this.currentIndex = 0;
-        }
-        
+        this.currentIndex = (this.currentIndex + 1) % this.items.length;
         this.updateSlide();
         this.updateDots();
       }
 
       prev() {
-        if (this.currentIndex > 0) {
-          this.currentIndex--;
-        } else {
-          const wrapper = this.element.querySelector('.carousel-wrapper');
-          const visibleItems = Math.round(wrapper.offsetWidth / this.itemWidth);
-          this.currentIndex = Math.max(0, this.items.length - visibleItems);
-        }
-        
+        this.currentIndex = (this.currentIndex - 1 + this.items.length) % this.items.length;
         this.updateSlide();
         this.updateDots();
       }
@@ -610,7 +625,26 @@
           } else {
             this.prev();
           }
+          this.resetAutoplay();
         }
+      }
+
+      startAutoplay() {
+        this.autoplayInterval = setInterval(() => {
+          this.next();
+        }, this.autoplayDelay);
+      }
+
+      stopAutoplay() {
+        if (this.autoplayInterval) {
+          clearInterval(this.autoplayInterval);
+          this.autoplayInterval = null;
+        }
+      }
+
+      resetAutoplay() {
+        this.stopAutoplay();
+        this.startAutoplay();
       }
     }
 
