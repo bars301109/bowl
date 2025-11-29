@@ -1518,8 +1518,8 @@ app.put('/api/admin/settings', adminAuth, async (req,res)=>{
   try{
     const s = req.body||{};
     const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
-    await runAsync(`UPDATE settings SET badge1_ru=?,badge1_ky=?,badge2_ru=?,badge2_ky=?,badge3_ru=?,badge3_ky=?,day1_date=?,day2_date=?,day3_date=?,final_place_ru=?,final_place_ky=?,updated_at=${nowFunc} WHERE id=1`, [
-      s.badge1_ru||null,s.badge1_ky||null,s.badge2_ru||null,s.badge2_ky||null,s.badge3_ru||null,s.badge3_ky||null,s.day1_date||null,s.day2_date||null,s.day3_date||null,s.final_place_ru||null,s.final_place_ky||null
+    await runAsync(`UPDATE settings SET day1_date=?,day2_date=?,day3_date=?,final_place_ru=?,final_place_ky=?,updated_at=${nowFunc} WHERE id=1`, [
+      s.day1_date||null,s.day2_date||null,s.day3_date||null,s.final_place_ru||null,s.final_place_ky||null
     ]);
     res.json({ ok:true });
   }catch(e){ res.status(500).json({ error:e.message }); }

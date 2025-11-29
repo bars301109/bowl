@@ -100,18 +100,16 @@ async function renderSettings(){
   const s = await (await fetch('/api/settings')).json();
   content.innerHTML = `
     <div class="admin-form">
-      <h3>⚙️ Настройки (бейджи и таймлайн)</h3>
-      <div class="form-row"><label>🏷️ Бейдж 1 RU<input id="b1ru" class="admin-input" value="${esc(s?.badge1_ru||'')}"/></label><label>🏷️ Бейдж 1 KY<input id="b1ky" class="admin-input" value="${esc(s?.badge1_ky||'')}"/></label></div>
-      <div class="form-row"><label>🏷️ Бейдж 2 RU<input id="b2ru" class="admin-input" value="${esc(s?.badge2_ru||'')}"/></label><label>🏷️ Бейдж 2 KY<input id="b2ky" class="admin-input" value="${esc(s?.badge2_ky||'')}"/></label></div>
-      <div class="form-row"><label>🏷️ Бейдж 3 RU<input id="b3ru" class="admin-input" value="${esc(s?.badge3_ru||'')}"/></label><label>🏷️ Бейдж 3 KY<input id="b3ky" class="admin-input" value="${esc(s?.badge3_ky||'')}"/></label></div>
-      <div class="form-row"><label>📅 День 1 (YYYY-MM-DD)<input id="d1" class="admin-input" value="${esc(s?.day1_date||'')}"/></label><label>📅 День 2<input id="d2" class="admin-input" value="${esc(s?.day2_date||'')}"/></label></div>
-      <div class="form-row"><label>📅 День 3<input id="d3" class="admin-input" value="${esc(s?.day3_date||'')}"/></label><label>🏆 Финал RU (место)<input id="fpru" class="admin-input" value="${esc(s?.final_place_ru||'')}"/></label></div>
-      <div class="form-row"><label>🏆 Финал KY (орду)<input id="fpky" class="admin-input" value="${esc(s?.final_place_ky||'')}"/></label></div>
+      <h3>⚙️ Основные настройки</h3>
+      <div class="form-row"><label>📅 День 1 (YYYY-MM-DD)<input id="d1" type="date" class="admin-input" value="${esc(s?.day1_date||'')}"/></label><label>📅 День 2<input id="d2" type="date" class="admin-input" value="${esc(s?.day2_date||'')}"/></label></div>
+      <div class="form-row"><label>📅 День 3<input id="d3" type="date" class="admin-input" value="${esc(s?.day3_date||'')}"/></label></div>
+      <h3 style="margin-top:24px">🏆 Финальное место</h3>
+      <div class="form-row"><label>Финал RU (место)<input id="fpru" class="admin-input" placeholder="например: Биллик Лицей" value="${esc(s?.final_place_ru||'')}"/></label><label>Финал KY (орду)<input id="fpky" class="admin-input" placeholder="например: Биллик Лицей" value="${esc(s?.final_place_ky||'')}"/></label></div>
       <div class="mt-2"><button class="admin-button success" id="save">💾 Сохранить</button></div>
     </div>
   `;
   document.getElementById('save').onclick = async ()=>{
-    const body = { badge1_ru:val('b1ru'),badge1_ky:val('b1ky'),badge2_ru:val('b2ru'),badge2_ky:val('b2ky'),badge3_ru:val('b3ru'),badge3_ky:val('b3ky'),day1_date:val('d1'),day2_date:val('d2'),day3_date:val('d3'),final_place_ru:val('fpru'),final_place_ky:val('fpky') };
+    const body = { day1_date:val('d1'),day2_date:val('d2'),day3_date:val('d3'),final_place_ru:val('fpru'),final_place_ky:val('fpky') };
     const r = await fetch('/api/admin/settings',{ method:'PUT', headers:aHeaders(), body: JSON.stringify(body) });
     if(!r.ok){ showAlert('Ошибка сохранения', 'error'); return; }
     showAlert('Настройки сохранены!', 'success');
