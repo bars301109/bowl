@@ -965,7 +965,49 @@ app.post('/api/me/change-password', teamAuth, async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
-app.get('/api/me/results', teamAuth, async (req,res)=>{ try{ const rows = await allAsync('SELECT r.id, r.test_id, r.score, r.taken_at, t.title FROM results r LEFT JOIN tests t ON t.id = r.test_id WHERE r.team_id = ? ORDER BY r.taken_at DESC',[req.team.id]); res.json(rows);}catch(e){ res.status(500).json({ error:e.message }); } });
+app.get('/api/me/results', teamAuth, async (req,res)=>{ 
+  try{ 
+    const rows = await allAsync(`
+      SELECT r.id, r.score, r.taken_at, r.answers, r.test_id, t.title, tm.team_name, c.name_ru as category_name
+      FROM results r
+      LEFT JOIN tests t ON t.id = r.test_id
+      LEFT JOIN teams tm ON tm.id = r.team_id
+      LEFT JOIN categories c ON c.id = t.category_id
+      WHERE r.team_id = ?
+      ORDER BY r.taken_at DESC
+    `, [req.team.id]); 
+    const processed = rows.map(r => {
+      let correct = 0;
+      let total = 0;
+      if (r.answers) {
+        try {
+          const answers = JSON.parse(r.answers);
+          total = answers.length;
+          correct = answers.filter(a => a.ok).length;
+        } catch (e) {
+          correct = r.score || 0;
+          total = 0;
+        }
+      }
+      let formatted_date = '';
+      if (r.taken_at) {
+        const date = new Date(r.taken_at);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        formatted_date = `${day}.${month}.${year}-${hours}:${minutes}`;
+      }
+      return {
+        ...r,
+        score_display: total > 0 ? `${correct}/${total}` : `${correct}`,
+        taken_at_formatted: formatted_date
+      };
+    });
+    res.json(processed);
+  }catch(e){ res.status(500).json({ error:e.message }); } 
+});
 app.get('/api/admin/tests', adminAuth, async (req,res)=>{
   try{
     const tests = await allAsync(
@@ -1281,17 +1323,126 @@ app.post('/api/admin/reset-teams', adminAuth, async (req,res)=>{
   }catch(e){ res.status(500).json({ error:e.message }); }
 });
 
-app.get('/api/admin/results', adminAuth, async (req,res)=>{ 
-  try{ 
+app.get('/api/admin/results', adminAuth, async (req,res)=>{
+  try{
     const results = await allAsync(`
-      SELECT r.id, r.score, r.taken_at, r.answers, r.test_id, t.title, tm.team_name 
-      FROM results r 
-      LEFT JOIN tests t ON t.id = r.test_id 
-      LEFT JOIN teams tm ON tm.id = r.team_id 
+      SELECT r.id, r.score, r.taken_at, r.answers, r.test_id, t.title, tm.team_name, c.name_ru as category_name
+      FROM results r
+      LEFT JOIN tests t ON t.id = r.test_id
+      LEFT JOIN teams tm ON tm.id = r.team_id
+      LEFT JOIN categories c ON c.id = t.category_id
       ORDER BY r.taken_at DESC
-    `); 
-    res.json(results); 
-  }catch(e){ res.status(500).json({ error:e.message }); } 
+    `);
+    const processed = results.map(r => {
+      let correct = 0;
+      let total = 0;
+      if (r.answers) {
+        try {
+          const answers = JSON.parse(r.answers);
+          total = answers.length;
+          correct = answers.filter(a => a.ok).length;
+        } catch (e) {
+          correct = r.score || 0;
+          total = 0;
+        }
+      }
+      let taken_at_formatted = '';
+      if (r.taken_at) {
+        try {
+          const d = new Date(r.taken_at);
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          const hours = String(d.getHours()).padStart(2, '0');
+          const minutes = String(d.getMinutes()).padStart(2, '0');
+          taken_at_formatted = `${day}.${month}.${year}-${hours}:${minutes}`;
+        } catch (e) {
+          taken_at_formatted = '';
+        }
+      }
+      return {
+        ...r,
+        score_display: total > 0 ? `${correct}/${total}` : `${correct}`,
+        taken_at_formatted
+      };
+    });
+    res.json(processed);
+  }catch(e){ res.status(500).json({ error:e.message }); }
+});
+
+app.get('/api/admin/results/export-csv', adminAuth, async (req,res)=>{
+  try{
+    const results = await allAsync(`
+      SELECT r.id, r.score, r.taken_at, r.answers, r.test_id, t.title, tm.team_name, c.name_ru as category_name
+      FROM results r
+      LEFT JOIN tests t ON t.id = r.test_id
+      LEFT JOIN teams tm ON tm.id = r.team_id
+      LEFT JOIN categories c ON c.id = t.category_id
+      ORDER BY r.taken_at DESC
+    `);
+    
+    const processed = results.map(r => {
+      let correct = 0;
+      let total = 0;
+      if (r.answers) {
+        try {
+          const answers = JSON.parse(r.answers);
+          total = answers.length;
+          correct = answers.filter(a => a.ok).length;
+        } catch (e) {
+          correct = r.score || 0;
+          total = 0;
+        }
+      }
+      let taken_at_formatted = '';
+      if (r.taken_at) {
+        try {
+          const d = new Date(r.taken_at);
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          const hours = String(d.getHours()).padStart(2, '0');
+          const minutes = String(d.getMinutes()).padStart(2, '0');
+          taken_at_formatted = `${day}.${month}.${year}-${hours}:${minutes}`;
+        } catch (e) {
+          taken_at_formatted = '';
+        }
+      }
+      return {
+        id: r.id,
+        team_name: r.team_name || '',
+        score_display: total > 0 ? `${correct}/${total}` : `${correct}`,
+        taken_at_formatted,
+        category_name: r.category_name || ''
+      };
+    });
+    
+    const header = ['№ результата', 'Имя команды', 'Баллы', 'Время прохождения', 'Категория теста'].map(toCsvValue).join(',');
+    
+    if (!processed || processed.length === 0) {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="results_export.csv"');
+      return res.send('\ufeff' + header + '\n');
+    }
+    
+    const rows = processed.map(r => {
+      return [
+        r.id,
+        r.team_name,
+        r.score_display,
+        r.taken_at_formatted,
+        r.category_name
+      ].map(toCsvValue).join(',');
+    });
+    
+    const csv = header + '\n' + rows.join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="results_export.csv"');
+    res.send('\ufeff' + csv);
+  }catch(e){
+    console.error('Results export error:', e);
+    res.status(500).json({ error:e.message });
+  }
 });
 
 // Export teams to CSV (упрощённый формат для импорта)
@@ -1360,212 +1511,6 @@ app.get('/api/admin/teams/export-csv', adminAuth, async (req,res)=>{
   }
 });
 
-// Export results to CSV in Google Forms format
-app.get('/api/admin/results/export-csv', adminAuth, async (req,res)=>{
-  try{
-    const results = await allAsync(`
-      SELECT r.id, r.score, r.taken_at, r.answers, r.test_id, t.title, tm.team_name 
-      FROM results r 
-      LEFT JOIN tests t ON t.id = r.test_id 
-      LEFT JOIN teams tm ON tm.id = r.team_id 
-      ORDER BY r.taken_at ASC
-    `);
-    
-    if(!results || results.length === 0){
-      const header = ['Отметка времени', 'Всего баллов'].map(toCsvValue).join(',');
-      res.setHeader('Content-Type','text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition','attachment; filename="results_export.csv"');
-      return res.send('\ufeff' + header + '\n');
-    }
-    
-    // Group results by test_id to get questions for each test
-    const testIds = [...new Set(results.map(r=>r.test_id).filter(Boolean))];
-    const testQuestions = {};
-    
-    for(const testId of testIds){
-      try{
-        let qs = [];
-        // Try to read from file first
-        try{
-          qs = readQuestionsFile(testId);
-        }catch(fileErr){
-          console.warn('Failed to read questions file for test', testId, fileErr.message);
-        }
-        
-        // Fallback to DB if file is empty or doesn't exist
-        if(!qs || qs.length === 0){
-          try{
-            const dbQs = await allAsync('SELECT id, ordinal, text, points, correct FROM questions WHERE test_id=? ORDER BY ordinal', [testId]);
-            if(dbQs && dbQs.length > 0){
-              testQuestions[testId] = dbQs.map(q=>({ id:q.id, ordinal:q.ordinal||0, points:q.points||1 }));
-            } else {
-              testQuestions[testId] = [];
-            }
-          }catch(dbErr){
-            console.error('Error reading questions from DB for test', testId, dbErr);
-            testQuestions[testId] = [];
-          }
-        } else {
-          testQuestions[testId] = qs.map(q=>({ id:q.id, ordinal:q.ordinal||0, points:q.points||1 })).sort((a,b)=>a.ordinal-b.ordinal);
-        }
-      }catch(err){
-        console.error('Error processing test questions for test', testId, err);
-        testQuestions[testId] = [];
-      }
-    }
-    
-    // Find max number of questions across all tests
-    let maxQuestions = 0;
-    for(const testId in testQuestions){
-      if(testQuestions[testId].length > maxQuestions) maxQuestions = testQuestions[testId].length;
-    }
-    
-    // Build header: timestamp, total_score, then for each question: answer, points, feedback
-    const headerParts = ['Отметка времени', 'Всего баллов'];
-    for(let i = 1; i <= maxQuestions; i++){
-      headerParts.push(String(i));
-      headerParts.push(`${i} [Количество баллов]`);
-      headerParts.push(`${i} [Отзыв]`);
-    }
-    const header = headerParts.map(toCsvValue).join(',');
-    
-    // Format timestamp to match Google Forms format: "YYYY/MM/DD H:MM:SS AM/PM GMT+X"
-    function formatTimestamp(isoStr){
-      if(!isoStr) return '';
-      try{
-        const d = new Date(isoStr);
-        if(isNaN(d.getTime())) return '';
-        const year = d.getFullYear();
-        const month = String(d.getMonth()+1).padStart(2,'0');
-        const day = String(d.getDate()).padStart(2,'0');
-        let hours = d.getHours();
-        const minutes = String(d.getMinutes()).padStart(2,'0');
-        const seconds = String(d.getSeconds()).padStart(2,'0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        if(hours === 0) hours = 12;
-        // No padding for hours (1-12) - match format from example
-        const hoursStr = String(hours);
-        // Timezone offset (GMT+6 for Kyrgyzstan)
-        const tzOffset = 6;
-        // Return without quotes - toCsvValue will add them if needed
-        return `${year}/${month}/${day} ${hoursStr}:${minutes}:${seconds} ${ampm} GMT+${tzOffset}`;
-      }catch(e){
-        console.error('Error formatting timestamp', isoStr, e);
-        return '';
-      }
-    }
-    
-    // Build rows
-    const rows = results.map(r=>{
-      try{
-        const rowParts = [];
-        // Timestamp - format and then apply toCsvValue
-        const timestamp = formatTimestamp(r.taken_at);
-        rowParts.push(toCsvValue(timestamp));
-        
-        // Parse answers
-        let answersData = [];
-        try{
-          if(r.answers && typeof r.answers === 'string'){
-            answersData = JSON.parse(r.answers);
-          } else if(Array.isArray(r.answers)){
-            answersData = r.answers;
-          }
-        }catch(e){
-          console.error('Error parsing answers for result', r.id, e);
-          answersData = [];
-        }
-        
-        // Get questions for this test
-        const questions = testQuestions[r.test_id] || [];
-        const maxScore = questions.length > 0 ? questions.reduce((sum,q)=>sum+(q.points||1), 0) : 0;
-        const actualScore = r.score || 0;
-        
-        // Total score in format "X.XX / Y"
-        rowParts.push(toCsvValue(`${Number(actualScore).toFixed(2)} / ${maxScore}`));
-      
-      // For each question, add answer, points, feedback
-      for(let i = 0; i < maxQuestions; i++){
-        if(i < questions.length){
-          const q = questions[i];
-          const answerData = answersData.find(a=>{
-            try{
-              return String(a.question_id) === String(q.id);
-            }catch(e){
-              return false;
-            }
-          });
-          
-          let given = '';
-          let correct = '';
-          
-          if(answerData){
-            // Get given answer
-            if(answerData.given !== null && answerData.given !== undefined){
-              given = String(answerData.given);
-            }
-            // Get correct answer
-            if(answerData.correct !== null && answerData.correct !== undefined){
-              correct = String(answerData.correct);
-            }
-          }
-          
-          // Use the same logic as in submit endpoint (matching regex pattern)
-          let isCorrect = false;
-          if(correct && correct !== '' && given !== ''){
-            // Check if correct is numeric (MCQ index) - use same pattern as submit
-            const numericPattern = /^\d+$/;
-            if(numericPattern.test(correct)){
-              // Numeric answer (MCQ index) - exact match
-              if(String(given) === String(correct)){
-                isCorrect = true;
-              }
-            } else {
-              // Text answer - case-insensitive comparison
-              if(String(given).trim().toLowerCase() === String(correct).trim().toLowerCase()){
-                isCorrect = true;
-              }
-            }
-          }
-          
-          const points = isCorrect ? (q.points||1) : 0;
-          const maxPoints = q.points||1;
-          
-          rowParts.push(toCsvValue(given));
-          rowParts.push(toCsvValue(`${points.toFixed(2)} / ${maxPoints}`));
-          rowParts.push(toCsvValue('')); // Feedback column (empty for now)
-        } else {
-          // No more questions, fill with empty values
-          rowParts.push(toCsvValue(''));
-          rowParts.push(toCsvValue(''));
-          rowParts.push(toCsvValue(''));
-        }
-      }
-      
-        return rowParts.join(',');
-      }catch(err){
-        console.error('Error processing result row', r.id, err);
-        return '';
-      }
-    }).filter(row => row.length > 0);
-    
-    if(rows.length === 0){
-      res.setHeader('Content-Type','text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition','attachment; filename="results_export.csv"');
-      return res.send('\ufeff' + header + '\n');
-    }
-    
-    const csv = header + '\n' + rows.join('\n');
-    res.setHeader('Content-Type','text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition','attachment; filename="results_export.csv"');
-    res.send('\ufeff' + csv); // BOM for Excel
-  }catch(e){ 
-    console.error('Export error:', e);
-    console.error('Stack:', e.stack);
-    res.status(500).json({ error:e.message, stack: process.env.NODE_ENV === 'development' ? e.stack : undefined }); 
-  }
-});
 // settings public
 app.get('/api/settings', async (req,res)=>{ try{ const s = await getAsync('SELECT * FROM settings WHERE id=1'); res.json(s||{}); }catch(e){ res.status(500).json({ error:e.message }); } });
 // settings admin

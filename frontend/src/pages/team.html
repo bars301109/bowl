@@ -548,19 +548,23 @@ async function renderResultsSection(btn) {
           <table class="results-table" role="table" aria-label="Результаты тестирования">
             <thead>
               <tr>
-                <th scope="col" data-i18n="team.test_title">Тест</th>
+                <th scope="col">№</th>
+                <th scope="col" data-i18n="team.team_name">Имя команды</th>
                 <th scope="col" data-i18n="team.score">Баллы</th>
-                <th scope="col" data-i18n="team.date">Дата</th>
+                <th scope="col" data-i18n="team.date">Время прохождения</th>
+                <th scope="col" data-i18n="team.category">Категория теста</th>
               </tr>
             </thead>
             <tbody>
               ${rows.map((r, idx) => `
                 <tr role="row">
-                  <td role="cell">${escapeHtml(r.title || 'Без названия')}</td>
-                  <td role="cell" class="score" aria-label="Набрано баллов: ${r.score || 0}">
-                    <strong>${r.score || 0}</strong>
+                  <td role="cell">${idx + 1}</td>
+                  <td role="cell">${escapeHtml(r.team_name || 'Без названия')}</td>
+                  <td role="cell" class="score" aria-label="Набрано баллов: ${r.score_display}">
+                    <strong>${r.score_display || '0'}</strong>
                   </td>
-                  <td role="cell" class="date">${escapeHtml(r.taken_at || 'Не указана')}</td>
+                  <td role="cell" class="date">${escapeHtml(r.taken_at_formatted || 'Не указана')}</td>
+                  <td role="cell">${escapeHtml(r.category_name || 'Не указана')}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -569,9 +573,6 @@ async function renderResultsSection(btn) {
         <div class="results-summary" role="region" aria-label="Сводка результатов">
           <p class="summary-text">
             Всего пройдено тестов: <strong>${rows.length}</strong>
-          </p>
-          <p class="summary-text">
-            Средний балл: <strong>${Math.round(rows.reduce((sum, r) => sum + (r.score || 0), 0) / rows.length)}</strong>
           </p>
         </div>
       </section>

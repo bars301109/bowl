@@ -873,15 +873,15 @@ async function renderResults(){
       <table class="admin-table">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Тест</th>
-            <th>Команда</th>
+            <th>№</th>
+            <th>Имя команды</th>
             <th>Баллы</th>
-            <th>Время</th>
+            <th>Время прохождения</th>
+            <th>Категория теста</th>
           </tr>
         </thead>
         <tbody>
-          ${rows.length > 0 ? rows.map(x=>`<tr><td>${x.id}</td><td>${esc(x.title||'')}</td><td>${esc(x.team_name||'')}</td><td><strong>${x.score || 0}</strong></td><td>${esc(x.taken_at||'')}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:32px;color:#718096">Нет результатов тестирования</td></tr>'}
+          ${rows.length > 0 ? rows.map(x=>`<tr><td>${x.id}</td><td>${esc(x.team_name||'')}</td><td><strong>${x.score_display || '0'}</strong></td><td>${esc(x.taken_at_formatted||'')}</td><td>${esc(x.category_name||'')}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:32px;color:#718096">Нет результатов тестирования</td></tr>'}
         </tbody>
       </table>
     </div>
