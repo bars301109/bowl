@@ -481,7 +481,6 @@ async function renderQuestions(testId){
       const type = typeSel ? typeSel.value : 'mcq';
       const text = (card.querySelector('.q-text')?.value || '').trim();
       const points = parseInt(card.querySelector('.q-points')?.value || '1', 10) || 1;
-      const category_id = parseInt(card.querySelector('.q-cat')?.value || '0', 10) || null;
       
       let options = null;
       let correct = '';
@@ -511,7 +510,7 @@ async function renderQuestions(testId){
       try{
         if(qid){
           // Обновление существующего вопроса
-          const payload = { ordinal, text, options, correct, points, category_id };
+          const payload = { ordinal, text, options, correct, points };
           const r = await fetch('/api/admin/questions/'+qid, { method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
           if(!r.ok){
             errors.push(`Вопрос #${ordinal}: ошибка сохранения`);
@@ -519,7 +518,7 @@ async function renderQuestions(testId){
           }
         } else {
           // Создание нового вопроса
-          const payload = { ordinal, text, options, correct, points, category_id };
+          const payload = { ordinal, text, options, correct, points };
           const r = await fetch('/api/admin/tests/'+currentTestId+'/questions', { method:'POST', headers:aHeaders(), body: JSON.stringify(payload) });
           if(!r.ok){
             errors.push(`Вопрос #${ordinal}: ошибка создания`);
@@ -600,7 +599,6 @@ async function renderQuestions(testId){
     const type = blank.querySelector('.q-type').value;
     const text = blank.querySelector('.q-text').value.trim();
     const points = parseInt(blank.querySelector('.q-points').value||'1',10)||1;
-    const category_id = parseInt(blank.querySelector('.q-cat').value,10)||null;
     let options = null; let correct = '';
     if(type==='mcq'){
       const res = collectOptionsFrom(blank.querySelector('.opts'));
@@ -611,7 +609,7 @@ async function renderQuestions(testId){
       correct = (blank.querySelector('.q-correct-text').value||'').trim();
       if(!text){ showAlert('Введите текст вопроса', 'error'); return; }
     }
-    const payload = { ordinal: (qs.length+1), text, options, correct, points, category_id };
+    const payload = { ordinal: (qs.length+1), text, options, correct, points };
     if(Array.isArray(payload.options) && payload.options.length===0){ payload.options = null; }
     const r = await fetch('/api/admin/tests/'+currentTestId+'/questions',{ method:'POST', headers: aHeaders(), body: JSON.stringify(payload) });
     if(!r.ok){ try{ const msg = await r.text(); }catch(e){} showAlert('Ошибка сохранения вопроса', 'error'); return; }
@@ -651,7 +649,6 @@ async function renderQuestions(testId){
       </div>
       <div class="d-flex align-items-center mt-2" style="gap:12px">
         <label>Баллы<input class="admin-input q-points" type="number" value="${q.points||1}" style="width:80px"/></label>
-        <label>Категория<select class="admin-input q-cat">${cs.map(c=>`<option value="${c.id}" ${q.category_id===c.id?'selected':''}>${c.name_ru}</option>`).join('')}</select></label>
       </div>
     `;
     const optsWrap = card.querySelector('.opts');
@@ -675,7 +672,6 @@ async function renderQuestions(testId){
       const type = typeSel.value;
       const text = card.querySelector('.q-text').value.trim();
       const points = parseInt(card.querySelector('.q-points').value||'1',10)||1;
-      const category_id = parseInt(card.querySelector('.q-cat').value,10)||null;
       let options = null; let correct = '';
       if(type==='mcq'){
         const res = collectOptionsFrom(optsWrap);
@@ -684,7 +680,7 @@ async function renderQuestions(testId){
       } else {
         correct = (card.querySelector('.q-correct-text').value||'').trim();
       }
-      const payload = { ordinal: qs.length+1, text, options, correct, points, category_id };
+      const payload = { ordinal: qs.length+1, text, options, correct, points };
       const r = await fetch('/api/admin/tests/'+currentTestId+'/questions',{ method:'POST', headers:aHeaders(), body: JSON.stringify(payload) });
       if(!r.ok){ showAlert('Ошибка дублирования', 'error'); return; }
       renderQuestions(currentTestId);
@@ -701,7 +697,7 @@ async function renderQuestions(testId){
         const newOrd = i+1;
         const qq = qs.find(x=> String(x.id)===String(id));
         if(qq && qq.ordinal !== newOrd){
-          try{ await fetch('/api/admin/questions/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify({ ordinal:newOrd, text: qq.text, options: qq.options, correct: qq.correct, points: qq.points, category_id: qq.category_id }) }); }catch{}
+          try{ await fetch('/api/admin/questions/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify({ ordinal:newOrd, text: qq.text, options: qq.options, correct: qq.correct, points: qq.points }) }); }catch{}
         }
       }
       renderQuestions(currentTestId);
@@ -743,7 +739,6 @@ async function renderQuestions(testId){
       </div>
       <div class="d-flex align-items-center mt-2" style="gap:12px">
         <label>Баллы<input class="admin-input q-points" type="number" value="1" style="width:80px"/></label>
-        <label>Категория<select class="admin-input q-cat">${cs.map(c=>`<option value="${c.id}">${c.name_ru}</option>`).join('')}</select></label>
       </div>
       <div class="mt-2 d-flex" style="gap:8px">
         <button class="admin-button success q-create">Добавить</button>
@@ -786,12 +781,12 @@ function editQuestion(id, qs, cs){
     <h3>Редактировать вопрос #${q.id}</h3>
     <div class="form-row"><label>#<input id="q_ord" type="number" value="${q.ordinal}"/></label><label>Текст<textarea id="q_text" rows="3">${esc(q.text||'')}</textarea></label></div>
     <div class="form-row"><label>Опции<input id="q_opts" value="${Array.isArray(q.options)?q.options.join(' | '):(q.options||'')}"/></label><label>Ответ<input id="q_correct" value="${esc(q.correct||'')}"/></label></div>
-    <div class="form-row"><label>Баллы<input id="q_points" type="number" value="${q.points||1}"/></label><label>Категория<select id="q_cat">${cs.map(c=>`<option value="${c.id}" ${q.category_id===c.id?'selected':''}>${c.name_ru}</option>`).join('')}</select></label></div>
+    <div class="form-row"><label>Баллы<input id="q_points" type="number" value="${q.points||1}"/></label></div>
     <div style="margin-top:8px"><button class="primary" id="save">Сохранить</button> <button id="back">Назад</button></div>
   `;
   document.getElementById('back').onclick = ()=> renderQuestions(currentTestId);
   document.getElementById('save').onclick = async ()=>{
-    const payload = { ordinal: num('q_ord'), text: document.getElementById('q_text').value.trim(), options: (val('q_opts')? val('q_opts').split('|').map(s=>s.trim()).filter(Boolean) : null), correct: val('q_correct'), points: num('q_points'), category_id: parseInt(val('q_cat'),10)||null };
+    const payload = { ordinal: num('q_ord'), text: document.getElementById('q_text').value.trim(), options: (val('q_opts')? val('q_opts').split('|').map(s=>s.trim()).filter(Boolean) : null), correct: val('q_correct'), points: num('q_points') };
     const r = await fetch('/api/admin/questions/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
     if(!r.ok){ alert('Ошибка'); return; }
     renderQuestions(currentTestId);
