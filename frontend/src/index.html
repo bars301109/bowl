@@ -489,12 +489,10 @@
     class Carousel {
       constructor(element) {
         this.element = element;
-        this.track = element.querySelector('.carousel-track');
         this.items = element.querySelectorAll('.carousel-item');
         this.prevBtn = element.querySelector('.carousel-prev');
         this.nextBtn = element.querySelector('.carousel-next');
         this.dotsContainer = element.querySelector('.carousel-dots');
-        this.dots = [];
         this.currentIndex = 0;
         this.touchStartX = 0;
         this.touchEndX = 0;
@@ -502,13 +500,11 @@
         this.autoplayDelay = 5000;
 
         this.init();
-        window.addEventListener('resize', () => {
-          this.updateSlide();
-        });
       }
 
       init() {
-        this.createDots();
+        this.createNavigation();
+        this.showSlide(0);
 
         this.prevBtn.addEventListener('click', () => {
           this.prev();
@@ -519,14 +515,14 @@
           this.resetAutoplay();
         });
         
-        this.track.addEventListener('touchstart', (e) => {
+        this.element.addEventListener('touchstart', (e) => {
           this.handleTouchStart(e);
         }, false);
-        this.track.addEventListener('touchend', (e) => {
+        this.element.addEventListener('touchend', (e) => {
           this.handleTouchEnd(e);
         }, false);
 
-        this.track.addEventListener('mouseenter', () => {
+        this.element.addEventListener('mouseenter', () => {
           this.stopAutoplay();
         });
         this.element.addEventListener('mouseleave', () => {
@@ -536,74 +532,37 @@
         this.startAutoplay();
       }
 
-      updateSlide() {
-        const wrapper = this.element.querySelector('.carousel-wrapper');
-        const offset = -this.currentIndex * wrapper.offsetWidth;
-        this.track.style.transform = `translateX(${offset}px)`;
-      }
-
-      createDots() {
+      createNavigation() {
         this.dotsContainer.innerHTML = '';
-        this.dots = [];
         
         const prevDot = document.createElement('button');
         prevDot.className = 'carousel-dot carousel-dot-prev';
         prevDot.textContent = '←';
-        prevDot.addEventListener('click', () => {
-          this.prev();
-          this.resetAutoplay();
-        });
         this.dotsContainer.appendChild(prevDot);
-
-        this.items.forEach((_, index) => {
-          const dot = document.createElement('button');
-          dot.className = 'carousel-dot';
-          dot.textContent = (index + 1);
-          dot.dataset.index = index;
-          dot.addEventListener('click', () => {
-            this.goToSlide(index);
-            this.resetAutoplay();
-          });
-          this.dotsContainer.appendChild(dot);
-          this.dots.push(dot);
-        });
 
         const nextDot = document.createElement('button');
         nextDot.className = 'carousel-dot carousel-dot-next';
         nextDot.textContent = '→';
-        nextDot.addEventListener('click', () => {
-          this.next();
-          this.resetAutoplay();
-        });
         this.dotsContainer.appendChild(nextDot);
-
-        this.updateDots();
       }
 
-      updateDots() {
-        this.dots.forEach((dot, index) => {
-          dot.classList.toggle('active', index === this.currentIndex);
+      showSlide(index) {
+        this.items.forEach((item, i) => {
+          item.style.display = i === index ? 'flex' : 'none';
+          item.style.opacity = i === index ? '1' : '0';
+          item.style.transition = 'opacity 0.6s ease-in-out';
         });
-      }
-
-      goToSlide(index) {
-        if (index >= 0 && index < this.items.length) {
-          this.currentIndex = index;
-          this.updateSlide();
-          this.updateDots();
-        }
+        this.currentIndex = index;
       }
 
       next() {
-        this.currentIndex = (this.currentIndex + 1) % this.items.length;
-        this.updateSlide();
-        this.updateDots();
+        const nextIndex = (this.currentIndex + 1) % this.items.length;
+        this.showSlide(nextIndex);
       }
 
       prev() {
-        this.currentIndex = (this.currentIndex - 1 + this.items.length) % this.items.length;
-        this.updateSlide();
-        this.updateDots();
+        const prevIndex = (this.currentIndex - 1 + this.items.length) % this.items.length;
+        this.showSlide(prevIndex);
       }
 
       handleTouchStart(e) {
