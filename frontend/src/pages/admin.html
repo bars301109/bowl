@@ -2,11 +2,11 @@
 <!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Admin Panel - Akylman Quiz</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous"><link rel="stylesheet" href="../css/style.css"/><link rel="icon" type="image/svg+xml" href="../images/favicon.svg"/></head><body class="admin-panel">
 <div class="container">
   <div class="admin-header">
-    <a href="/"><img src="../images/logo.png" class="logo-center img-fluid"/></a>
+    <a href="/"><img src="../images/image.png" class="logo-center img-fluid"/></a>
     <h2>🎯 Админ-панель Akylman Quiz</h2>
     <div class="small-muted">Управляйте тестами, вопросами, категориями и отслеживайте результаты команд</div>
     
-    <div class="admin-nav" style="margin-top: 20px;">
+    <div class="admin-nav" style="margin-top: 10px;">
       <button class="admin-button" onclick="logoutAdmin()" style="background: linear-gradient(135deg, #f093fb, #f5576c);">🚪 Выход</button>
     </div>
     
@@ -32,7 +32,7 @@
       <h3>🗑️ Удаление теста</h3>
       <button id="closeDeleteModal" class="admin-button secondary" style="padding: 4px 12px; font-size: 20px; line-height: 1;">&times;</button>
     </div>
-    <div style="margin-bottom: 24px;">
+    <div style="margin-bottom: 12px;">
       <p style="font-size: 16px; line-height: 1.6; color: #374151;">Вы уверены, что хотите удалить этот тест?</p>
       <p style="font-size: 14px; color: #6b7280; margin-top: 8px;">Это действие нельзя отменить. Все вопросы и результаты этого теста также будут удалены.</p>
     </div>
@@ -103,7 +103,7 @@ async function renderSettings(){
       <h3>⚙️ Основные настройки</h3>
       <div class="form-row"><label>📅 День 1 (YYYY-MM-DD)<input id="d1" type="date" class="admin-input" value="${esc(s?.day1_date||'')}"/></label><label>📅 День 2<input id="d2" type="date" class="admin-input" value="${esc(s?.day2_date||'')}"/></label></div>
       <div class="form-row"><label>📅 День 3<input id="d3" type="date" class="admin-input" value="${esc(s?.day3_date||'')}"/></label></div>
-      <h3 style="margin-top:24px">🏆 Финальное место</h3>
+      <h3 style="margin-top:10px">🏆 Финальное место</h3>
       <div class="form-row"><label>Финал RU (место)<input id="fpru" class="admin-input" placeholder="например: Биллик Лицей" value="${esc(s?.final_place_ru||'')}"/></label><label>Финал KY (орду)<input id="fpky" class="admin-input" placeholder="например: Биллик Лицей" value="${esc(s?.final_place_ky||'')}"/></label></div>
       <div class="mt-2"><button class="admin-button success" id="save">💾 Сохранить</button></div>
     </div>
@@ -150,7 +150,7 @@ async function renderTests(){
           </select>
         </label>
       </div>
-      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+      <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap;">
         <button class="admin-button success" id="addTest">➕ Создать тест</button>
         <button class="admin-button danger" id="resetTests">🧹 Удалить все тесты</button>
       </div>
@@ -183,7 +183,7 @@ async function renderTests(){
                 <button data-id="${t.id}" class="admin-button qs">❓ Вопросы</button>
               </div>
             </td>
-          </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:32px;color:#718096">Нет тестов</td></tr>'}
+          </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:12px;color:#718096">Нет тестов</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -375,7 +375,7 @@ async function renderCategories(){
           </tr>
         </thead>
         <tbody>
-          ${cats.length > 0 ? cats.map(c=>`<tr><td>${c.id}</td><td><div style="font-weight:600;margin-bottom:4px">${esc(c.name_ru||'')}</div><div class="small-muted" style="font-size:13px;line-height:1.4">${esc((c.desc_ru||'').slice(0,120))}</div></td><td><div style="font-weight:600;margin-bottom:4px">${esc(c.name_ky||'')}</div><div class="small-muted" style="font-size:13px;line-height:1.4">${esc((c.desc_ky||'').slice(0,120))}</div></td><td><div class="admin-table-actions"><button class="admin-button secondary cedit" data-id="${c.id}">✏️ Редакт.</button> <button class="admin-button danger cdel" data-id="${c.id}">🗑️ Удалить</button></div></td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center;padding:32px;color:#718096">Нет категорий</td></tr>'}
+          ${cats.length > 0 ? cats.map(c=>`<tr><td>${c.id}</td><td><div style="font-weight:600;margin-bottom:4px">${esc(c.name_ru||'')}</div><div class="small-muted" style="font-size:13px;line-height:1.4">${esc((c.desc_ru||'').slice(0,120))}</div></td><td><div style="font-weight:600;margin-bottom:4px">${esc(c.name_ky||'')}</div><div class="small-muted" style="font-size:13px;line-height:1.4">${esc((c.desc_ky||'').slice(0,120))}</div></td><td><div class="admin-table-actions"><button class="admin-button secondary cedit" data-id="${c.id}">✏️ Редакт.</button> <button class="admin-button danger cdel" data-id="${c.id}">🗑️ Удалить</button></div></td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center;padding:12px;color:#718096">Нет категорий</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -447,9 +447,9 @@ async function renderQuestions(testId){
         <button id="addBlank" class="admin-button success" style="margin-left:auto">➕ Добавить вопрос</button>
       </div>
     </div>
-    <div id="qList" class="q-list" style="display:flex;flex-direction:column;gap:12px;margin-top:12px"></div>
-    <div style="margin-top:20px; padding-top:20px; border-top:2px solid var(--border, #e2e8f0);">
-      <button id="saveAllQuestions" class="admin-button success" style="font-size:16px; padding:12px 24px">💾 Сохранить все вопросы</button>
+    <div id="qList" class="q-list" style="display:flex;flex-direction:column;gap:6px;margin-top:6px"></div>
+    <div style="margin-top:10px; padding-top:10px; border-top:2px solid var(--border, #e2e8f0);">
+      <button id="saveAllQuestions" class="admin-button success" style="font-size:16px; padding:6px 24px">💾 Сохранить все вопросы</button>
     </div>
   `;
   document.getElementById('backTests').onclick = renderTests;
@@ -550,7 +550,7 @@ async function renderQuestions(testId){
     const row = document.createElement('div');
     row.className = 'form-row';
     row.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;width:100%">
+      <div style="display:flex;align-items:center;gap:4px;width:100%">
         <input type="radio" class="q-correct-radio" name="${groupName}" ${isChecked?'checked':''} title="Правильный" style="flex-shrink:0"/>
         <input class="admin-input opt" placeholder="Вариант ответа" value="${esc(initialValue)}" style="flex:1; min-width:0; max-width:calc(100% - 100px)"/>
         <button class="admin-button danger opt-del" title="Удалить вариант" style="padding:8px 12px; flex-shrink:0; white-space:nowrap">✖ Удалить</button>
@@ -622,7 +622,7 @@ async function renderQuestions(testId){
     card.draggable = true;
     card.dataset.qid = q.id;
     card.innerHTML = `
-      <div class="d-flex align-items-center" style="gap:8px">
+      <div class="d-flex align-items-center" style="gap:4px">
         <span class="drag-handle" title="Перетащить" style="cursor:grab">≡</span>
         <span class="text-muted">#${q.ordinal}</span>
         <select class="admin-input q-type" style="width:220px">
@@ -635,11 +635,11 @@ async function renderQuestions(testId){
         </div>
       </div>
       <div class="mt-2">
-        <textarea class="admin-input q-text" rows="3" placeholder="Вопрос">${esc(q.text||'')}</textarea>
+        <textarea class="admin-input q-text" rows="2" placeholder="Вопрос">${esc(q.text||'')}</textarea>
       </div>
       <div class="q-options mt-2" ${Array.isArray(q.options)?'':'style=\"display:none\"'}>
         <div class="opts"></div>
-        <div class="d-flex align-items-center mt-1" style="gap:8px">
+        <div class="d-flex align-items-center mt-1" style="gap:4px">
           <button class="admin-button secondary add-opt">Добавить вариант</button>
           <span class="small-muted">Отметьте кружком правильный вариант</span>
         </div>
@@ -647,7 +647,7 @@ async function renderQuestions(testId){
       <div class="q-answer-text mt-2" ${Array.isArray(q.options)?'style="display:none"':''}>
         <label>Правильный ответ (текст)<input class="admin-input q-correct-text" value="${!Array.isArray(q.options)?esc(q.correct||''):''}"/></label>
       </div>
-      <div class="d-flex align-items-center mt-2" style="gap:12px">
+      <div class="d-flex align-items-center mt-2" style="gap:6px">
         <label>Баллы<input class="admin-input q-points" type="number" value="${q.points||1}" style="width:80px"/></label>
       </div>
     `;
@@ -717,7 +717,7 @@ async function renderQuestions(testId){
     const card = document.createElement('div');
     card.className = 'card p-3';
     card.innerHTML = `
-      <div class="d-flex align-items-center" style="gap:8px">
+      <div class="d-flex align-items-center" style="gap:4px">
         <span class="text-muted">Новый вопрос</span>
         <select class="admin-input q-type" style="width:220px; margin-left:8px">
           <option value="mcq" selected>Закрытый (варианты)</option>
@@ -725,11 +725,11 @@ async function renderQuestions(testId){
         </select>
       </div>
       <div class="mt-2">
-        <textarea class="admin-input q-text" rows="3" placeholder="Вопрос"></textarea>
+        <textarea class="admin-input q-text" rows="2" placeholder="Вопрос"></textarea>
       </div>
       <div class="q-options mt-2">
         <div class="opts"></div>
-        <div class="d-flex align-items-center mt-1" style="gap:8px">
+        <div class="d-flex align-items-center mt-1" style="gap:4px">
           <button class="admin-button secondary add-opt">Добавить вариант</button>
           <span class="small-muted">Отметьте кружком правильный вариант</span>
         </div>
@@ -737,10 +737,10 @@ async function renderQuestions(testId){
       <div class="q-answer-text mt-2" style="display:none">
         <label>Правильный ответ (текст)<input class="admin-input q-correct-text"/></label>
       </div>
-      <div class="d-flex align-items-center mt-2" style="gap:12px">
+      <div class="d-flex align-items-center mt-2" style="gap:6px">
         <label>Баллы<input class="admin-input q-points" type="number" value="1" style="width:80px"/></label>
       </div>
-      <div class="mt-2 d-flex" style="gap:8px">
+      <div class="mt-2 d-flex" style="gap:4px">
         <button class="admin-button success q-create">Добавить</button>
         <button class="admin-button secondary q-cancel">Отмена</button>
       </div>
@@ -779,10 +779,10 @@ function editQuestion(id, qs, cs){
   const q = qs.find(x=> x.id==id);
   content.innerHTML = `
     <h3>Редактировать вопрос #${q.id}</h3>
-    <div class="form-row"><label>#<input id="q_ord" type="number" value="${q.ordinal}"/></label><label>Текст<textarea id="q_text" rows="3">${esc(q.text||'')}</textarea></label></div>
+    <div class="form-row"><label>#<input id="q_ord" type="number" value="${q.ordinal}"/></label><label>Текст<textarea id="q_text" rows="2">${esc(q.text||'')}</textarea></label></div>
     <div class="form-row"><label>Опции<input id="q_opts" value="${Array.isArray(q.options)?q.options.join(' | '):(q.options||'')}"/></label><label>Ответ<input id="q_correct" value="${esc(q.correct||'')}"/></label></div>
     <div class="form-row"><label>Баллы<input id="q_points" type="number" value="${q.points||1}"/></label></div>
-    <div style="margin-top:8px"><button class="primary" id="save">Сохранить</button> <button id="back">Назад</button></div>
+    <div style="margin-top:4px"><button class="primary" id="save">Сохранить</button> <button id="back">Назад</button></div>
   `;
   document.getElementById('back').onclick = ()=> renderQuestions(currentTestId);
   document.getElementById('save').onclick = async ()=>{
@@ -803,7 +803,7 @@ async function renderTeams(){
   content.innerHTML = `
     <div class="admin-form">
       <h3>👥 Зарегистрированные команды (${rows.length})</h3>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
         <button id="exportTeams" class="admin-button success">📥 Экспорт CSV</button>
         <button id="wipeTeams" class="admin-button danger">🗑️ Очистить команды и результаты</button>
       </div>
@@ -822,7 +822,7 @@ async function renderTeams(){
           </tr>
         </thead>
         <tbody>
-          ${rows.length > 0 ? rows.map(t=>`<tr><td>${t.id}</td><td>${esc(t.team_name||'')}</td><td>${esc(t.captain_name||'')}</td><td>${esc(t.captain_email||'')}</td><td>${esc(t.school||'')}</td><td>${esc(t.city||'')}</td><td>${esc(t.created_at||'')}</td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;padding:32px;color:#718096">Нет зарегистрированных команд</td></tr>'}
+          ${rows.length > 0 ? rows.map(t=>`<tr><td>${t.id}</td><td>${esc(t.team_name||'')}</td><td>${esc(t.captain_name||'')}</td><td>${esc(t.captain_email||'')}</td><td>${esc(t.school||'')}</td><td>${esc(t.city||'')}</td><td>${esc(t.created_at||'')}</td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;padding:12px;color:#718096">Нет зарегистрированных команд</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -858,7 +858,7 @@ async function renderResults(){
   content.innerHTML = `
     <div class="admin-form">
       <h3>📊 Результаты тестирования (${rows.length} записей)</h3>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
         <button id="exportResults" class="admin-button success">📥 Экспорт CSV</button>
       </div>
     </div>
@@ -874,7 +874,7 @@ async function renderResults(){
           </tr>
         </thead>
         <tbody>
-          ${rows.length > 0 ? rows.map(x=>`<tr><td>${x.id}</td><td>${esc(x.team_name||'')}</td><td><strong>${x.score_display || '0'}</strong></td><td>${esc(x.taken_at_formatted||'')}</td><td>${esc(x.category_name||'')}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:32px;color:#718096">Нет результатов тестирования</td></tr>'}
+          ${rows.length > 0 ? rows.map(x=>`<tr><td>${x.id}</td><td>${esc(x.team_name||'')}</td><td><strong>${x.score_display || '0'}</strong></td><td>${esc(x.taken_at_formatted||'')}</td><td>${esc(x.category_name||'')}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:12px;color:#718096">Нет результатов тестирования</td></tr>'}
         </tbody>
       </table>
     </div>
