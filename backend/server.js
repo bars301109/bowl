@@ -613,7 +613,7 @@ app.post('/api/password-reset/verify-code', async (req,res)=>{
     // Check code
     let resetCode;
     if (db.type === 'postgres') {
-      resetCode = await getAsync('SELECT * FROM password_reset_codes WHERE email = $1 AND code = $2 AND used = 0 AND expires_at > NOW()', [email, code]);
+      resetCode = await getAsync('SELECT * FROM password_reset_codes WHERE email = $1 AND code = $2 AND used = 0 AND expires_at::timestamp > NOW()', [email, code]);
     } else {
       resetCode = await getAsync('SELECT * FROM password_reset_codes WHERE email = ? AND code = ? AND used = 0 AND expires_at > datetime(\'now\')', [email, code]);
     }
@@ -643,7 +643,7 @@ app.post('/api/password-reset/verify', async (req,res)=>{
     // Check code
     let resetCode;
     if (db.type === 'postgres') {
-      resetCode = await getAsync('SELECT * FROM password_reset_codes WHERE email = $1 AND code = $2 AND used = 0 AND expires_at > NOW()', [email, code]);
+      resetCode = await getAsync('SELECT * FROM password_reset_codes WHERE email = $1 AND code = $2 AND used = 0 AND expires_at::timestamp > NOW()', [email, code]);
     } else {
       resetCode = await getAsync('SELECT * FROM password_reset_codes WHERE email = ? AND code = ? AND used = 0 AND expires_at > datetime(\'now\')', [email, code]);
     }
