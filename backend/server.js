@@ -348,16 +348,18 @@ function nextQuestionId(questions){
 // utils
 function signTeamToken(team){ return jwt.sign({ id: team.id, team_name: team.team_name, login: team.login }, JWT_SECRET, { expiresIn: '12h' }); }
 // Parse human-readable window like "22.10.2025-18:00 до 22.10.2025-19:00" into ISO
+// Время интерпретируется как UTC для консистентности на Render
 function parseHumanWindow(windowRange){
   if(!windowRange || typeof windowRange !== 'string') return { start:null, end:null };
   const parts = windowRange.split(/\s*до\s*/i);
   if(parts.length !== 2) return { start:null, end:null };
   function toIso(s){
-    // DD.MM.YYYY-HH:MM
+    // DD.MM.YYYY-HH:MM - интерпретируем как UTC
     const m = s.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})[- ](\d{1,2}):(\d{2})$/);
     if(!m) return null;
     const [_, dd, mm, yyyy, hh, min] = m;
-    const date = new Date(Number(yyyy), Number(mm)-1, Number(dd), Number(hh), Number(min), 0);
+    // Создаем дату в UTC для консистентности на Render
+    const date = new Date(Date.UTC(Number(yyyy), Number(mm)-1, Number(dd), Number(hh), Number(min), 0));
     if(isNaN(date.getTime())) return null;
     return date.toISOString();
   }
@@ -682,19 +684,21 @@ app.get('/api/tests', async (req,res)=>{
       );
     }
     // Фильтрация по окнам времени
-    const now = new Date();
+    // Используем UTC для консистентности на Render
+    const now = Date.now(); // Текущее время в миллисекундах (UTC)
     const filtered = tests.filter(t => {
       if (!t.window_start && !t.window_end) return true;
       let start = null;
       let end = null;
       if (t.window_start) {
-        start = new Date(t.window_start);
-        if (isNaN(start.getTime())) start = null;
+        const startDate = new Date(t.window_start);
+        if (!isNaN(startDate.getTime())) start = startDate.getTime();
       }
       if (t.window_end) {
-        end = new Date(t.window_end);
-        if (isNaN(end.getTime())) end = null;
+        const endDate = new Date(t.window_end);
+        if (!isNaN(endDate.getTime())) end = endDate.getTime();
       }
+      // Сравниваем в миллисекундах для корректной работы на Render
       if (start && now < start) return false;
       if (end && now > end) return false;
       return true;
@@ -710,17 +714,18 @@ app.get('/api/tests/:id', async (req,res)=>{
     // Проверяем окно доступности теста
     const meta = await getAsync('SELECT window_start, window_end FROM tests WHERE id = ?', [testId]);
     if (meta) {
-      const now = new Date();
+      const now = Date.now(); // Текущее время в миллисекундах (UTC)
       let start = null;
       let end = null;
       if (meta.window_start) {
-        start = new Date(meta.window_start);
-        if (isNaN(start.getTime())) start = null;
+        const startDate = new Date(meta.window_start);
+        if (!isNaN(startDate.getTime())) start = startDate.getTime();
       }
       if (meta.window_end) {
-        end = new Date(meta.window_end);
-        if (isNaN(end.getTime())) end = null;
+        const endDate = new Date(meta.window_end);
+        if (!isNaN(endDate.getTime())) end = endDate.getTime();
       }
+      // Сравниваем в миллисекундах для корректной работы на Render
       if (start && now < start) {
         return res.status(403).json({ error: 'Тест ещё недоступен' });
       }
@@ -992,11 +997,12 @@ app.get('/api/me/results', teamAuth, async (req,res)=>{
       let formatted_date = '';
       if (r.taken_at) {
         const date = new Date(r.taken_at);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
+        // Используем UTC методы для консистентности на Render
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const year = date.getUTCFullYear();
+        const hours = String(date.getUTCHours()).padStart(2, '0');
+        const minutes = String(date.getUTCMinutes()).padStart(2, '0');
         formatted_date = `${day}.${month}.${year}-${hours}:${minutes}`;
       }
       return {
@@ -1350,11 +1356,12 @@ app.get('/api/admin/results', adminAuth, async (req,res)=>{
       if (r.taken_at) {
         try {
           const d = new Date(r.taken_at);
-          const day = String(d.getDate()).padStart(2, '0');
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const year = d.getFullYear();
-          const hours = String(d.getHours()).padStart(2, '0');
-          const minutes = String(d.getMinutes()).padStart(2, '0');
+          // Используем UTC методы для консистентности на Render
+          const day = String(d.getUTCDate()).padStart(2, '0');
+          const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+          const year = d.getUTCFullYear();
+          const hours = String(d.getUTCHours()).padStart(2, '0');
+          const minutes = String(d.getUTCMinutes()).padStart(2, '0');
           taken_at_formatted = `${day}.${month}.${year}-${hours}:${minutes}`;
         } catch (e) {
           taken_at_formatted = '';
@@ -1398,11 +1405,12 @@ app.get('/api/admin/results/export-csv', adminAuth, async (req,res)=>{
       if (r.taken_at) {
         try {
           const d = new Date(r.taken_at);
-          const day = String(d.getDate()).padStart(2, '0');
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const year = d.getFullYear();
-          const hours = String(d.getHours()).padStart(2, '0');
-          const minutes = String(d.getMinutes()).padStart(2, '0');
+          // Используем UTC методы для консистентности на Render
+          const day = String(d.getUTCDate()).padStart(2, '0');
+          const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+          const year = d.getUTCFullYear();
+          const hours = String(d.getUTCHours()).padStart(2, '0');
+          const minutes = String(d.getUTCMinutes()).padStart(2, '0');
           taken_at_formatted = `${day}.${month}.${year}-${hours}:${minutes}`;
         } catch (e) {
           taken_at_formatted = '';
