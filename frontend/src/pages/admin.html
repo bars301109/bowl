@@ -17,6 +17,7 @@
       <button id="tabTeams" class="admin-button">👥 Команды</button>
       <button id="tabResults" class="admin-button">📊 Результаты</button>
       <button id="tabSettings" class="admin-button">⚙️ Настройки</button>
+      <button id="tabHomepage" class="admin-button">🏠 Главная страница</button>
     </div>
   </div>
   
@@ -904,6 +905,78 @@ function val(id){ return (document.getElementById(id).value||'').trim(); }
 function num(id){ return parseInt(val(id)||'0',10)||0; }
 function esc(s){ return String(s||'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
 
+// Homepage Blocks Tab
+async function renderHomepage(){
+  setActiveTab(document.getElementById('tabHomepage'));
+  showLoading('Загрузка блоков главной страницы...');
+  try {
+    const res = await fetch('/api/admin/homepage-blocks', { headers: aHeaders() });
+    if (!res.ok) { showAlert('Ошибка загрузки блоков', 'error'); return; }
+    const blocks = await res.json();
+    
+    // Default blocks if empty
+    const defaultBlocks = {
+      team_composition: { block_key: 'team_composition', title_ru: 'О составе команды', title_ky: 'Топтун курамы жөнүндө', content_ru: '2–4 человека из одной школы', content_ky: 'Бир мектептен 2–4 киши' }
+    };
+    
+    const allBlocks = {};
+    blocks.forEach(b => { allBlocks[b.block_key] = b; });
+    
+    // Merge with defaults
+    Object.keys(defaultBlocks).forEach(key => {
+      if (!allBlocks[key]) {
+        allBlocks[key] = defaultBlocks[key];
+      }
+    });
+    
+    content.innerHTML = `
+      <div class="admin-form">
+        <h3>🏠 Редактирование блоков главной страницы</h3>
+        ${Object.values(allBlocks).map(b => `
+          <div style="border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+            <h4 style="margin-bottom: 12px;">Блок: ${esc(b.block_key)}</h4>
+            <div class="form-row">
+              <label>Заголовок (RU)<input id="block_${b.block_key}_title_ru" class="admin-input" value="${esc(b.title_ru || '')}"/></label>
+              <label>Заголовок (KY)<input id="block_${b.block_key}_title_ky" class="admin-input" value="${esc(b.title_ky || '')}"/></label>
+            </div>
+            <div class="form-row">
+              <label>Содержимое (RU)<textarea id="block_${b.block_key}_content_ru" class="admin-input" rows="3" style="resize:vertical;">${esc(b.content_ru || '')}</textarea></label>
+              <label>Содержимое (KY)<textarea id="block_${b.block_key}_content_ky" class="admin-input" rows="3" style="resize:vertical;">${esc(b.content_ky || '')}</textarea></label>
+            </div>
+            <button class="admin-button success" onclick="saveBlock('${b.block_key}')" style="margin-top: 8px;">💾 Сохранить блок</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (e) {
+    showAlert('Ошибка: ' + e.message, 'error');
+  }
+}
+
+async function saveBlock(key) {
+  try {
+    const title_ru = val(`block_${key}_title_ru`);
+    const title_ky = val(`block_${key}_title_ky`);
+    const content_ru = val(`block_${key}_content_ru`);
+    const content_ky = val(`block_${key}_content_ky`);
+    
+    const res = await fetch(`/api/admin/homepage-blocks/${key}`, {
+      method: 'PUT',
+      headers: aHeaders(),
+      body: JSON.stringify({ title_ru, title_ky, content_ru, content_ky })
+    });
+    
+    if (!res.ok) {
+      showAlert('Ошибка сохранения блока', 'error');
+      return;
+    }
+    
+    showAlert('Блок успешно сохранен!', 'success');
+  } catch (e) {
+    showAlert('Ошибка: ' + e.message, 'error');
+  }
+}
+
 // Tab bindings
 const bTests = document.getElementById('tabTests');
 const bQuestions = document.getElementById('tabQuestions');
@@ -911,6 +984,7 @@ const bCats = document.getElementById('tabCategories');
 const bTeams = document.getElementById('tabTeams');
 const bResults = document.getElementById('tabResults');
 const bSettings = document.getElementById('tabSettings');
+const bHomepage = document.getElementById('tabHomepage');
 
 bTests.onclick = renderTests;
 bQuestions.onclick = ()=> renderQuestions(null);
@@ -918,6 +992,7 @@ bCats.onclick = renderCategories;
 bTeams.onclick = renderTeams;
 bResults.onclick = renderResults;
 bSettings.onclick = renderSettings;
+bHomepage.onclick = renderHomepage;
 
 // default
 renderTests();

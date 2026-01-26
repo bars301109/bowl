@@ -246,8 +246,31 @@ async function ensureSchema(){
       final_place_ru ${textType}, final_place_ky ${textType},
       updated_at ${textType}
     )`);
-    // Ensure categories exist
-    const cats = [
+    // Create homepage_blocks table for editable content
+    await runAsync(`CREATE TABLE IF NOT EXISTS homepage_blocks (
+      id ${autoIncrement},
+      block_key ${textType} UNIQUE NOT NULL,
+      title_ru ${textType},
+      title_ky ${textType},
+      content_ru ${textType},
+      content_ky ${textType},
+      updated_at ${textType}
+    )`);
+    
+    // Ensure new categories exist (replace old ones)
+    const newCats = [
+      { 
+        ru: 'Информатика', 
+        ky: 'Информатика',
+        desc_ru: 'Основы программирования, алгоритмы и структуры данных. Работа с компьютерными системами и программным обеспечением. Веб-разработка и современные технологии. Кибербезопасность и защита информации. Искусственный интеллект и машинное обучение.',
+        desc_ky: 'Программалоонун негиздери, алгоритмдер жана маалымат структуралары. Компьютердик системалар жана программалык камсыздоо менен иштөө. Веб-иштеп чыгуу жана заманбап технологиялар. Киберкоопсуздук жана маалыматты коргоо. Жасалма интеллект жана машиналык үйрөнүү.'
+      },
+      { 
+        ru: 'Математика', 
+        ky: 'Математика',
+        desc_ru: 'Алгебра, геометрия и тригонометрия. Математический анализ и теория вероятностей. Логическое мышление и решение задач. Применение математики в реальной жизни. Олимпиадные задачи и нестандартные подходы.',
+        desc_ky: 'Алгебра, геометрия жана тригонометрия. Математикалык анализ жана ыктымалдыктар теориясы. Логикалык ой жүгүртүү жана маселлерди чечүү. Математиканы чыныгы жашоодо колдонуу. Олимпиадалык маселлер жана стандарттык эмес ыкмалар.'
+      },
       { 
         ru: 'Кыргызстан таануу', 
         ky: 'Кыргызстан таануу',
@@ -255,44 +278,20 @@ async function ensureSchema(){
         desc_ky: 'Кыргызстандын бай тарыхын, географиясын жана табигый ресурсаларын изилдөө. Улуттук маданият, салт-санаа жана каада-жөрөлгөлөр менен таанышуу. Конституция, мамлекеттик түзүлүш жана жарандык жоопкерчилик боюнча негизги түшүнүктөр. Өлкөнүн өнүгүшүнө салым кошкон тарыхый инсандар. Бүгүнкү Кыргызстан жана анын келечеги жөнүндө ой жүгүртүү.'
       },
       { 
-        ru: 'Дүйнөлүк тарых жана азыркы саясат', 
-        ky: 'Дүйнөлүк тарых жана азыркы саясат',
-        desc_ru: 'История развития человеческой цивилизации от древних времён до современности. Великие империи, революции и войны, сформировавшие мировой порядок. Жизнь и деятельность выдающихся исторических деятелей. Понимание причинно-следственных связей исторических событий. Современная геополитика и международные отношения.',
-        desc_ky: 'Адамзат цивилизациясынын байыркы доорлордон бүгүнкү күнгө чейинки өнүгүүсү. Дүйнөлүк тартипти өзгөрткөн ири империялар, революциялар жана согуштар. Ар кайсы доордогу тарыхый инсандардын ролу жана таасири. Окуялардын себеп-натыйжа байланышын талдоо көндүмдөрү. Азыркы геосаясат, регионалдык жаңжалдар жана эл аралык уюмдар тууралуу түшүнүк.'
-      },
-      { 
-        ru: 'Илим жана технологиялар', 
-        ky: 'Илим жана технологиялар',
-        desc_ru: 'Комплексное изучение физики, химии, биологии и математики как основ современной науки. Практическое применение научных знаний в программировании и информационных технологиях. Развитие логического и алгоритмического мышления. Изучение современных научных открытий и инноваций. Развитие навыков научного анализа и исследования.',
-        desc_ky: 'Физика, химия, биология жана математика сыяктуу табигый илимдердин негизги түшүнүктөрү. Программалоо жана маалыматтык технологиялар аркылуу илимий идеяларды практикада колдонуу. Логикалык, критикалык жана алгоритмдик ой жүгүртүүнү өнүктүрүү. Заманбап ачылыштар, жасалма интеллект, санариптик коопсуздук сыяктуу багыттар менен таанышуу. Эксперимент жүргүзүү, жыйынтык чыгаруу жана илимий долбоор жасоо көндүмдөрү.'
-      },
-      { 
-        ru: 'Тил жана адабият', 
-        ky: 'Тил жана адабият',
-        desc_ru: 'Углубленное изучение русского языка: грамматика, пунктуация, орфография и стилистика. Основы кыргызского языка и его уникальные особенности. Классическая и современная литература обоих народов. Анализ литературных произведений, их идейного содержания и художественных приёмов. Развитие культуры речи и литературного вкуса.',
-        desc_ky: 'Орус жана кыргыз тилдеринин грамматикасы, орфографиясы, тыныш белгилери жана стилистикасы боюнча терең билим алуу. Кыргыз тилинин бай сөздүгү жана диалекттик өзгөчөлүктөрү менен таанышуу. Кыргыз жана орус адабиятынын классикалык жана заманбап чыгармаларын окуу. Каармандардын образын, идеялык мазмунун жана көркөм ыкмаларды талдоо. Оозеки жана жазма сөз маданиятын, адабий даамды жана чыгармачылык жазуу көндүмдөрүн өнүктүрүү.'
+        ru: 'Англис тили', 
+        ky: 'Англис тили',
+        desc_ru: 'Грамматика английского языка и правильное использование времен. Расширение словарного запаса и идиоматические выражения. Чтение и понимание текстов различной сложности. Письменная и устная коммуникация. Культура англоязычных стран.',
+        desc_ky: 'Англис тилинин грамматикасы жана мезгилдерди туура колдонуу. Сөздүктү кеңейтүү жана идиоматикалык сөз айкаштары. Ар кандай татаалдыктагы тексттерди окуу жана түшүнүү. Жазуу жана сөздөн баарлашуу. Англис тилдүү өлкөлөрдүн маданияты.'
       }
     ];
     
-    const existingCats = await allAsync('SELECT name_ru FROM categories');
-    if (existingCats.length === 0) {
-      const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
-      for (const c of cats){ 
-        await runAsync(`INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES (?,?,?,?,${nowFunc})`, [c.ru, c.ky, c.desc_ru, c.desc_ky]); 
-      }
-      console.log('✓ Seeded categories');
+    // Delete old categories and insert new ones
+    await runAsync('DELETE FROM categories');
+    const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
+    for (const c of newCats){ 
+      await runAsync(`INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES (?,?,?,?,${nowFunc})`, [c.ru, c.ky, c.desc_ru, c.desc_ky]); 
     }
-
-    // Always ensure актуальные кыргызча тексттер для категориялар
-    const updatedKyDescs = {
-      'Кыргызстан таануу': 'Кыргызстандын бай тарыхын, географиясын жана табигый ресурсаларын изилдөө. Улуттук маданият, салт-санаа жана каада-жөрөлгөлөр менен таанышуу. Конституция, мамлекеттик түзүлүш жана жарандык жоопкерчилик боюнча негизги түшүнүктөр. Өлкөнүн өнүгүшүнө салым кошкон тарыхый инсандар. Бүгүнкү Кыргызстан жана анын келечеги жөнүндө ой жүгүртүү.',
-      'Дүйнөлүк тарых жана азыркы саясат': 'Адамзат цивилизациясынын байыркы доорлордон бүгүнкү күнгө чейинки өнүгүүсү. Дүйнөлүк тартипти өзгөрткөн ири империялар, революциялар жана согуштар. Ар кайсы доордогу тарыхый инсандардын ролу жана таасири. Окуялардын себеп-натыйжа байланышын талдоо көндүмдөрү. Азыркы геосаясат, регионалдык жаңжалдар жана эл аралык уюмдар тууралуу түшүнүк.',
-      'Илим жана технологиялар': 'Физика, химия, биология жана математика сыяктуу табигый илимдердин негизги түшүнүктөрү. Программалоо жана маалыматтык технологиялар аркылуу илимий идеяларды практикада колдонуу. Логикалык, критикалык жана алгоритмдик ой жүгүртүүнү өнүктүрүү. Заманбап ачылыштар, жасалма интеллект, санариптик коопсуздук сыяктуу багыттар менен таанышуу. Эксперимент жүргүзүү, жыйынтык чыгаруу жана илимий долбоор жасоо көндүмдөрү.',
-      'Тил жана адабият': 'Орус жана кыргыз тилдеринин грамматикасы, орфографиясы, тыныш белгилери жана стилистикасы боюнча терең билим алуу. Кыргыз тилинин бай сөздүгү жана диалекттик өзгөчөлүктөрү менен таанышуу. Кыргыз жана орус адабиятынын классикалык жана заманбап чыгармаларын окуу. Каармандардын образын, идеялык мазмунун жана көркөм ыкмаларды талдоо. Оозеки жана жазма сөз маданиятын, адабий даамды жана чыгармачылык жазуу көндүмдөрүн өнүктүрүү.'
-    };
-    for (const [nameRu, descKy] of Object.entries(updatedKyDescs)) {
-      await runAsync('UPDATE categories SET desc_ky = ? WHERE name_ru = ?', [descKy, nameRu]);
-    }
+    console.log('✓ Updated categories to new set');
     
     const any = await getAsync('SELECT id FROM tests LIMIT 1');
     if (!any){
@@ -1533,6 +1532,52 @@ app.put('/api/admin/settings', adminAuth, async (req,res)=>{
   }catch(e){ res.status(500).json({ error:e.message }); }
 });
 
+// Homepage blocks API (public)
+app.get('/api/homepage-blocks', async (req,res)=>{
+  try{
+    const blocks = await allAsync('SELECT block_key, title_ru, title_ky, content_ru, content_ky FROM homepage_blocks');
+    const result = {};
+    blocks.forEach(b => {
+      result[b.block_key] = {
+        title_ru: b.title_ru || '',
+        title_ky: b.title_ky || '',
+        content_ru: b.content_ru || '',
+        content_ky: b.content_ky || ''
+      };
+    });
+    res.json(result);
+  }catch(e){ res.status(500).json({ error:e.message }); }
+});
+
+// Homepage blocks API (admin)
+app.get('/api/admin/homepage-blocks', adminAuth, async (req,res)=>{
+  try{
+    const blocks = await allAsync('SELECT * FROM homepage_blocks ORDER BY id');
+    res.json(blocks);
+  }catch(e){ res.status(500).json({ error:e.message }); }
+});
+
+app.put('/api/admin/homepage-blocks/:key', adminAuth, async (req,res)=>{
+  try{
+    const { key } = req.params;
+    const { title_ru, title_ky, content_ru, content_ky } = req.body;
+    const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
+    
+    // Check if block exists
+    const existing = await getAsync('SELECT id FROM homepage_blocks WHERE block_key = ?', [key]);
+    
+    if (existing) {
+      await runAsync(`UPDATE homepage_blocks SET title_ru=?, title_ky=?, content_ru=?, content_ky=?, updated_at=${nowFunc} WHERE block_key=?`, 
+        [title_ru || '', title_ky || '', content_ru || '', content_ky || '', key]);
+    } else {
+      await runAsync(`INSERT INTO homepage_blocks (block_key, title_ru, title_ky, content_ru, content_ky, updated_at) VALUES (?,?,?,?,?,${nowFunc})`, 
+        [key, title_ru || '', title_ky || '', content_ru || '', content_ky || '']);
+    }
+    
+    res.json({ ok:true });
+  }catch(e){ res.status(500).json({ error:e.message }); }
+});
+
 // Static files with caching headers for performance
 // This MUST be AFTER all API routes to avoid intercepting API requests
 app.use('/', express.static(FRONTEND_DIR, {
@@ -1545,25 +1590,50 @@ app.use('/', express.static(FRONTEND_DIR, {
   }
 }));
 
-ensureSchema().then(() => {
-  const dbExists = fs.existsSync(DB_FILE);
-  const testsDirExists = fs.existsSync(TESTS_DIR);
-  
-  // SQLite WAL checkpoint (not needed for PostgreSQL)
-  if (db.type === 'sqlite') {
-    setInterval(() => {
-      try {
-        db.db.exec('PRAGMA wal_checkpoint(PASSIVE)');
-      } catch (e) {
-        console.warn('WAL checkpoint warning:', e.message);
+// Wait for database connection before initializing schema
+async function initializeApp() {
+  try {
+    // For PostgreSQL, wait a bit for connection to be ready
+    if (db.type === 'postgres') {
+      let retries = 0;
+      const maxRetries = 10;
+      while (retries < maxRetries) {
+        try {
+          await db.pool.query('SELECT 1');
+          break;
+        } catch (e) {
+          retries++;
+          if (retries >= maxRetries) {
+            console.error('❌ Cannot connect to PostgreSQL after', maxRetries, 'attempts');
+            console.error('   Continuing anyway - connection may work later...');
+          } else {
+            console.log(`⏳ Waiting for PostgreSQL connection (${retries}/${maxRetries})...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        }
       }
-    }, 60000);
-  }
-  
-  // Test email configuration
-  testEmailConfig();
-  
-  app.listen(PORT, () => {
+    }
+    
+    await ensureSchema();
+    
+    const dbExists = fs.existsSync(DB_FILE);
+    const testsDirExists = fs.existsSync(TESTS_DIR);
+    
+    // SQLite WAL checkpoint (not needed for PostgreSQL)
+    if (db.type === 'sqlite') {
+      setInterval(() => {
+        try {
+          db.db.exec('PRAGMA wal_checkpoint(PASSIVE)');
+        } catch (e) {
+          console.warn('WAL checkpoint warning:', e.message);
+        }
+      }, 60000);
+    }
+    
+    // Test email configuration
+    testEmailConfig();
+    
+    app.listen(PORT, () => {
     console.log('');
     console.log('✅ Akylman Quiz Bowl Server Started');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -1595,7 +1665,11 @@ ensureSchema().then(() => {
     }
     console.log('');
   });
-}).catch(err => {
-  console.error('❌ Failed to initialize database schema:', err);
-  process.exit(1);
-});
+  } catch (err) {
+    console.error('❌ Failed to initialize database schema:', err);
+    // Don't exit - let the app try to continue
+    console.error('⚠️  Continuing startup, but some features may not work...');
+  }
+}
+
+initializeApp().then(() => {

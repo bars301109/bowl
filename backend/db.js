@@ -87,8 +87,8 @@ if (USE_POSTGRES) {
     }
   }
   
-  testConnection();
-  
+  // Don't wait for connection test - it will retry in background
+  // But ensure db object is created immediately
   db = {
     pool,
     type: 'postgres',

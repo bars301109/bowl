@@ -75,9 +75,9 @@
       <div class="container">
         <h2 class="section-title" data-i18n="how.title">Как это работает</h2>
         <div class="features-grid">
-          <div class="feature">
-            <h3 data-i18n="how.team">Размер команды</h3>
-            <p data-i18n="how.team.desc">3–6 человек из одной школы</p>
+          <div class="feature" data-block-key="team_composition">
+            <h3 data-i18n="how.team" data-block-field="title">О составе команды</h3>
+            <p data-i18n="how.team.desc" data-block-field="content">2–4 человека из одной школы</p>
           </div>
           <div class="feature">
             <h3 data-i18n="how.cats">Категории</h3>
@@ -438,10 +438,12 @@
         document.addEventListener('DOMContentLoaded', () => {
           renderSettings();
           renderCategories();
+          loadHomepageBlocks();
         });
       } else {
         renderSettings();
         renderCategories();
+        loadHomepageBlocks();
       }
     }
     
@@ -452,6 +454,7 @@
         AkylI18n.applyI18n(AkylI18n.getLang());
         renderSettings();
         renderCategories();
+        loadHomepageBlocks();
       }
     });
 
