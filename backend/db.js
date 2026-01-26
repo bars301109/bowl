@@ -20,18 +20,74 @@ if (USE_POSTGRES) {
   }
   
   dbType = 'postgres';
+  
+  // Parse and fix DATABASE_URL if needed
+  let connectionString = process.env.DATABASE_URL;
+  if (connectionString) {
+    // Fix common Render PostgreSQL URL issues
+    // If URL has internal host (dpg-xxx-a), try to use external format
+    const internalHostMatch = connectionString.match(/@(dpg-[^-]+-[a-z])/);
+    if (internalHostMatch && !connectionString.includes('.render.com')) {
+      // Try to convert internal URL to external format
+      const internalHost = internalHostMatch[1];
+      // Render PostgreSQL external URLs typically use format: dpg-xxx-a.oregon-postgres.render.com
+      // But we'll try the original first, and if it fails, suggest using external URL
+      console.log(`⚠️  Using internal PostgreSQL host: ${internalHost}`);
+      console.log(`   If connection fails, use External Database URL from Render dashboard`);
+    }
+    
+    // Ensure SSL is properly configured for Render
+    if (!connectionString.includes('sslmode=')) {
+      // Add sslmode=require for Render PostgreSQL
+      connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
+    }
+  }
+  
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL?.includes('sslmode=require') ? { rejectUnauthorized: false } : false
+    connectionString: connectionString,
+    ssl: connectionString?.includes('sslmode=require') || connectionString?.includes('sslmode=prefer') 
+      ? { rejectUnauthorized: false } 
+      : false,
+    // Connection pool settings for better reliability
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000
   });
   
-  // Test connection
-  pool.query('SELECT NOW()')
-    .then(() => console.log('✅ Connected to PostgreSQL'))
-    .catch(err => {
-      console.error('❌ PostgreSQL connection failed:', err.message);
-      process.exit(1);
-    });
+  // Test connection with retry logic
+  let connectionAttempts = 0;
+  const maxAttempts = 3;
+  
+  async function testConnection() {
+    try {
+      await pool.query('SELECT NOW()');
+      console.log('✅ Connected to PostgreSQL');
+      return true;
+    } catch (err) {
+      connectionAttempts++;
+      if (connectionAttempts < maxAttempts) {
+        console.log(`⚠️  Connection attempt ${connectionAttempts}/${maxAttempts} failed, retrying in 2 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return testConnection();
+      } else {
+        console.error('❌ PostgreSQL connection failed after', maxAttempts, 'attempts');
+        console.error('   Error:', err.message);
+        console.error('');
+        console.error('🔧 Troubleshooting:');
+        console.error('   1. Check DATABASE_URL in Render Environment Variables');
+        console.error('   2. Use "External Database URL" from PostgreSQL dashboard (not Internal)');
+        console.error('   3. Ensure PostgreSQL database is running on Render');
+        console.error('   4. Format should be: postgresql://user:pass@host:port/database?sslmode=require');
+        console.error('');
+        // Don't exit immediately - let the app try to start anyway
+        // Some connection issues resolve after a few seconds
+        console.error('⚠️  Continuing startup, but database operations may fail...');
+        return false;
+      }
+    }
+  }
+  
+  testConnection();
   
   db = {
     pool,

@@ -24,9 +24,10 @@ Render предоставляет **бесплатный PostgreSQL** до 256 M
 ### Шаг 2: Скопируйте строку подключения
 
 1. После создания базы, откройте её страницу
-2. Найдите **"Internal Database URL"** (для сервисов на Render)
+2. Найдите **"External Database URL"** (⚠️ Используйте External, не Internal!)
 3. Скопируйте всю строку подключения
-   - Выглядит примерно так: `postgresql://user:password@dpg-xxx.onrender.com/database`
+   - Выглядит примерно так: `postgresql://user:password@dpg-xxx-a.oregon-postgres.render.com:5432/database?sslmode=require`
+   - **Важно**: Должен содержать `.render.com` в домене и параметр `?sslmode=require`
 
 ### Шаг 3: Добавьте переменную окружения
 
@@ -110,10 +111,13 @@ npm install pg
 
 ## Устранение неполадок
 
-### "cannot connect to database"
-- Скопируйте DATABASE_URL еще раз, убедитесь что он правильный
+### "cannot connect to database" или "getaddrinfo ENOTFOUND"
+- **Используйте External Database URL** (не Internal) из дашборда PostgreSQL
+- URL должен содержать домен `.render.com` (например, `dpg-xxx-a.oregon-postgres.render.com`)
+- URL должен заканчиваться на `?sslmode=require`
 - Проверьте, что в Environment Variables вашего сервиса есть DATABASE_URL
-- Передеплойте
+- См. [POSTGRES_FIX.md](POSTGRES_FIX.md) для подробной инструкции по исправлению
+- Передеплойте после исправления
 
 ### "database pool error"
 - PostgreSQL может еще запускаться, подождите несколько минут

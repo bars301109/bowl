@@ -30,9 +30,10 @@ We'll switch it to use **PostgreSQL** instead.
 ### Step 2: Get Database Connection String
 
 1. After database is created, go to its page
-2. Find **"Internal Database URL"** (for services on Render)
+2. Find **"External Database URL"** (⚠️ Use External, not Internal!)
 3. Copy the full connection string
-4. Looks like: `postgresql://user:password@dpg-xxx.onrender.com/database`
+4. Looks like: `postgresql://user:password@dpg-xxx-a.oregon-postgres.render.com:5432/database?sslmode=require`
+5. **Important**: Must include `.render.com` domain and `?sslmode=require` parameter
 
 ### Step 3: Add Environment Variable
 
@@ -103,10 +104,13 @@ If you need more storage:
 
 ## ⚙️ Troubleshooting
 
-### "cannot connect to database"
-- Copy DATABASE_URL again, make sure it's correct
+### "cannot connect to database" or "getaddrinfo ENOTFOUND"
+- **Use External Database URL** (not Internal) from PostgreSQL dashboard
+- URL must include `.render.com` domain (e.g., `dpg-xxx-a.oregon-postgres.render.com`)
+- URL must end with `?sslmode=require`
 - Check that akylman-quiz service has DATABASE_URL in Environment Variables
-- Redeploy
+- See [POSTGRES_FIX.md](POSTGRES_FIX.md) for detailed troubleshooting
+- Redeploy after fixing
 
 ### "database pool error"
 - PostgreSQL might be starting, wait a few minutes
