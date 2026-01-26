@@ -1672,4 +1672,4 @@ async function initializeApp() {
   }
 }
 
-initializeApp().then(() => {
+initializeApp();
