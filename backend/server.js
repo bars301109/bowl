@@ -4,17 +4,31 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const db = require('./db'); // Universal database adapter (SQLite or PostgreSQL)
-const upload = multer({ dest: path.join(__dirname, 'uploads') });
+const upload = multer({ dest: path.join(__dirname, 'uploads'), limits: { fileSize: 2 * 1024 * 1024 } });
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret';
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'super-secret-token';
+const ADMIN_USER = process.env.ADMIN_USER || 'user182102';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Fish!2493';
+const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || JWT_SECRET;
 // Email provider: 'resend' (HTTP API) или 'gmail' (SMTP через nodemailer)
 const EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || (process.env.RESEND_API_KEY ? 'resend' : 'gmail');
+
+if (process.env.NODE_ENV === 'production') {
+  if (JWT_SECRET === 'change-this-secret') {
+    console.error('❌ JWT_SECRET is not set for production.');
+    process.exit(1);
+  }
+  if (!process.env.ADMIN_USER || !process.env.ADMIN_PASSWORD || !process.env.ADMIN_JWT_SECRET) {
+    console.error('❌ ADMIN_USER, ADMIN_PASSWORD, and ADMIN_JWT_SECRET must be set for production.');
+    process.exit(1);
+  }
+}
 
 // Email configuration for password reset (Gmail SMTP, используется только если выбран провайдер gmail)
 // На Render мы будем использовать HTTP‑API (Resend), чтобы обойти блокировку SMTP,
@@ -109,15 +123,27 @@ if(OLD_TESTS_DIR !== TESTS_DIR && fs.existsSync(OLD_TESTS_DIR)){
   }
 }
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Basic security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  next();
+});
 
 // Frontend directory
 const FRONTEND_DIR = path.join(__dirname, '..', 'frontend', 'src');
 
 // Helper function to send page HTML files
 function sendPage(res, pageName) {
-  const filePath = path.join(FRONTEND_DIR, 'pages', `${pageName}.html`);
+  if (!/^[a-z0-9-]+$/i.test(pageName)) return false;
+  const pagesRoot = path.resolve(FRONTEND_DIR, 'pages');
+  const filePath = path.resolve(pagesRoot, `${pageName}.html`);
+  if (!filePath.startsWith(pagesRoot + path.sep)) return false;
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);
     return true;
@@ -320,9 +346,19 @@ async function ensureSchema(){
   }catch(e){ console.error('Schema error', e); }
 }
 // File-based questions storage helpers
-function testFilePath(testId){ return path.join(TESTS_DIR, `test_${String(testId)}.json`); }
+function normalizeTestId(testId){
+  const id = Number.parseInt(testId, 10);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  return id;
+}
+function testFilePath(testId){
+  const id = normalizeTestId(testId);
+  if (!id) return null;
+  return path.join(TESTS_DIR, `test_${id}.json`);
+}
 function readQuestionsFile(testId){
   const fp = testFilePath(testId);
+  if (!fp) return [];
   if(!fs.existsSync(fp)) return [];
   try{
     const data = JSON.parse(fs.readFileSync(fp,'utf8'));
@@ -332,6 +368,7 @@ function readQuestionsFile(testId){
 function writeQuestionsFile(testId, questions){
   try{
     const fp = testFilePath(testId);
+    if (!fp) throw new Error('Invalid test id');
     fs.writeFileSync(fp, JSON.stringify(questions, null, 2), 'utf8');
     const fd = fs.openSync(fp, 'r');
     fs.fsyncSync(fd);
@@ -346,6 +383,41 @@ function nextQuestionId(questions){
 }
 // utils
 function signTeamToken(team){ return jwt.sign({ id: team.id, team_name: team.team_name, login: team.login }, JWT_SECRET, { expiresIn: '12h' }); }
+function signAdminToken(){ return jwt.sign({ role: 'admin', user: ADMIN_USER }, ADMIN_JWT_SECRET, { expiresIn: '8h' }); }
+function safeEqual(a, b){
+  const aBuf = Buffer.from(String(a));
+  const bBuf = Buffer.from(String(b));
+  if (aBuf.length !== bBuf.length) return false;
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+function getClientIp(req){
+  const xf = req.headers['x-forwarded-for'];
+  if (xf && typeof xf === 'string') return xf.split(',')[0].trim();
+  return req.socket?.remoteAddress || 'unknown';
+}
+function rateLimit({ windowMs, max }){
+  const hits = new Map();
+  return (req, res, next) => {
+    const ip = getClientIp(req);
+    const now = Date.now();
+    const entry = hits.get(ip);
+    if (!entry || now > entry.resetAt) {
+      hits.set(ip, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+    if (entry.count >= max) {
+      const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({ error: 'Слишком много запросов. Попробуйте позже.' });
+    }
+    entry.count++;
+    return next();
+  };
+}
+
+const loginLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20 });
+const resetLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 10 });
+const adminLoginLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 10 });
 // Parse human-readable window like "22.10.2025-18:00 до 22.10.2025-19:00" into ISO
 // Время интерпретируется как UTC для консистентности на Render
 function parseHumanWindow(windowRange){
@@ -441,7 +513,7 @@ async function testEmailConfig() {
   
   return true;
 }
-app.post('/api/login', async (req,res)=>{
+app.post('/api/login', loginLimiter, async (req,res)=>{
   try{
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error:'Email and password required' });
@@ -541,7 +613,7 @@ async function sendPasswordResetEmail({ email, team, code }) {
 }
 
 // Password reset: request code
-app.post('/api/password-reset/request', async (req,res)=>{
+app.post('/api/password-reset/request', resetLimiter, async (req,res)=>{
   try{
     const { email } = req.body;
     if (!email) return res.status(400).json({ error:'Email required' });
@@ -582,7 +654,9 @@ app.post('/api/password-reset/request', async (req,res)=>{
       await runAsync(`INSERT INTO password_reset_codes (email, code, expires_at, created_at) VALUES (?,?,datetime('now', '+15 minutes'),${nowFunc})`, [email, code]);
     }
     
-    console.log(`Password reset code generated for ${email}: ${code}`);
+    if (process.env.DEBUG) {
+      console.log(`Password reset code generated for ${email}`);
+    }
     
     let emailSent = false;
     try {
@@ -595,7 +669,7 @@ app.post('/api/password-reset/request', async (req,res)=>{
     
     // Always return success (for security), but log if email failed
     if (!emailSent) {
-      console.warn(`WARNING: Password reset code generated but email not sent to ${email}. Code: ${code}`);
+      console.warn(`WARNING: Password reset code generated but email not sent to ${email}.`);
     }
     
     res.json({ ok:true, message:'If email exists, reset code has been sent' });
@@ -606,7 +680,7 @@ app.post('/api/password-reset/request', async (req,res)=>{
 });
 
 // Password reset: verify code only (step 2)
-app.post('/api/password-reset/verify-code', async (req,res)=>{
+app.post('/api/password-reset/verify-code', resetLimiter, async (req,res)=>{
   try{
     const { email, code } = req.body;
     if (!email || !code) return res.status(400).json({ error:'Email and code required' });
@@ -631,7 +705,7 @@ app.post('/api/password-reset/verify-code', async (req,res)=>{
 });
 
 // Password reset: verify code and reset password (step 3)
-app.post('/api/password-reset/verify', async (req,res)=>{
+app.post('/api/password-reset/verify', resetLimiter, async (req,res)=>{
   try{
     const { email, code, newPassword } = req.body;
     if (!email || !code || !newPassword) return res.status(400).json({ error:'Email, code and new password required' });
@@ -667,7 +741,40 @@ app.post('/api/password-reset/verify', async (req,res)=>{
     res.status(500).json({ error:e.message });
   }
 });
-function adminAuth(req,res,next){ const token = req.headers['x-admin-token'] || ''; if (!token || !token.startsWith('admin-')) return res.status(403).json({ error:'Forbidden' }); next(); }
+
+app.post('/api/admin/login', adminLoginLimiter, async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+    const userOk = safeEqual(username, ADMIN_USER);
+    const passOk = safeEqual(password, ADMIN_PASSWORD);
+    if (!userOk || !passOk) {
+      return res.status(401).json({ error: 'Неверный логин или пароль' });
+    }
+    const token = signAdminToken();
+    res.json({ ok: true, token });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+function adminAuth(req,res,next){
+  const header = req.headers['authorization'] || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : (req.headers['x-admin-token'] || '');
+  if (!token) return res.status(401).json({ error:'Missing admin token' });
+  try{
+    const payload = jwt.verify(token, ADMIN_JWT_SECRET);
+    if (payload?.role !== 'admin' || payload?.user !== ADMIN_USER) {
+      return res.status(403).json({ error:'Forbidden' });
+    }
+    req.admin = payload;
+    next();
+  }catch(e){
+    return res.status(401).json({ error:'Invalid token' });
+  }
+}
 app.get('/api/tests', async (req,res)=>{
   try{
     const categoryId = req.query.category_id ? parseInt(req.query.category_id, 10) || null : null;
@@ -1073,7 +1180,12 @@ app.delete('/api/admin/tests/:id', adminAuth, async (req,res)=>{
     await runAsync('DELETE FROM questions WHERE test_id=?',[id]);
     await runAsync('DELETE FROM tests WHERE id=?',[id]);
     // remove file if exists
-    try{ const fp = testFilePath(id); if(fs.existsSync(fp)) fs.unlinkSync(fp); }catch(e){ console.warn('Failed to remove test file', id, e.message); }
+    try{
+      const fp = testFilePath(id);
+      if(fp && fs.existsSync(fp)) fs.unlinkSync(fp);
+    }catch(e){
+      console.warn('Failed to remove test file', id, e.message);
+    }
     res.json({ ok:true });
   }catch(e){ res.status(500).json({ error:e.message }); }
 });
@@ -1260,9 +1372,9 @@ app.get('/api/admin/tests/:id/questions/export-csv', adminAuth, async (req,res)=
 });
 
 app.post('/api/admin/tests/:id/questions/import-csv', adminAuth, upload.single('file'), async (req,res)=>{
+  const filePath = req.file?.path;
   try{
     const testId = parseInt(req.params.id, 10);
-    const filePath = req.file?.path;
     if(!filePath) return res.status(400).json({ error:'No file' });
 
     const text = fs.readFileSync(filePath,'utf8');
@@ -1307,6 +1419,10 @@ app.post('/api/admin/tests/:id/questions/import-csv', adminAuth, upload.single('
     res.json({ ok:true, imported });
   }catch(e){
     res.status(500).json({ error:e.message });
+  }finally{
+    if (filePath) {
+      try { fs.unlinkSync(filePath); } catch {}
+    }
   }
 });
 app.get('/api/ping', (req,res)=>res.json({ ok:true, time: new Date().toISOString() }));
