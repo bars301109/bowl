@@ -58,7 +58,14 @@ function logoutAdmin() {
   }
 }
 
-function aHeaders(){ return { 'Content-Type':'application/json', 'X-Admin-Token': sessionStorage.getItem('akylman_admin_token') || '' }; }
+function aHeaders(){ 
+  const token = sessionStorage.getItem('akylman_admin_token') || '';
+  return { 'Content-Type':'application/json', 'Authorization': token ? `Bearer ${token}` : '' };
+}
+function aAuthHeaders(){
+  const token = sessionStorage.getItem('akylman_admin_token') || '';
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
 const content = document.getElementById('content');
 
 // Helper functions for better UI
@@ -454,11 +461,28 @@ async function renderQuestions(testId){
     </div>
   `;
   document.getElementById('backTests').onclick = renderTests;
-  document.getElementById('exportCsv').onclick = ()=>{ window.location = '/api/admin/tests/'+currentTestId+'/questions/export-csv'; };
+  document.getElementById('exportCsv').onclick = async ()=>{
+    try{
+      const res = await fetch('/api/admin/tests/'+currentTestId+'/questions/export-csv', { headers: aHeaders() });
+      if(!res.ok){ showAlert('Ошибка экспорта', 'error'); return; }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `test_${currentTestId}_questions.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      showAlert('Экспорт завершен!', 'success');
+    }catch(e){
+      showAlert('Ошибка экспорта: ' + e.message, 'error');
+    }
+  };
   document.getElementById('importCsv').onclick = async ()=>{
     const f = document.getElementById('csvFile').files[0]; if(!f){ alert('Выберите файл'); return; }
     const form = new FormData(); form.append('file', f);
-    const r = await fetch('/api/admin/tests/'+currentTestId+'/questions/import-csv',{ method:'POST', headers:{ 'X-ADMIN-TOKEN': (sessionStorage.getItem('akylman_admin_token')||'').trim() }, body: form });
+    const r = await fetch('/api/admin/tests/'+currentTestId+'/questions/import-csv',{ method:'POST', headers: aAuthHeaders(), body: form });
     if(!r.ok){ alert('Ошибка импорта'); return; }
     renderQuestions(currentTestId);
   };

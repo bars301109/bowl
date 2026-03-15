@@ -143,31 +143,39 @@
   </div>
 
   <script>
-    const ADMIN_USERNAME = 'adminside3011';
-    const ADMIN_PASSWORD = '879105666555fish';
-    
-    document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+    document.getElementById('adminLoginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
       const messageDiv = document.getElementById('message');
       
-      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+      messageDiv.className = '';
+      messageDiv.textContent = 'Проверка...';
+      
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.token) {
+          messageDiv.className = 'error';
+          messageDiv.textContent = data.error || 'Неверный логин или пароль';
+          document.getElementById('password').value = '';
+          return;
+        }
+        
         messageDiv.className = 'success';
         messageDiv.textContent = 'Вход успешен...';
-        // Don't store token - use session-based auth
-        // Generate temporary token for this session only
-        const sessionToken = 'admin-' + Date.now() + '-' + Math.random().toString(36).substring(7);
-        // Store in sessionStorage (cleared on tab close) instead of localStorage
-        sessionStorage.setItem('akylman_admin_token', sessionToken);
+        sessionStorage.setItem('akylman_admin_token', data.token);
         setTimeout(() => {
           window.location.href = '/admin';
         }, 600);
-      } else {
+      } catch (err) {
         messageDiv.className = 'error';
-        messageDiv.textContent = 'Неверный логин или пароль';
-        document.getElementById('password').value = '';
+        messageDiv.textContent = 'Ошибка сети. Попробуйте позже.';
       }
     });
   </script>

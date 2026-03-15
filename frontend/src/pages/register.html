@@ -74,7 +74,7 @@
 <body class="admin-panel">
 <div class="container">
   <div class="lang-switch text-end"><button data-lang="ru">РУ</button> <button data-lang="ky">КЫ</button></div>
-  <a href="/"><img src="../images/image.png" class="logo-center img-fluid"/></a>
+  <div class="logo-center logo-small"><a href="/"><img src="../images/image.png" class="img-fluid" alt="Akylman Quiz Bowl"/></a></div>
   <div class="topbar d-flex justify-content-end gap-2 flex-wrap">
     <a class="nav-btn" href="/" data-i18n="nav.home">Главная</a>
     <a class="link-pill" href="/login" data-i18n="nav.login">Войти</a>
@@ -111,12 +111,10 @@
         </div>
         <div class="form-row">
           <label><span data-i18n="register.captain_phone">Телефон капитана</span><input name="captain_phone" type="tel" placeholder="+996 555 123456" data-i18n-ph="register.captain_phone.placeholder"/></label>
-          <label><span data-i18n="register.school">Школа</span><input name="school" placeholder="Название школы" data-i18n-ph="register.school.placeholder"/></label>
-        </div>
-        <div class="form-row">
           <label><span data-i18n="register.city">Город</span><input name="city" placeholder="Город" data-i18n-ph="register.city.placeholder"/></label>
         </div>
         <div class="form-row">
+          <label><span data-i18n="register.school">Школа</span><input name="school" placeholder="Название школы" data-i18n-ph="register.school.placeholder"/></label>
           <label><span data-i18n="register.members_count">Количество участников</span><select id="members_count" name="members_count"><option>2</option><option>3</option><option>4</option></select></label>
         </div>
         <div id="members_fields"></div>
@@ -179,7 +177,7 @@ function isValidEmail(email) {
 function renderMembers(n) {
   membersDiv.innerHTML = '';
   const lang = AkylI18n.getLang();
-  for (let i = 2; i <= n + 1; i++) {
+  for (let i = 2; i <= n; i++) {
     const wrapper = document.createElement('div');
     wrapper.className = 'form-row';
     let memberLabel, classLabel;
@@ -297,7 +295,7 @@ document.getElementById('regForm').addEventListener('submit', async e => {
 
   const members = [];
   const cnt = parseInt(data.members_count || 2);
-  for (let i = 2; i <= cnt + 1; i++) {
+  for (let i = 2; i <= cnt; i++) {
     const name = document.querySelector(`[name="member_${i}_name"]`)?.value || '';
     if (name) members.push({ name });
   }

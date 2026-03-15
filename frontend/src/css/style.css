@@ -1457,6 +1457,10 @@ body.admin-panel {
   max-width: none !important;
 }
 
+.logo-center.logo-small img {
+  height: 120px !important;
+}
+
 .logo-corner {
   position: fixed;
   top: 12px;
@@ -1646,7 +1650,7 @@ body.admin-panel {
 .form-row input,
 .form-row select,
 .form-row textarea {
-  padding: 6px 8px;
+  padding: 10px 12px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-family: 'Inter', sans-serif;
@@ -1656,7 +1660,7 @@ body.admin-panel {
   background: var(--bg-white);
   width: 100%;
   box-sizing: border-box;
-  line-height: 1.3;
+  line-height: 1.4;
 }
 
 .form-row input::placeholder,
