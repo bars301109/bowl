@@ -91,6 +91,26 @@ function showAlert(message, type = 'info') {
   setTimeout(() => alertDiv.remove(), 3000);
 }
 
+async function showResponseError(res, fallback) {
+  try {
+    const text = await res.text();
+    if (!text) {
+      showAlert(fallback, 'error');
+      return;
+    }
+    try {
+      const json = JSON.parse(text);
+      showAlert(json.error ? `${fallback}: ${json.error}` : fallback, 'error');
+      return;
+    } catch {
+      showAlert(`${fallback}: ${text}`, 'error');
+      return;
+    }
+  } catch {
+    showAlert(fallback, 'error');
+  }
+}
+
 function showLoading(message = 'Загрузка...') {
   content.innerHTML = `<div class="admin-loading">${message}</div>`;
 }
@@ -146,9 +166,10 @@ async function renderTests(){
     adminFetch('/api/admin/tests',{ headers: aHeaders() }),
     adminFetch('/api/admin/categories',{ headers: aHeaders() })
   ]);
-  if(!testsRes.ok){ showAlert('Нет доступа. Проверьте токен.', 'error'); return; }
+  if(!testsRes.ok){ await showResponseError(testsRes, 'Ошибка загрузки тестов'); return; }
+  if(!catsRes.ok){ await showResponseError(catsRes, 'Ошибка загрузки категорий'); return; }
   const tests = await testsRes.json();
-  const cats = catsRes.ok ? await catsRes.json() : [];
+  const cats = await catsRes.json();
   content.innerHTML = `
     <div class="admin-form">
       <h3>📝 Управление тестами</h3>
