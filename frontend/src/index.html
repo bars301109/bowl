@@ -425,6 +425,32 @@
         grid.innerHTML = '<p style="text-align:center;color:#ef4444;">Ошибка отображения категорий</p>';
       }
     }
+
+    async function loadHomepageBlocks() {
+      try {
+        const res = await fetch('/api/homepage-blocks');
+        if (!res.ok) return;
+        const blocks = await res.json();
+        if (!blocks || typeof blocks !== 'object') return;
+
+        const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'ru';
+        document.querySelectorAll('[data-block-key]').forEach(el => {
+          const key = el.getAttribute('data-block-key');
+          if (!key || !blocks[key]) return;
+          const block = blocks[key];
+          el.querySelectorAll('[data-block-field]').forEach(child => {
+            const field = child.getAttribute('data-block-field');
+            if (!field) return;
+            const value = lang === 'ky'
+              ? (block[`${field}_ky`] ?? block[`${field}_ru`] ?? '')
+              : (block[`${field}_ru`] ?? '');
+            if (value !== '') child.textContent = value;
+          });
+        });
+      } catch (e) {
+        console.warn('Failed to load homepage blocks:', e);
+      }
+    }
     
     // Wait for DOM and i18n to be ready
     function initApp() {

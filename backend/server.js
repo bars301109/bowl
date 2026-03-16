@@ -866,7 +866,27 @@ app.get('/api/tests/:id', async (req,res)=>{
   }catch(e){ res.status(500).json({ error:e.message }); }
 });
 // Public categories (for homepage rendering)
-app.get('/api/categories', async (req,res)=>{ try{ const rows = await allAsync('SELECT id, name_ru, name_ky, desc_ru, desc_ky FROM categories ORDER BY id'); res.json(rows); }catch(e){ res.status(500).json({ error:e.message }); } });
+async function maybeEnsureSchemaAndRetry(err, retryFn){
+  const msg = String(err?.message || '');
+  const isMissingTable = msg.includes('no such table') || msg.includes('does not exist') || err?.code === 'SQLITE_ERROR' || err?.code === '42P01';
+  if (!isMissingTable) throw err;
+  try { await ensureSchema(); } catch (e) { throw err; }
+  return retryFn();
+}
+
+app.get('/api/categories', async (req,res)=>{
+  try{
+    const rows = await allAsync('SELECT id, name_ru, name_ky, desc_ru, desc_ky FROM categories ORDER BY id');
+    res.json(rows);
+  }catch(e){
+    try{
+      const rows = await maybeEnsureSchemaAndRetry(e, () => allAsync('SELECT id, name_ru, name_ky, desc_ru, desc_ky FROM categories ORDER BY id'));
+      res.json(rows);
+    }catch(err){
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
 function teamAuth(req,res,next){ const auth = req.headers['authorization'] || ''; if (!auth.startsWith('Bearer ')) return res.status(401).json({ error:'Missing token' }); const token = auth.slice(7); try{ const payload = jwt.verify(token, JWT_SECRET); req.team = payload; next(); }catch(e){ return res.status(401).json({ error:'Invalid token' }); } }
 app.post('/api/tests/:id/submit', teamAuth, async (req,res)=>{
   try{
@@ -1635,7 +1655,19 @@ app.get('/api/admin/teams/export-csv', adminAuth, async (req,res)=>{
 });
 
 // settings public
-app.get('/api/settings', async (req,res)=>{ try{ const s = await getAsync('SELECT * FROM settings WHERE id=1'); res.json(s||{}); }catch(e){ res.status(500).json({ error:e.message }); } });
+app.get('/api/settings', async (req,res)=>{
+  try{
+    const s = await getAsync('SELECT * FROM settings WHERE id=1');
+    res.json(s||{});
+  }catch(e){
+    try{
+      const s = await maybeEnsureSchemaAndRetry(e, () => getAsync('SELECT * FROM settings WHERE id=1'));
+      res.json(s||{});
+    }catch(err){
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
 // settings admin
 app.put('/api/admin/settings', adminAuth, async (req,res)=>{
   try{
@@ -1662,7 +1694,23 @@ app.get('/api/homepage-blocks', async (req,res)=>{
       };
     });
     res.json(result);
-  }catch(e){ res.status(500).json({ error:e.message }); }
+  }catch(e){
+    try{
+      const blocks = await maybeEnsureSchemaAndRetry(e, () => allAsync('SELECT block_key, title_ru, title_ky, content_ru, content_ky FROM homepage_blocks'));
+      const result = {};
+      blocks.forEach(b => {
+        result[b.block_key] = {
+          title_ru: b.title_ru || '',
+          title_ky: b.title_ky || '',
+          content_ru: b.content_ru || '',
+          content_ky: b.content_ky || ''
+        };
+      });
+      res.json(result);
+    }catch(err){
+      res.status(500).json({ error: err.message });
+    }
+  }
 });
 
 // Homepage blocks API (admin)
