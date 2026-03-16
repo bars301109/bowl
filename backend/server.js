@@ -16,6 +16,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret';
 const ADMIN_USER = process.env.ADMIN_USER || 'user182102';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Fish!2493';
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || JWT_SECRET;
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'adm-7b3d9f2a';
+const ADMIN_PANEL_PATH = `/${ADMIN_SECRET}`;
+const ADMIN_LOGIN_PATH = `/${ADMIN_SECRET}-login`;
+const ADMIN_ALLOWED_IPS = (process.env.ADMIN_ALLOWED_IPS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
 // Email provider: 'resend' (HTTP API) или 'gmail' (SMTP через nodemailer)
 const EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || (process.env.RESEND_API_KEY ? 'resend' : 'gmail');
 
@@ -68,6 +75,10 @@ if (process.env.NODE_ENV === 'production') {
   }
   if (!process.env.ADMIN_USER || !process.env.ADMIN_PASSWORD || !process.env.ADMIN_JWT_SECRET) {
     console.error('❌ ADMIN_USER, ADMIN_PASSWORD, and ADMIN_JWT_SECRET must be set for production.');
+    process.exit(1);
+  }
+  if (!process.env.ADMIN_SECRET) {
+    console.error('❌ ADMIN_SECRET must be set for production.');
     process.exit(1);
   }
 }
@@ -193,15 +204,31 @@ function sendPage(res, pageName) {
   return false;
 }
 
-// Clean URLs: /register, /login, /team, /admin, /admin-login, /profile
+// Clean URLs: /register, /login, /team, /profile
 // These MUST be BEFORE static middleware to work correctly
-['register', 'login', 'team', 'admin', 'admin-login', 'profile'].forEach(page => {
+['register', 'login', 'team', 'profile'].forEach(page => {
   app.get(`/${page}`, (req, res, next) => {
     if (sendPage(res, page === 'team' ? 'team' : page)) {
       return; // File sent successfully
     }
     return next(); // File not found, continue to next middleware
   });
+});
+
+// Hide default admin routes
+app.get('/admin', (req, res) => res.status(404).send('Not found'));
+app.get('/admin-login', (req, res) => res.status(404).send('Not found'));
+app.get('/pages/admin.html', (req, res) => res.status(404).send('Not found'));
+app.get('/pages/admin-login.html', (req, res) => res.status(404).send('Not found'));
+
+// Secret admin routes (IP-restricted)
+app.get(ADMIN_LOGIN_PATH, adminIpGuard, (req, res, next) => {
+  if (sendPage(res, 'admin-login')) return;
+  return next();
+});
+app.get(ADMIN_PANEL_PATH, adminIpGuard, (req, res, next) => {
+  if (sendPage(res, 'admin')) return;
+  return next();
 });
 
 // Nested team pages: /team/<section> -> always serve team.html (frontend router handles section)
@@ -423,6 +450,19 @@ function getClientIp(req){
   const xf = req.headers['x-forwarded-for'];
   if (xf && typeof xf === 'string') return xf.split(',')[0].trim();
   return req.socket?.remoteAddress || 'unknown';
+}
+function normalizeIp(ip){
+  if (!ip) return '';
+  return ip.startsWith('::ffff:') ? ip.slice(7) : ip;
+}
+function isAdminIpAllowed(req){
+  if (ADMIN_ALLOWED_IPS.length === 0) return true;
+  const ip = normalizeIp(getClientIp(req));
+  return ADMIN_ALLOWED_IPS.includes(ip);
+}
+function adminIpGuard(req, res, next){
+  if (!isAdminIpAllowed(req)) return res.status(404).send('Not found');
+  return next();
 }
 function rateLimit({ windowMs, max }){
   const hits = new Map();
@@ -775,7 +815,7 @@ app.post('/api/password-reset/verify', resetLimiter, async (req,res)=>{
   }
 });
 
-app.post('/api/admin/login', adminLoginLimiter, async (req, res) => {
+app.post('/api/admin/login', adminLoginLimiter, adminIpGuard, async (req, res) => {
   try {
     const { username, password } = req.body || {};
     if (!username || !password) {
@@ -794,6 +834,7 @@ app.post('/api/admin/login', adminLoginLimiter, async (req, res) => {
 });
 
 function adminAuth(req,res,next){
+  if (!isAdminIpAllowed(req)) return res.status(404).send('Not found');
   const header = req.headers['authorization'] || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : (req.headers['x-admin-token'] || '');
   if (!token) return res.status(401).json({ error:'Missing admin token' });
