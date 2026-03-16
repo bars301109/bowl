@@ -66,6 +66,17 @@ function aAuthHeaders(){
   const token = sessionStorage.getItem('akylman_admin_token') || '';
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
+
+async function adminFetch(url, options = {}) {
+  const headers = { ...(options.headers || {}), ...aAuthHeaders() };
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401 || res.status === 403) {
+    sessionStorage.removeItem('akylman_admin_token');
+    window.location.href = '/admin-login';
+    throw new Error('Unauthorized');
+  }
+  return res;
+}
 const content = document.getElementById('content');
 
 // Helper functions for better UI
@@ -118,7 +129,7 @@ async function renderSettings(){
   `;
   document.getElementById('save').onclick = async ()=>{
     const body = { day1_date:val('d1'),day2_date:val('d2'),day3_date:val('d3'),final_place_ru:val('fpru'),final_place_ky:val('fpky') };
-    const r = await fetch('/api/admin/settings',{ method:'PUT', headers:aHeaders(), body: JSON.stringify(body) });
+    const r = await adminFetch('/api/admin/settings',{ method:'PUT', headers:aHeaders(), body: JSON.stringify(body) });
     if(!r.ok){ showAlert('Ошибка сохранения', 'error'); return; }
     showAlert('Настройки сохранены!', 'success');
   };
@@ -129,8 +140,8 @@ async function renderTests(){
   setActiveTab(document.getElementById('tabTests'));
   showLoading('Загрузка тестов...');
   const [testsRes, catsRes] = await Promise.all([
-    fetch('/api/admin/tests',{ headers: aHeaders() }),
-    fetch('/api/admin/categories',{ headers: aHeaders() })
+    adminFetch('/api/admin/tests',{ headers: aHeaders() }),
+    adminFetch('/api/admin/categories',{ headers: aHeaders() })
   ]);
   if(!testsRes.ok){ showAlert('Нет доступа. Проверьте токен.', 'error'); return; }
   const tests = await testsRes.json();
@@ -213,7 +224,7 @@ async function renderTests(){
       window_end: val('t_end') ? new Date(val('t_end')).toISOString() : null,
       category_id: catV
     };
-    const r = await fetch('/api/admin/tests',{ method:'POST', headers: aHeaders(), body: JSON.stringify(body) });
+    const r = await adminFetch('/api/admin/tests',{ method:'POST', headers: aHeaders(), body: JSON.stringify(body) });
     if(!r.ok){ let msg=''; try{ msg = await r.text(); }catch{} showAlert('Ошибка создания'+(msg?': '+msg:''), 'error'); return; }
     showAlert('Тест создан!', 'success');
     renderTests();
@@ -221,7 +232,7 @@ async function renderTests(){
   document.getElementById('resetTests').onclick = async ()=>{
     if(!confirm('🧹 Удалить ВСЕ тесты, вопросы и результаты? Это действие нельзя отменить!')) return;
     try {
-      const r = await fetch('/api/admin/tests',{ method:'DELETE', headers: aHeaders() });
+      const r = await adminFetch('/api/admin/tests',{ method:'DELETE', headers: aHeaders() });
       if(!r.ok){
         const errorText = await r.text();
         let errorMsg = 'Ошибка удаления всех тестов';
@@ -248,8 +259,8 @@ async function renderTests(){
 }
 async function editTest(id){
   const [testsRes, catsRes] = await Promise.all([
-    fetch('/api/admin/tests',{ headers: aHeaders() }),
-    fetch('/api/admin/categories',{ headers: aHeaders() })
+    adminFetch('/api/admin/tests',{ headers: aHeaders() }),
+    adminFetch('/api/admin/categories',{ headers: aHeaders() })
   ]);
   const tests = await testsRes.json();
   const cats = catsRes.ok ? await catsRes.json() : [];
@@ -290,7 +301,7 @@ async function editTest(id){
       window_end: val('t_end') ? new Date(val('t_end')).toISOString() : null,
       category_id: catV
     };
-    const r = await fetch('/api/admin/tests/'+id,{ method:'PUT', headers: aHeaders(), body: JSON.stringify(body) });
+    const r = await adminFetch('/api/admin/tests/'+id,{ method:'PUT', headers: aHeaders(), body: JSON.stringify(body) });
     if(!r.ok){ let msg=''; try{ msg = await r.text(); }catch{} showAlert('Ошибка сохранения'+(msg?': '+msg:''), 'error'); return; }
     showAlert('Тест обновлен!', 'success');
     renderTests();
@@ -316,7 +327,7 @@ async function confirmDeleteTest() {
   hideDeleteTestModal();
   
   try {
-    const r = await fetch('/api/admin/tests/' + id, { method: 'DELETE', headers: aHeaders() });
+    const r = await adminFetch('/api/admin/tests/' + id, { method: 'DELETE', headers: aHeaders() });
     if (!r.ok) {
       showAlert('Ошибка удаления', 'error');
       return;
@@ -362,7 +373,7 @@ async function deleteTest(id) {
 async function renderCategories(){
   setActiveTab(document.getElementById('tabCategories'));
   showLoading('Загрузка категорий...');
-  const res = await fetch('/api/admin/categories',{ headers: aHeaders() });
+  const res = await adminFetch('/api/admin/categories',{ headers: aHeaders() });
   if(!res.ok){ showAlert('Нет доступа', 'error'); return; }
   const cats = await res.json();
   content.innerHTML = `
@@ -390,7 +401,7 @@ async function renderCategories(){
   `;
   document.getElementById('addCat').onclick = async ()=>{ 
     const body={ name_ru: val('c_ru'), name_ky: val('c_ky'), desc_ru: document.getElementById('c_dru').value.trim(), desc_ky: document.getElementById('c_dky').value.trim() }; 
-    const r=await fetch('/api/admin/categories',{ method:'POST', headers:aHeaders(), body: JSON.stringify(body)}); 
+    const r=await adminFetch('/api/admin/categories',{ method:'POST', headers:aHeaders(), body: JSON.stringify(body)}); 
     if(!r.ok){ showAlert('Ошибка создания', 'error'); return; } 
     showAlert('Категория добавлена!', 'success');
     renderCategories(); 
@@ -399,7 +410,7 @@ async function renderCategories(){
   content.querySelectorAll('.cdel').forEach(b=> b.onclick = ()=> deleteCategory(b.dataset.id));
 }
 async function editCategory(id){
-  const res = await fetch('/api/admin/categories',{ headers: aHeaders() });
+  const res = await adminFetch('/api/admin/categories',{ headers: aHeaders() });
   const cats = await res.json();
   const c = cats.find(x=> x.id==id);
   content.innerHTML = `
@@ -413,7 +424,7 @@ async function editCategory(id){
   document.getElementById('back').onclick = renderCategories;
   document.getElementById('save').onclick = async ()=>{ 
     const body={ name_ru: val('c_ru'), name_ky: val('c_ky'), desc_ru: document.getElementById('c_dru').value.trim(), desc_ky: document.getElementById('c_dky').value.trim() }; 
-    const r=await fetch('/api/admin/categories/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify(body)}); 
+    const r=await adminFetch('/api/admin/categories/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify(body)}); 
     if(!r.ok){ showAlert('Ошибка сохранения', 'error'); return; } 
     showAlert('Категория обновлена!', 'success');
     renderCategories(); 
@@ -421,7 +432,7 @@ async function editCategory(id){
 }
 async function deleteCategory(id){ 
   if(!confirm('🗑️ Удалить категорию? Это действие нельзя отменить!')) return; 
-  const r=await fetch('/api/admin/categories/'+id,{ method:'DELETE', headers:aHeaders() }); 
+  const r=await adminFetch('/api/admin/categories/'+id,{ method:'DELETE', headers:aHeaders() }); 
   if(!r.ok){ showAlert('Ошибка удаления', 'error'); return; } 
   showAlert('Категория удалена!', 'success');
   renderCategories(); 
@@ -433,17 +444,17 @@ async function renderQuestions(testId){
   if(testId) currentTestId = testId;
   if(!currentTestId){
     // prompt to pick test
-    const tr = await fetch('/api/admin/tests',{ headers: aHeaders() });
+    const tr = await adminFetch('/api/admin/tests',{ headers: aHeaders() });
     if(!tr.ok){ content.innerHTML='Нет доступа'; return; }
     const tests = await tr.json();
-    content.innerHTML = '<h3>Выберите тест</h3>' + tests.map(t=>`<button class="primary m-1" data-id="${t.id}">${t.title}</button>`).join('');
+    content.innerHTML = '<h3>Выберите тест</h3>' + tests.map(t=>`<button class="primary m-1" data-id="${t.id}">${esc(t.title || '')}</button>`).join('');
     content.querySelectorAll('button').forEach(b=> b.onclick = ()=> renderQuestions(parseInt(b.dataset.id,10)));
     return;
   }
   content.innerHTML = 'Загрузка вопросов...';
-  const res = await fetch('/api/admin/tests/'+currentTestId+'/questions',{ headers: aHeaders() });
+  const res = await adminFetch('/api/admin/tests/'+currentTestId+'/questions',{ headers: aHeaders() });
   const qs = res.ok ? await res.json() : [];
-  const cs = await (await fetch('/api/admin/categories',{ headers: aHeaders() })).json();
+  const cs = await (await adminFetch('/api/admin/categories',{ headers: aHeaders() })).json();
   content.innerHTML = `
     <h3>Вопросы — тест #${currentTestId}</h3>
     <div class="admin-form">
@@ -463,7 +474,7 @@ async function renderQuestions(testId){
   document.getElementById('backTests').onclick = renderTests;
   document.getElementById('exportCsv').onclick = async ()=>{
     try{
-      const res = await fetch('/api/admin/tests/'+currentTestId+'/questions/export-csv', { headers: aHeaders() });
+      const res = await adminFetch('/api/admin/tests/'+currentTestId+'/questions/export-csv', { headers: aHeaders() });
       if(!res.ok){ showAlert('Ошибка экспорта', 'error'); return; }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -482,7 +493,7 @@ async function renderQuestions(testId){
   document.getElementById('importCsv').onclick = async ()=>{
     const f = document.getElementById('csvFile').files[0]; if(!f){ alert('Выберите файл'); return; }
     const form = new FormData(); form.append('file', f);
-    const r = await fetch('/api/admin/tests/'+currentTestId+'/questions/import-csv',{ method:'POST', headers: aAuthHeaders(), body: form });
+    const r = await adminFetch('/api/admin/tests/'+currentTestId+'/questions/import-csv',{ method:'POST', headers: aAuthHeaders(), body: form });
     if(!r.ok){ alert('Ошибка импорта'); return; }
     renderQuestions(currentTestId);
   };
@@ -536,7 +547,7 @@ async function renderQuestions(testId){
         if(qid){
           // Обновление существующего вопроса
           const payload = { ordinal, text, options, correct, points };
-          const r = await fetch('/api/admin/questions/'+qid, { method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
+          const r = await adminFetch('/api/admin/questions/'+qid, { method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
           if(!r.ok){
             errors.push(`Вопрос #${ordinal}: ошибка сохранения`);
             continue;
@@ -544,7 +555,7 @@ async function renderQuestions(testId){
         } else {
           // Создание нового вопроса
           const payload = { ordinal, text, options, correct, points };
-          const r = await fetch('/api/admin/tests/'+currentTestId+'/questions', { method:'POST', headers:aHeaders(), body: JSON.stringify(payload) });
+          const r = await adminFetch('/api/admin/tests/'+currentTestId+'/questions', { method:'POST', headers:aHeaders(), body: JSON.stringify(payload) });
           if(!r.ok){
             errors.push(`Вопрос #${ordinal}: ошибка создания`);
             continue;
@@ -636,7 +647,7 @@ async function renderQuestions(testId){
     }
     const payload = { ordinal: (qs.length+1), text, options, correct, points };
     if(Array.isArray(payload.options) && payload.options.length===0){ payload.options = null; }
-    const r = await fetch('/api/admin/tests/'+currentTestId+'/questions',{ method:'POST', headers: aHeaders(), body: JSON.stringify(payload) });
+    const r = await adminFetch('/api/admin/tests/'+currentTestId+'/questions',{ method:'POST', headers: aHeaders(), body: JSON.stringify(payload) });
     if(!r.ok){ try{ const msg = await r.text(); }catch(e){} showAlert('Ошибка сохранения вопроса', 'error'); return; }
     renderQuestions(currentTestId);
   }
@@ -692,7 +703,7 @@ async function renderQuestions(testId){
       textBlock.style.display = isText ? '' : 'none';
     };
     card.querySelector('.add-opt').onclick = (e)=>{ e.preventDefault(); optsWrap.appendChild(createOptionRow('', groupName, false)); };
-    card.querySelector('.q-del').onclick = async ()=>{ const r=await fetch('/api/admin/questions/'+q.id,{ method:'DELETE', headers:aHeaders() }); if(!r.ok){ showAlert('Ошибка удаления', 'error'); return; } renderQuestions(currentTestId); };
+    card.querySelector('.q-del').onclick = async ()=>{ const r=await adminFetch('/api/admin/questions/'+q.id,{ method:'DELETE', headers:aHeaders() }); if(!r.ok){ showAlert('Ошибка удаления', 'error'); return; } renderQuestions(currentTestId); };
     card.querySelector('.q-dup').onclick = async ()=>{
       const type = typeSel.value;
       const text = card.querySelector('.q-text').value.trim();
@@ -706,7 +717,7 @@ async function renderQuestions(testId){
         correct = (card.querySelector('.q-correct-text').value||'').trim();
       }
       const payload = { ordinal: qs.length+1, text, options, correct, points };
-      const r = await fetch('/api/admin/tests/'+currentTestId+'/questions',{ method:'POST', headers:aHeaders(), body: JSON.stringify(payload) });
+      const r = await adminFetch('/api/admin/tests/'+currentTestId+'/questions',{ method:'POST', headers:aHeaders(), body: JSON.stringify(payload) });
       if(!r.ok){ showAlert('Ошибка дублирования', 'error'); return; }
       renderQuestions(currentTestId);
     };
@@ -722,7 +733,7 @@ async function renderQuestions(testId){
         const newOrd = i+1;
         const qq = qs.find(x=> String(x.id)===String(id));
         if(qq && qq.ordinal !== newOrd){
-          try{ await fetch('/api/admin/questions/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify({ ordinal:newOrd, text: qq.text, options: qq.options, correct: qq.correct, points: qq.points }) }); }catch{}
+          try{ await adminFetch('/api/admin/questions/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify({ ordinal:newOrd, text: qq.text, options: qq.options, correct: qq.correct, points: qq.points }) }); }catch{}
         }
       }
       renderQuestions(currentTestId);
@@ -812,7 +823,7 @@ function editQuestion(id, qs, cs){
   document.getElementById('back').onclick = ()=> renderQuestions(currentTestId);
   document.getElementById('save').onclick = async ()=>{
     const payload = { ordinal: num('q_ord'), text: document.getElementById('q_text').value.trim(), options: (val('q_opts')? val('q_opts').split('|').map(s=>s.trim()).filter(Boolean) : null), correct: val('q_correct'), points: num('q_points') };
-    const r = await fetch('/api/admin/questions/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
+    const r = await adminFetch('/api/admin/questions/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
     if(!r.ok){ alert('Ошибка'); return; }
     renderQuestions(currentTestId);
   };
@@ -822,7 +833,7 @@ function editQuestion(id, qs, cs){
 async function renderTeams(){
   setActiveTab(document.getElementById('tabTeams'));
   showLoading('Загрузка команд...');
-  const r = await fetch('/api/admin/teams',{ headers: aHeaders() });
+  const r = await adminFetch('/api/admin/teams',{ headers: aHeaders() });
   if(!r.ok){ showAlert('Нет доступа', 'error'); return; }
   const rows = await r.json();
   content.innerHTML = `
@@ -854,7 +865,7 @@ async function renderTeams(){
   `;
   document.getElementById('exportTeams').onclick = async ()=>{
     try{
-      const res = await fetch('/api/admin/teams/export-csv', { headers: aHeaders() });
+      const res = await adminFetch('/api/admin/teams/export-csv', { headers: aHeaders() });
       if(!res.ok){ showAlert('Ошибка экспорта', 'error'); return; }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -870,14 +881,14 @@ async function renderTeams(){
       showAlert('Ошибка экспорта: ' + e.message, 'error');
     }
   };
-  document.getElementById('wipeTeams').onclick = async ()=>{ if(!confirm('Удалить все команды и результаты?')) return; const res=await fetch('/api/admin/reset-teams',{ method:'POST', headers:aHeaders() }); if(!res.ok){ showAlert('Ошибка очистки', 'error'); return; } showAlert('Все команды и результаты удалены', 'success'); renderTeams(); };
+  document.getElementById('wipeTeams').onclick = async ()=>{ if(!confirm('Удалить все команды и результаты?')) return; const res=await adminFetch('/api/admin/reset-teams',{ method:'POST', headers:aHeaders() }); if(!res.ok){ showAlert('Ошибка очистки', 'error'); return; } showAlert('Все команды и результаты удалены', 'success'); renderTeams(); };
 }
 
 // Results Tab
 async function renderResults(){
   setActiveTab(document.getElementById('tabResults'));
   showLoading('Загрузка результатов...');
-  const r = await fetch('/api/admin/results',{ headers: aHeaders() });
+  const r = await adminFetch('/api/admin/results',{ headers: aHeaders() });
   if(!r.ok){ showAlert('Нет доступа', 'error'); return; }
   const rows = await r.json();
   content.innerHTML = `
@@ -906,7 +917,7 @@ async function renderResults(){
   `;
   document.getElementById('exportResults').onclick = async ()=>{
     try{
-      const res = await fetch('/api/admin/results/export-csv', { headers: aHeaders() });
+      const res = await adminFetch('/api/admin/results/export-csv', { headers: aHeaders() });
       if(!res.ok){ showAlert('Ошибка экспорта', 'error'); return; }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -934,7 +945,7 @@ async function renderHomepage(){
   setActiveTab(document.getElementById('tabHomepage'));
   showLoading('Загрузка блоков главной страницы...');
   try {
-    const res = await fetch('/api/admin/homepage-blocks', { headers: aHeaders() });
+    const res = await adminFetch('/api/admin/homepage-blocks', { headers: aHeaders() });
     if (!res.ok) { showAlert('Ошибка загрузки блоков', 'error'); return; }
     const blocks = await res.json();
     
@@ -984,7 +995,7 @@ async function saveBlock(key) {
     const content_ru = val(`block_${key}_content_ru`);
     const content_ky = val(`block_${key}_content_ky`);
     
-    const res = await fetch(`/api/admin/homepage-blocks/${key}`, {
+    const res = await adminFetch(`/api/admin/homepage-blocks/${key}`, {
       method: 'PUT',
       headers: aHeaders(),
       body: JSON.stringify({ title_ru, title_ky, content_ru, content_ky })

@@ -234,7 +234,11 @@ async function renderHomeSection(btn) {
     // Получаем участников команды
     let membersHtml = '';
     if (teamData.members && teamData.members.length > 0) {
-      membersHtml = teamData.members.map((m, idx) => `<li><span class="member-name">${m.name || 'Участник'}</span>${m.class ? ` <span class="member-class">— ${m.class}</span>` : ''}</li>`).join('');
+      membersHtml = teamData.members.map((m) => {
+        const name = escapeHtml(m?.name || 'Участник');
+        const cls = m?.class ? ` <span class="member-class">— ${escapeHtml(m.class)}</span>` : '';
+        return `<li><span class="member-name">${name}</span>${cls}</li>`;
+      }).join('');
     } else {
       membersHtml = '<li class="empty-state">Участники не указаны</li>';
     }

@@ -297,12 +297,14 @@ document.getElementById('regForm').addEventListener('submit', async e => {
   const cnt = parseInt(data.members_count || 2);
   for (let i = 2; i <= cnt; i++) {
     const name = document.querySelector(`[name="member_${i}_name"]`)?.value || '';
-    if (name) members.push({ name });
+    const classInfo = document.querySelector(`[name="member_${i}_info"]`)?.value || '';
+    if (name || classInfo) {
+      members.push({ name, class: classInfo });
+    }
   }
 
   const payload = {
     team_name: data.team_name,
-    login: data.login,
     password: data.password,
     captain_name: data.captain_name,
     captain_email: data.captain_email,

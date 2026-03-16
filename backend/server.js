@@ -328,13 +328,16 @@ async function ensureSchema(){
     // Ensure new categories exist (replace old ones)
     const newCats = DEFAULT_CATEGORIES;
     
-    // Delete old categories and insert new ones
-    await runAsync('DELETE FROM categories');
-    const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
-    for (const c of newCats){ 
-      await runAsync(`INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES (?,?,?,?,${nowFunc})`, [c.ru, c.ky, c.desc_ru, c.desc_ky]); 
+    // Seed categories only if empty (avoid overwriting admin changes)
+    const catCountRow = await getAsync('SELECT COUNT(*) AS cnt FROM categories');
+    const catCount = parseInt(catCountRow?.cnt || catCountRow?.count || 0, 10) || 0;
+    if (catCount === 0) {
+      const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
+      for (const c of newCats){ 
+        await runAsync(`INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES (?,?,?,?,${nowFunc})`, [c.ru, c.ky, c.desc_ru, c.desc_ky]); 
+      }
+      console.log('✓ Seeded default categories');
     }
-    console.log('✓ Updated categories to new set');
     
     const any = await getAsync('SELECT id FROM tests LIMIT 1');
     if (!any){
@@ -476,7 +479,11 @@ app.post('/api/register', async (req,res)=>{
     const exists = await getAsync('SELECT id FROM teams WHERE captain_email = ?', [email]);
     if (exists) return res.status(400).json({ error:'Email already registered' });
     const hashed = await bcrypt.hash(data.password, 10);
-    const members_json = JSON.stringify(data.members || []);
+    const members = Array.isArray(data.members)
+      ? data.members.map(m => ({ name: (m?.name || '').toString().trim(), class: (m?.class || '').toString().trim() }))
+          .filter(m => m.name || m.class)
+      : [];
+    const members_json = JSON.stringify(members);
     const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
     // Generate a random login for backward compatibility (not used for auth)
     const randomLogin = 'team_' + Math.random().toString(36).substring(2, 15);
@@ -1047,9 +1054,16 @@ app.put('/api/me', teamAuth, async (req, res) => {
     for (const field of allowedFields) {
       if (Object.prototype.hasOwnProperty.call(req.body, field)) {
         if (field === 'members') {
-          const members = Array.isArray(req.body.members) ? req.body.members : [];
+          const members = Array.isArray(req.body.members)
+            ? req.body.members.map(m => ({ name: (m?.name || '').toString().trim(), class: (m?.class || '').toString().trim() }))
+                .filter(m => m.name || m.class)
+            : [];
           updates.push('members = ?');
           params.push(JSON.stringify(members));
+        } else if (field === 'category_id') {
+          const catId = req.body.category_id ? parseInt(req.body.category_id, 10) || null : null;
+          updates.push('category_id = ?');
+          params.push(catId);
         } else {
           updates.push(`${field} = ?`);
           params.push(req.body[field] ?? null);
@@ -1190,6 +1204,10 @@ app.get('/api/admin/tests', adminAuth, async (req,res)=>{
 app.post('/api/admin/tests', adminAuth, async (req,res)=>{
   try{
     const { title, description, lang, duration_minutes, window_start, window_end, window_range, category_id } = req.body;
+    const titleClean = String(title || '').trim();
+    if (!titleClean) {
+      return res.status(400).json({ error: 'title is required' });
+    }
     // Категория обязательна
     const catId = category_id ? parseInt(category_id, 10) || null : null;
     if (!catId) {
@@ -1198,11 +1216,16 @@ app.post('/api/admin/tests', adminAuth, async (req,res)=>{
     const range = parseHumanWindow(window_range);
     const ws = range.start || window_start || null;
     const we = range.end || window_end || null;
+    if (ws && we && new Date(ws).getTime() > new Date(we).getTime()) {
+      return res.status(400).json({ error: 'window_start must be before window_end' });
+    }
+    const dur = parseInt(duration_minutes, 10) || 30;
+    if (dur <= 0) return res.status(400).json({ error: 'duration_minutes must be positive' });
     const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')';
     const stmt = await runAsync(
       `INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, category_id, created_at)
        VALUES (?,?,?,?,?,?,?,${nowFunc})${db.type === 'postgres' ? ' RETURNING id' : ''}`,
-      [title, description, lang || 'ru', duration_minutes || 30, ws, we, catId]
+      [titleClean, description, lang || 'ru', dur, ws, we, catId]
     );
     const testId = db.type === 'postgres' ? (stmt.rows?.[0]?.id || stmt.id) : stmt.lastID;
     res.json({ ok:true, id: testId });
@@ -1213,6 +1236,10 @@ app.post('/api/admin/tests', adminAuth, async (req,res)=>{
 app.put('/api/admin/tests/:id', adminAuth, async (req,res)=>{
   try{
     const { title, description, lang, duration_minutes, window_start, window_end, window_range, category_id } = req.body;
+    const titleClean = String(title || '').trim();
+    if (!titleClean) {
+      return res.status(400).json({ error: 'title is required' });
+    }
     // Категория обязательна при обновлении
     const catId = category_id ? parseInt(category_id, 10) || null : null;
     if (!catId) {
@@ -1221,9 +1248,14 @@ app.put('/api/admin/tests/:id', adminAuth, async (req,res)=>{
     const range = parseHumanWindow(window_range);
     const ws = range.start || window_start || null;
     const we = range.end || window_end || null;
+    if (ws && we && new Date(ws).getTime() > new Date(we).getTime()) {
+      return res.status(400).json({ error: 'window_start must be before window_end' });
+    }
+    const dur = parseInt(duration_minutes, 10) || 30;
+    if (dur <= 0) return res.status(400).json({ error: 'duration_minutes must be positive' });
     await runAsync(
       'UPDATE tests SET title=?, description=?, lang=?, duration_minutes=?, window_start=?, window_end=?, category_id=? WHERE id=?',
-      [title, description, lang || 'ru', duration_minutes || 30, ws, we, catId, req.params.id]
+      [titleClean, description, lang || 'ru', dur, ws, we, catId, req.params.id]
     );
     res.json({ ok:true });
   }catch(e){ res.status(500).json({ error:e.message }); }
