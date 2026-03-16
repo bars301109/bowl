@@ -1239,7 +1239,18 @@ app.get('/api/admin/tests', adminAuth, async (req,res)=>{
     );
     res.json(tests);
   }catch(e){
-    res.status(500).json({ error:e.message });
+    try{
+      const tests = await maybeEnsureSchemaAndRetry(e, () => allAsync(
+        `SELECT t.*, c.name_ru AS category_name_ru, c.name_ky AS category_name_ky
+         FROM tests t
+         LEFT JOIN categories c ON c.id = t.category_id
+         ORDER BY t.id DESC`
+      ));
+      res.json(tests);
+    }catch(err){
+      console.error('Admin tests error:', err);
+      res.status(500).json({ error: err.message });
+    }
   }
 });
 app.post('/api/admin/tests', adminAuth, async (req,res)=>{
@@ -1370,7 +1381,20 @@ app.delete('/api/admin/tests', adminAuth, async (req,res)=>{
 });
 
 // Categories CRUD
-app.get('/api/admin/categories', adminAuth, async (req,res)=>{ try{ const rows = await allAsync('SELECT * FROM categories ORDER BY id'); res.json(rows); }catch(e){ res.status(500).json({ error:e.message }); } });
+app.get('/api/admin/categories', adminAuth, async (req,res)=>{
+  try{
+    const rows = await allAsync('SELECT * FROM categories ORDER BY id');
+    res.json(rows);
+  }catch(e){
+    try{
+      const rows = await maybeEnsureSchemaAndRetry(e, () => allAsync('SELECT * FROM categories ORDER BY id'));
+      res.json(rows);
+    }catch(err){
+      console.error('Admin categories error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
 app.post('/api/admin/categories', adminAuth, async (req,res)=>{ try{ const { name_ru, name_ky, desc_ru, desc_ky } = req.body; const nowFunc = db.type === 'postgres' ? 'NOW()' : 'datetime(\'now\')'; const stmt = await runAsync(`INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES (?,?,?,?,${nowFunc})${db.type === 'postgres' ? ' RETURNING id' : ''}`,[name_ru, name_ky, desc_ru||null, desc_ky||null]); const catId = db.type === 'postgres' ? (stmt.rows?.[0]?.id || stmt.id) : stmt.lastID; res.json({ ok:true, id: catId }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.put('/api/admin/categories/:id', adminAuth, async (req,res)=>{ try{ const { name_ru, name_ky, desc_ru, desc_ky } = req.body; await runAsync('UPDATE categories SET name_ru=?, name_ky=?, desc_ru=?, desc_ky=? WHERE id=?',[name_ru, name_ky, desc_ru||null, desc_ky||null, req.params.id]); res.json({ ok:true }); }catch(e){ res.status(500).json({ error:e.message }); } });
 app.delete('/api/admin/categories/:id', adminAuth, async (req,res)=>{ try{ await runAsync('DELETE FROM categories WHERE id=?',[req.params.id]); res.json({ ok:true }); }catch(e){ res.status(500).json({ error:e.message }); } });
