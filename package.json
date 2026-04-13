@@ -1,0 +1,34 @@
+{
+  "name": "akylman-quiz-complete",
+  "version": "2.0.0",
+  "description": "Akylman Quiz Bowl — quiz competition platform for Kyrgyzstan schools",
+  "private": true,
+  "scripts": {
+    "backend:install": "cd backend && npm install",
+    "backend:start": "cd backend && npm start",
+    "backend:dev": "cd backend && NODE_ENV=development npm start",
+    "backend:lint": "cd backend && npm run lint",
+    "backend:lint:fix": "cd backend && npm run lint:fix",
+    "backend:test": "cd backend && npm test",
+    "backend:test:watch": "cd backend && npm run test:watch",
+    "backend:format": "cd backend && npx prettier --write src/",
+    "install:all": "npm run backend:install",
+    "start": "npm run backend:start",
+    "test": "npm run backend:test",
+    "lint": "npm run backend:lint"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/akylman-quiz-complete"
+  },
+  "keywords": [
+    "quiz",
+    "education",
+    "kyrgyzstan",
+    "akylman"
+  ],
+  "license": "MIT"
+}

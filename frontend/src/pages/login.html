@@ -108,8 +108,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
       msg.className = 'small-muted error';
       return;
     }
-    localStorage.setItem('akylman_token', j.team.token);
-    localStorage.setItem('team', JSON.stringify(j.team));
+    // Token is now set in httpOnly cookie by the server — no need to store in localStorage
     msg.textContent = 'Успешно! Перенаправление...';
     msg.style.color = '#166534';
     msg.className = 'small-muted success';

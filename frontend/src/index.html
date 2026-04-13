@@ -217,31 +217,31 @@
     initLanguageSwitcher();
     
     function updateNavBar() {
-      const token = localStorage.getItem('akylman_token');
-      const registerLink = document.getElementById('nav-register');
-      const loginLink = document.getElementById('nav-login');
-      const profileLink = document.getElementById('nav-profile');
-      const logoutLink = document.getElementById('nav-logout');
-      
-      if (token) {
-        registerLink.style.display = 'none';
-        loginLink.style.display = 'none';
-        profileLink.style.display = 'block';
-        logoutLink.style.display = 'block';
-      } else {
-        registerLink.style.display = 'block';
-        loginLink.style.display = 'block';
-        profileLink.style.display = 'none';
-        logoutLink.style.display = 'none';
-      }
+      // Check auth status via API since we use httpOnly cookies now
+      fetch('/api/me', { credentials: 'include' })
+        .then(res => {
+          if (res.ok) return res.json();
+          throw new Error('Not authenticated');
+        })
+        .then(() => {
+          document.getElementById('nav-register').style.display = 'none';
+          document.getElementById('nav-login').style.display = 'none';
+          document.getElementById('nav-profile').style.display = 'block';
+          document.getElementById('nav-logout').style.display = 'block';
+        })
+        .catch(() => {
+          document.getElementById('nav-register').style.display = 'block';
+          document.getElementById('nav-login').style.display = 'block';
+          document.getElementById('nav-profile').style.display = 'none';
+          document.getElementById('nav-logout').style.display = 'none';
+        });
     }
-    
+
     function logout() {
       if (confirm('Вы уверены, что хотите выйти?')) {
-        localStorage.removeItem('akylman_token');
-        localStorage.removeItem('team');
-        updateNavBar();
-        window.location.href = '/';
+        fetch('/api/logout', { method: 'POST', credentials: 'include' }).finally(() => {
+          window.location.href = '/';
+        });
       }
     }
     

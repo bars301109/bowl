@@ -142,9 +142,7 @@
 <script src="../js/i18n.js"></script>
 <script>AkylI18n.initSwitcher();</script>
 <script>
-const token = localStorage.getItem('akylman_token');
-if (!token) location.href = '/login';
-
+// Token is now handled via httpOnly cookies — no localStorage needed
 let teamData = null;
 
 // Функция для получения переводов
@@ -163,10 +161,9 @@ function updateTeamNameHeader() {
 }
 
 async function load() {
-  const res = await fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
+  const res = await fetch('/api/me', { credentials: 'include' });
   const j = await res.json();
   if (!j.ok) {
-    localStorage.removeItem('akylman_token');
     location.href = '/login';
     return;
   }
@@ -176,9 +173,10 @@ async function load() {
 
 load();
 
-document.getElementById('logout').onclick = () => {
-  localStorage.removeItem('akylman_token');
-  localStorage.removeItem('team');
+document.getElementById('logout').onclick = async () => {
+  try {
+    await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+  } catch {}
   location.href = '/';
 };
 
@@ -204,7 +202,7 @@ async function renderHomeSection(btn) {
   // Если данные еще не загружены, загружаем их
   if (!teamData) {
     try {
-      const res = await fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
+      const res = await fetch('/api/me', { credentials: 'include' });
       const j = await res.json();
       if (j.ok) {
         teamData = j.team;
@@ -526,7 +524,7 @@ async function renderResultsSection(btn) {
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
   
   try {
-    const res = await fetch('/api/me/results', { headers: { 'Authorization': 'Bearer ' + token } });
+    const res = await fetch('/api/me/results', { credentials: 'include' });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
@@ -776,9 +774,9 @@ async function startTest(id) {
         const resp = await fetch('/api/tests/' + id + '/submit', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
+            'Content-Type': 'application/json'
           },
+          credentials: 'include',
           body: JSON.stringify({ answers })
         });
         const j = await resp.json();
@@ -905,9 +903,9 @@ async function saveFieldEdit() {
     const res = await fetch('/api/me', {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
+        'Content-Type': 'application/json'
       },
+      credentials: 'include',
       body: JSON.stringify(body)
     });
     
@@ -1012,9 +1010,9 @@ async function verifyOldPassword() {
     const res = await fetch('/api/me/verify-password', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
+        'Content-Type': 'application/json'
       },
+      credentials: 'include',
       body: JSON.stringify({ password: oldPassword })
     });
     const j = await res.json();
@@ -1120,9 +1118,9 @@ async function changePassword() {
     const res = await fetch('/api/me/change-password', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
+        'Content-Type': 'application/json'
       },
+      credentials: 'include',
       body: JSON.stringify({ oldPassword, newPassword })
     });
     const j = await res.json();
@@ -1285,9 +1283,9 @@ async function saveMembers() {
     const res = await fetch('/api/me', {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
+        'Content-Type': 'application/json'
       },
+      credentials: 'include',
       body: JSON.stringify({ members: members })
     });
     

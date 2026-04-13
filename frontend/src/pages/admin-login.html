@@ -143,9 +143,6 @@
   </div>
 
   <script>
-    const ADMIN_LOGIN_PATH = '/adm-7b3d9f2a-login';
-    const ADMIN_PANEL_PATH = '/adm-7b3d9f2a';
-
     document.getElementById('adminLoginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       
@@ -163,18 +160,18 @@
           body: JSON.stringify({ username, password })
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.token) {
+        if (!res.ok) {
           messageDiv.className = 'error';
           messageDiv.textContent = data.error || 'Неверный логин или пароль';
           document.getElementById('password').value = '';
           return;
         }
-        
+
+        // Token is set in httpOnly cookie by server
         messageDiv.className = 'success';
         messageDiv.textContent = 'Вход успешен...';
-        sessionStorage.setItem('akylman_admin_token', data.token);
         setTimeout(() => {
-          window.location.href = ADMIN_PANEL_PATH;
+          window.location.href = '/admin';
         }, 600);
       } catch (err) {
         messageDiv.className = 'error';
