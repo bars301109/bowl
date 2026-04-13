@@ -39,6 +39,15 @@ app.use(adminRoutes);      // /api/admin/login, /api/admin/*
 app.get('/api/ping', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
 // --- Static file serving ---
+// Root: serve index.html explicitly
+app.get('/', (req, res, next) => {
+  const indexPath = path.join(FRONTEND_DIR, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  return next();
+});
+
 // Clean URLs for pages
 const pageRoutes = ['register', 'login', 'team', 'profile'];
 pageRoutes.forEach((page) => {
@@ -64,6 +73,15 @@ app.use('/', express.static(FRONTEND_DIR, {
     res.setHeader('Cache-Control', 'public, max-age=5');
   },
 }));
+
+// 404 fallback for any unmatched routes
+app.use((req, res) => {
+  const indexPath = path.join(FRONTEND_DIR, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  res.status(404).json({ error: 'Not found' });
+});
 
 // Helper: serve page HTML
 function sendPage(res, pageName, next) {
