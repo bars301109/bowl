@@ -143,13 +143,14 @@ async function initializeApp() {
     console.log(`🔐 Admin: http://localhost:${PORT}/admin-login`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('');
-
+  } catch (err) {
+    console.error('❌ Database/schema init failed:', err);
+    console.error('⚠️  Starting server anyway, DB features may not work...');
+  } finally {
+    // Always start the server, even if DB init failed
     app.listen(PORT, () => {
       console.log(`Server listening on port ${PORT}`);
     });
-  } catch (err) {
-    console.error('❌ Failed to initialize:', err);
-    console.error('⚠️  Continuing startup, but some features may not work...');
   }
 }
 
