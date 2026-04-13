@@ -14,8 +14,11 @@ router.post('/api/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// All routes below require team authentication
-router.use(teamAuth);
+// All routes below require team authentication (skip for non-API paths)
+router.use((req, res, next) => {
+  if (!req.path.startsWith('/api/')) return next();
+  teamAuth(req, res, next);
+});
 
 // Get current team profile
 router.get('/api/me', async (req, res) => {
