@@ -1,6 +1,5 @@
 /* Schema initialization and seeding */
 const db = require('../db');
-const { escapeHtml } = require('../utils/sanitization');
 
 const DEFAULT_CATEGORIES = [
   {

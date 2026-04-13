@@ -6,6 +6,10 @@ function rateLimit({ windowMs, max }) {
     const now = Date.now();
     const entry = hits.get(ip);
     if (!entry || now > entry.resetAt) {
+      // Clean up expired entries to prevent memory leak
+      if (entry && now > entry.resetAt) {
+        hits.delete(ip);
+      }
       hits.set(ip, { count: 1, resetAt: now + windowMs });
       return next();
     }
