@@ -69,6 +69,10 @@
     .requirement-icon {
       display: none !important;
     }
+    .select-error {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+    }
   </style>
 </head>
 <body class="admin-panel">
@@ -224,6 +228,13 @@ loadCategoriesForTeams();
 
 document.getElementById('members_count').addEventListener('change', e => renderMembers(parseInt(e.target.value)));
 
+// Clear category error on selection
+if (categorySelect) {
+  categorySelect.addEventListener('change', () => {
+    categorySelect.classList.remove('select-error');
+  });
+}
+
 window.addEventListener('akyl-langchange', () => {
   renderMembers(parseInt(document.getElementById('members_count').value));
   // Update password requirements text
@@ -263,12 +274,16 @@ document.getElementById('regForm').addEventListener('submit', async e => {
   msg.className = 'small-muted';
   msg.style.color = '';
 
+  // Clear previous error state on category select
+  if (categorySelect) categorySelect.classList.remove('select-error');
+
   const data = Object.fromEntries(new FormData(e.target).entries());
 
   if (!data.category_id) {
-    msg.textContent = AkylI18n.t('register.category.placeholder') || 'Выберите категорию';
+    msg.textContent = 'Пожалуйста, выберите категорию';
     msg.style.color = '#b00020';
     msg.className = 'small-muted error';
+    if (categorySelect) categorySelect.classList.add('select-error');
     return;
   }
 
