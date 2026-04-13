@@ -134,11 +134,17 @@ router.post('/api/me/change-password', async (req, res) => {
   }
 });
 
-// Team results
+// Team results (only visible if admin has published results)
 router.get('/api/me/results', async (req, res) => {
   try {
+    // Check if results are published
+    const settings = await getAsync('SELECT results_published FROM settings WHERE id=1');
+    if (!settings || !settings.results_published) {
+      return res.json([]); // Return empty if not published
+    }
+
     const rows = await allAsync(
-      `SELECT r.id, r.score, r.taken_at, r.answers, r.test_id, t.title, tm.team_name, c.name_ru as category_name
+      `SELECT r.id, r.score, r.taken_at, r.answers, r.test_id, r.time_taken_sec, t.title, tm.team_name, c.name_ru as category_name
        FROM results r
        LEFT JOIN tests t ON t.id = r.test_id
        LEFT JOIN teams tm ON tm.id = r.team_id
@@ -149,6 +155,55 @@ router.get('/api/me/results', async (req, res) => {
     );
 
     res.json(processResults(rows));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Leaderboard (only visible if admin has published results)
+router.get('/api/leaderboard', async (req, res) => {
+  try {
+    // Check if results are published
+    const settings = await getAsync('SELECT results_published FROM settings WHERE id=1');
+    if (!settings || !settings.results_published) {
+      return res.json({ published: false, leaderboard: [] });
+    }
+
+    const categoryId = req.query.category_id ? parseInt(req.query.category_id, 10) || null : null;
+
+    let sql = `
+      SELECT 
+        tm.id AS team_id,
+        tm.team_name,
+        tm.school,
+        tm.city,
+        c.name_ru AS category_name,
+        SUM(r.score) AS total_score,
+        COUNT(r.id) AS tests_taken,
+        MAX(r.taken_at) AS last_taken
+      FROM results r
+      JOIN teams tm ON tm.id = r.team_id
+      LEFT JOIN tests t ON t.id = r.test_id
+      LEFT JOIN categories c ON c.id = t.category_id
+    `;
+
+    const params = [];
+    if (categoryId) {
+      sql += ' WHERE t.category_id = $1';
+      params.push(categoryId);
+    }
+
+    sql += ' GROUP BY tm.id, tm.team_name, tm.school, tm.city, c.name_ru ORDER BY total_score DESC, tests_taken ASC, last_taken ASC';
+
+    const rows = await allAsync(sql, params);
+
+    // Add rank
+    const leaderboard = rows.map((r, i) => ({
+      ...r,
+      rank: i + 1,
+    }));
+
+    res.json({ published: true, leaderboard });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

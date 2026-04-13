@@ -33,6 +33,11 @@ router.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
+    const categoryId = data.category_id ? parseInt(data.category_id, 10) : null;
+    if (!categoryId) {
+      return res.status(400).json({ error: 'Category is required' });
+    }
+
     const hashed = await bcrypt.hash(data.password, 10);
     const members = Array.isArray(data.members)
       ? data.members
@@ -44,7 +49,6 @@ router.post('/api/register', async (req, res) => {
       : [];
 
     const randomLogin = 'team_' + Math.random().toString(36).substring(2, 15);
-    const categoryId = data.category_id ? parseInt(data.category_id, 10) || null : null;
 
     await runAsync(
       `INSERT INTO teams (team_name, login, password, captain_name, captain_email, captain_phone, members, school, city, category_id, created_at)
