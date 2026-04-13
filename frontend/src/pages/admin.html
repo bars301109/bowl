@@ -846,7 +846,7 @@ function editQuestion(id, qs, cs){
   content.innerHTML = `
     <h3>Редактировать вопрос #${q.id}</h3>
     <div class="form-row"><label>#<input id="q_ord" type="number" value="${q.ordinal}"/></label><label>Текст<textarea id="q_text" rows="2">${esc(q.text||'')}</textarea></label></div>
-    <div class="form-row"><label>Опции<input id="q_opts" value="${Array.isArray(q.options)?q.options.join(' | '):(q.options||'')}"/></label><label>Ответ<input id="q_correct" value="${esc(q.correct||'')}"/></label></div>
+    <div class="form-row"><label>Опции<input id="q_opts" value="${esc(Array.isArray(q.options)?q.options.join(' | '):(q.options||''))}"/></label><label>Ответ<input id="q_correct" value="${esc(q.correct||'')}"/></label></div>
     <div class="form-row"><label>Баллы<input id="q_points" type="number" value="${q.points||1}"/></label></div>
     <div style="margin-top:4px"><button class="primary" id="save">Сохранить</button> <button id="back">Назад</button></div>
   `;

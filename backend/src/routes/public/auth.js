@@ -166,6 +166,9 @@ router.post('/api/password-reset/verify-code', rateLimit(RATE_LIMITS.reset), asy
       return res.status(400).json({ error: 'Неверный или истекший код' });
     }
 
+    // Mark the code as used so it can't be reused
+    await runAsync('UPDATE password_reset_codes SET used = 1 WHERE id = $1', [resetCode.id]);
+
     res.json({ ok: true, message: 'Code verified successfully' });
   } catch (e) {
     res.status(500).json({ error: e.message });

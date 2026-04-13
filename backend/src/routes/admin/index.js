@@ -496,7 +496,7 @@ function processResults(rows) {
         const answers = JSON.parse(r.answers);
         total = answers.length;
         correct = answers.filter((a) => a.ok).length;
-      } catch { correct = r.score || 0; total = 0; }
+      } catch { correct = r.score || 0; total = correct; }
     }
     let formatted_date = '';
     if (r.taken_at) {

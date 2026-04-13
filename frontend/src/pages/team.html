@@ -614,18 +614,17 @@ async function startTest(id) {
       AkylI18n.applyI18n(AkylI18n.getLang(), out);
       return;
     }
-    
-  let remainingSec = 0;
+
     // Получаем метаданные конкретного теста
     const testMetaRes = await fetch('/api/tests');
     const allTests = await testMetaRes.json();
     const testMeta = allTests.find(x => String(x.id) === String(id));
-  const durMins = (testMeta && testMeta.duration_minutes) ? testMeta.duration_minutes : 60;
-    remainingSec = durMins * 60;
-    
+    const durMins = (testMeta && testMeta.duration_minutes) ? testMeta.duration_minutes : 60;
+    let remainingSec = durMins * 60;
+
     const timerDiv = document.createElement('div');
     timerDiv.className = 'test-timer';
-    
+
     const interval = setInterval(() => {
       remainingSec--;
       timerDiv.textContent = `${t('team.timer')}: ` + fmt(remainingSec);
