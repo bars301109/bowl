@@ -633,10 +633,11 @@ async function renderQuestions(testId){
       const type = typeSel ? typeSel.value : 'mcq';
       const text = (card.querySelector('.q-text')?.value || '').trim();
       const points = parseInt(card.querySelector('.q-points')?.value || '1', 10) || 1;
-      
+      const attachment = (card.querySelector('.q-attachment')?.value || '').trim();
+
       let options = null;
       let correct = '';
-      
+
       if(type === 'mcq'){
         const optsWrap = card.querySelector('.opts');
         if(optsWrap){
@@ -647,22 +648,22 @@ async function renderQuestions(testId){
       } else {
         correct = (card.querySelector('.q-correct-text')?.value || '').trim();
       }
-      
+
       if(!text){
         continue; // Пропускаем пустые вопросы
       }
-      
+
       // Если options пустой массив, отправляем null
       if(Array.isArray(options) && options.length === 0){
         options = null;
       }
-      
+
       const ordinal = i + 1;
-      
+
       try{
         if(qid){
           // Обновление существующего вопроса
-          const payload = { ordinal, text, options, correct, points };
+          const payload = { ordinal, text, options, correct, points, attachment_url: attachment || null };
           const r = await adminFetch('/api/admin/questions/'+qid, { method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
           if(!r.ok){
             errors.push(`Вопрос #${ordinal}: ошибка сохранения`);
@@ -751,6 +752,7 @@ async function renderQuestions(testId){
     const type = blank.querySelector('.q-type').value;
     const text = blank.querySelector('.q-text').value.trim();
     const points = parseInt(blank.querySelector('.q-points').value||'1',10)||1;
+    const attachment = (blank.querySelector('.q-attachment')?.value || '').trim();
     let options = null; let correct = '';
     if(type==='mcq'){
       const res = collectOptionsFrom(blank.querySelector('.opts'));
@@ -761,7 +763,7 @@ async function renderQuestions(testId){
       correct = (blank.querySelector('.q-correct-text').value||'').trim();
       if(!text){ showAlert('Введите текст вопроса', 'error'); return; }
     }
-    const payload = { ordinal: (qs.length+1), text, options, correct, points };
+    const payload = { ordinal: (qs.length+1), text, options, correct, points, type, attachment_url: attachment || null };
     if(Array.isArray(payload.options) && payload.options.length===0){ payload.options = null; }
     const r = await adminFetch('/api/admin/tests/'+currentTestId+'/questions',{ method:'POST', headers: aHeaders(), body: JSON.stringify(payload) });
     if(!r.ok){ try{ const msg = await r.text(); }catch(e){} showAlert('Ошибка сохранения вопроса', 'error'); return; }
@@ -788,6 +790,10 @@ async function renderQuestions(testId){
       </div>
       <div class="mt-2">
         <textarea class="admin-input q-text" rows="2" placeholder="Вопрос">${esc(q.text||'')}</textarea>
+      </div>
+      <div class="mt-2">
+        <label>📎 Ссылка на файл/изображение<input class="admin-input q-attachment" placeholder="https://example.com/file.pdf" value="${esc(q.attachment_url||'')}"/></label>
+        ${q.attachment_url ? `<div class="small-muted mt-1"><a href="${esc(q.attachment_url)}" target="_blank" rel="noopener">📄 Открыть вложение</a></div>` : ''}
       </div>
       <div class="q-options mt-2" ${Array.isArray(q.options)?'':'style=\"display:none\"'}>
         <div class="opts"></div>
@@ -879,6 +885,9 @@ async function renderQuestions(testId){
       <div class="mt-2">
         <textarea class="admin-input q-text" rows="2" placeholder="Вопрос"></textarea>
       </div>
+      <div class="mt-2">
+        <label>📎 Ссылка на файл/изображение<input class="admin-input q-attachment" placeholder="https://example.com/file.pdf"/></label>
+      </div>
       <div class="q-options mt-2">
         <div class="opts"></div>
         <div class="d-flex align-items-center mt-1" style="gap:4px">
@@ -932,13 +941,34 @@ function editQuestion(id, qs, cs){
   content.innerHTML = `
     <h3>Редактировать вопрос #${q.id}</h3>
     <div class="form-row"><label>#<input id="q_ord" type="number" value="${q.ordinal}"/></label><label>Текст<textarea id="q_text" rows="2">${esc(q.text||'')}</textarea></label></div>
-    <div class="form-row"><label>Опции<input id="q_opts" value="${esc(Array.isArray(q.options)?q.options.join(' | '):(q.options||''))}"/></label><label>Ответ<input id="q_correct" value="${esc(q.correct||'')}"/></label></div>
+    <div class="form-row"><label>Тип<select id="q_type" class="admin-input"><option value="mcq" ${q.type==='text'?'':'selected'}>Закрытый</option><option value="text" ${q.type==='text'?'selected':''}>Открытый</option></select></label></div>
+    <div class="form-row"><label>📎 Файл/Изображение<input id="q_attachment" class="admin-input" value="${esc(q.attachment_url||'')}" placeholder="https://example.com/file.pdf"/></label></div>
+    <div class="form-row" id="q_opts_row" ${q.type==='text'?'style="display:none"':''}><label>Опции<input id="q_opts" value="${esc(Array.isArray(q.options)?q.options.join(' | '):(q.options||''))}"/></label><label>Ответ<input id="q_correct" value="${esc(q.correct||'')}"/></label></div>
+    <div class="form-row" id="q_text_answer_row" ${q.type==='text'?'':'style="display:none"'}><label>Правильный ответ (текст)<input id="q_correct_text" value="${esc(q.correct||'')}"/></label></div>
     <div class="form-row"><label>Баллы<input id="q_points" type="number" value="${q.points||1}"/></label></div>
     <div style="margin-top:4px"><button class="primary" id="save">Сохранить</button> <button id="back">Назад</button></div>
   `;
+  const typeSel = document.getElementById('q_type');
+  typeSel.onchange = ()=>{
+    document.getElementById('q_opts_row').style.display = typeSel.value==='mcq'?'':'none';
+    document.getElementById('q_text_answer_row').style.display = typeSel.value==='text'?'':'none';
+  };
   document.getElementById('back').onclick = ()=> renderQuestions(currentTestId);
   document.getElementById('save').onclick = async ()=>{
-    const payload = { ordinal: num('q_ord'), text: document.getElementById('q_text').value.trim(), options: (val('q_opts')? val('q_opts').split('|').map(s=>s.trim()).filter(Boolean) : null), correct: val('q_correct'), points: num('q_points') };
+    const payload = {
+      ordinal: num('q_ord'),
+      text: document.getElementById('q_text').value.trim(),
+      type: document.getElementById('q_type').value,
+      attachment_url: document.getElementById('q_attachment').value.trim() || null,
+      points: num('q_points')
+    };
+    if(payload.type === 'mcq'){
+      payload.options = val('q_opts') ? val('q_opts').split('|').map(s=>s.trim()).filter(Boolean) : null;
+      payload.correct = val('q_correct');
+    } else {
+      payload.options = null;
+      payload.correct = document.getElementById('q_correct_text')?.value || '';
+    }
     const r = await adminFetch('/api/admin/questions/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
     if(!r.ok){ alert('Ошибка'); return; }
     renderQuestions(currentTestId);
@@ -1004,14 +1034,25 @@ async function renderTeams(){
 async function renderResults(){
   setActiveTab(document.getElementById('tabResults'));
   showLoading('Загрузка результатов...');
-  const r = await adminFetch('/api/admin/results',{ headers: aHeaders() });
-  if(!r.ok){ showAlert('Нет доступа', 'error'); return; }
-  const rows = await r.json();
+  const [rRes, teamsRes] = await Promise.all([
+    adminFetch('/api/admin/results',{ headers: aHeaders() }),
+    adminFetch('/api/admin/teams',{ headers: aHeaders() })
+  ]);
+  if(!rRes.ok){ showAlert('Нет доступа', 'error'); return; }
+  const rows = await rRes.json();
+  const teams = teamsRes.ok ? await teamsRes.json() : [];
+
+  // Group results by team for export buttons
+  const teamResults = {};
+  rows.forEach(r => {
+    if (!teamResults[r.team_name]) teamResults[r.team_name] = r.team_id || (teams.find(t => t.team_name === r.team_name)?.id);
+  });
+
   content.innerHTML = `
     <div class="admin-form">
       <h3>📊 Результаты тестирования (${rows.length} записей)</h3>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
-        <button id="exportResults" class="admin-button success">📥 Экспорт CSV</button>
+        <button id="exportResults" class="admin-button success">📥 Экспорт всех CSV</button>
       </div>
     </div>
     <div class="admin-table-wrapper">
@@ -1022,11 +1063,15 @@ async function renderResults(){
             <th>Имя команды</th>
             <th>Баллы</th>
             <th>Время прохождения</th>
+            <th>Затрачено</th>
             <th>Категория теста</th>
           </tr>
         </thead>
         <tbody>
-          ${rows.length > 0 ? rows.map(x=>`<tr><td>${x.id}</td><td>${esc(x.team_name||'')}</td><td><strong>${x.score_display || '0'}</strong></td><td>${esc(x.taken_at_formatted||'')}</td><td>${esc(x.category_name||'')}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:12px;color:#718096">Нет результатов тестирования</td></tr>'}
+          ${rows.length > 0 ? rows.map(x=>{
+            const timeSec = x.time_taken_sec ? `${Math.floor(x.time_taken_sec/60)} мин ${x.time_taken_sec%60} сек` : '-';
+            return `<tr><td>${x.id}</td><td>${esc(x.team_name||'')}</td><td><strong>${x.score_display || '0'}</strong></td><td>${esc(x.taken_at_formatted||'')}</td><td>${timeSec}</td><td>${esc(x.category_name||'')}</td></tr>`;
+          }).join('') : '<tr><td colspan="6" style="text-align:center;padding:12px;color:#718096">Нет результатов тестирования</td></tr>'}
         </tbody>
       </table>
     </div>
