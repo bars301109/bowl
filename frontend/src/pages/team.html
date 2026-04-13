@@ -28,9 +28,9 @@
       <nav class="team-tabs" role="tablist" aria-label="Навигация по разделам">
         <h2 id="teamNameHeader" class="team-name-header">Загрузка...</h2>
         <button id="tabHome" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tabContent" data-section="main" data-i18n="team.tab.home" tabindex="0">Главная</button> 
-        <button id="tabTests" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="tests" data-i18n="team.tab.tests" tabindex="-1">Тесты</button> 
-        <button id="tabResults" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="results" data-i18n="team.tab.results" tabindex="-1">Результаты</button> 
-        <button id="tabPractice" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="practice" data-i18n="team.tab.practice" tabindex="-1">Практика</button> 
+        <button id="tabTests" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="tests" data-i18n="team.tab.tests" tabindex="-1">Тесты</button>
+        <button id="tabResults" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="results" data-i18n="team.tab.results" tabindex="-1">Результаты</button>
+        <button id="tabLeaderboard" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="leaderboard" tabindex="-1">Рейтинг</button>
         <button id="tabRules" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="rules" data-i18n="team.tab.rules" tabindex="-1">Правила</button>
       </nav>
       <div id="tabContent" class="team-main" role="tabpanel" aria-labelledby="tabHome" aria-live="polite"></div>
@@ -398,34 +398,95 @@ function renderRulesSection(btn) {
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
 }
 
-function renderPracticeSection(btn) {
+async function renderLeaderboardSection(btn) {
   if (btn) setActiveTab(btn);
   const out = document.getElementById('tabContent');
-  out.innerHTML = `
-    <section aria-labelledby="practice-heading">
-      <h3 id="practice-heading" data-i18n="team.tab.practice">Практика</h3>
-      <div class="practice-content" role="region" aria-label="Примеры вопросов для практики">
-        <div class="practice-section">
-          <h4>Кыргызстан таануу — үлгү суроолор</h4>
-          <ol class="practice-list">
-            <li>Кыргызстандын борбору кайсы? — <strong>Бишкек</strong></li>
-            <li>Ысык-Көл кайсы дубанда жайгашкан? — <strong>Ысык-Көл облусу</strong></li>
-            <li>Кыргызстандын мамлекеттик тили? — <strong>Кыргыз тили</strong></li>
-          </ol>
-        </div>
-        <div class="practice-section">
-          <h4>Адабият — үлгү суроолор</h4>
-          <ol class="practice-list">
-            <li>«Манас» эпосунун башкы каарманы ким? — <strong>Манас</strong></li>
-            <li>А. Пушкиндин кайсы чыгармасында Татьяна бар? — <strong>Евгений Онегин</strong></li>
-            <li>«Ысык-Көлдүн кулагы» чыгарма кайсы жанрда? — <strong>Повесть/эссе (контексттик кабыл)</strong></li>
-          </ol>
-        </div>
-        <p class="small-muted practice-note">Бул үлгүлөр формат менен тааныштыруу үчүн гана.</p>
-      </div>
-    </section>
-  `;
+  out.setAttribute('aria-busy', 'true');
+  out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка рейтинга...</span></div><p>Загрузка рейтинга...</p>';
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
+
+  try {
+    const res = await fetch(`/api/leaderboard${teamData && teamData.category_id ? `?category_id=${encodeURIComponent(teamData.category_id)}` : ''}`);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    out.setAttribute('aria-busy', 'false');
+
+    if (!data.published) {
+      out.innerHTML = `
+        <div class="empty-state" role="status" aria-live="polite">
+          <div class="empty-icon">🔒</div>
+          <p class="empty-message">Рейтинг ещё не опубликован</p>
+        </div>
+      `;
+      AkylI18n.applyI18n(AkylI18n.getLang(), out);
+      return;
+    }
+
+    const leaderboard = data.leaderboard || [];
+    if (!leaderboard.length) {
+      out.innerHTML = `
+        <div class="empty-state" role="status" aria-live="polite">
+          <div class="empty-icon">🏆</div>
+          <p class="empty-message">Рейтинг пуст</p>
+          <p class="empty-hint">Результаты появятся здесь после прохождения тестов.</p>
+        </div>
+      `;
+      AkylI18n.applyI18n(AkylI18n.getLang(), out);
+      return;
+    }
+
+    function renderMedal(rank) {
+      if (rank === 1) return '&#x1F947; ';
+      if (rank === 2) return '&#x1F948; ';
+      if (rank === 3) return '&#x1F949; ';
+      return '';
+    }
+
+    out.innerHTML = `
+      <section aria-labelledby="leaderboard-heading">
+        <h3 id="leaderboard-heading" class="sr-only">Рейтинг</h3>
+        <div class="table-wrapper" role="region" aria-label="Таблица рейтинга">
+          <table class="results-table" role="table" aria-label="Рейтинг команд">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Команда</th>
+                <th scope="col">Школа</th>
+                <th scope="col">Общий балл</th>
+                <th scope="col">Пройдено тестов</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${leaderboard.map((item) => `
+                <tr role="row" class="${item.rank <= 3 ? 'leaderboard-top3' : ''}">
+                  <td role="cell" class="rank-cell">${renderMedal(item.rank)}${item.rank}</td>
+                  <td role="cell">${escapeHtml(item.team_name || '—')}</td>
+                  <td role="cell">${escapeHtml(item.school || '—')}</td>
+                  <td role="cell" class="score"><strong>${item.total_score || 0}</strong></td>
+                  <td role="cell">${item.tests_taken || 0}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `;
+
+    AkylI18n.applyI18n(AkylI18n.getLang(), out);
+  } catch (err) {
+    console.error(err);
+    out.setAttribute('aria-busy', 'false');
+    out.innerHTML = `
+      <div class="error-message" role="alert" aria-live="assertive">
+        <div class="error-icon">&#x26A0;&#xFE0F;</div>
+        <p class="error-text">Ошибка загрузки рейтинга</p>
+        <p class="error-hint">Пожалуйста, проверьте подключение к интернету и попробуйте снова.</p>
+        <button class="primary" onclick="location.reload()" type="button">Обновить страницу</button>
+      </div>
+    `;
+  }
 }
 
 async function renderTestsSection(btn) {
@@ -465,7 +526,38 @@ async function renderTestsSection(btn) {
       }
       return '';
     }
-    
+
+    function renderStatusBadge(t) {
+      const status = t.auto_status || 'active';
+      const labels = {
+        scheduled: 'Запланирован',
+        active: 'Доступен',
+        closed: 'Закрыт'
+      };
+      return `<span class="status-badge status-${status}" aria-label="Статус: ${labels[status] || status}">${labels[status] || status}</span>`;
+    }
+
+    function renderCountdown(t) {
+      if (t.countdown_sec && t.countdown_sec > 0) {
+        const mins = Math.floor(t.countdown_sec / 60);
+        const secs = t.countdown_sec % 60;
+        return `<div class="test-countdown" aria-label="Тест начнётся через ${mins} мин ${secs} сек">Тест начнётся через ${mins} мин ${secs} сек</div>`;
+      }
+      return '';
+    }
+
+    function renderPreviewText(t) {
+      if (t.preview_text) {
+        return `<p class="test-preview">${escapeHtml(t.preview_text)}</p>`;
+      }
+      return '';
+    }
+
+    function isButtonDisabled(t) {
+      const status = t.auto_status || 'active';
+      return (status === 'scheduled' || status === 'closed') ? 'disabled aria-disabled="true"' : '';
+    }
+
     out.innerHTML = `
       <section aria-labelledby="tests-heading">
         <h3 id="tests-heading" class="sr-only" data-i18n="team.tab.tests">Тесты</h3>
@@ -475,14 +567,18 @@ async function renderTestsSection(btn) {
               <div class="test-card-header">
                 <h4 class="test-title">${escapeHtml(t.title || 'Без названия')}</h4>
                 ${renderWindow(t)}
+                ${renderStatusBadge(t)}
               </div>
               ${t.description ? `<p class="test-description">${escapeHtml(t.description)}</p>` : ''}
-              <button 
-                data-id="${t.id}" 
-                class="take primary" 
+              ${renderPreviewText(t)}
+              ${renderCountdown(t)}
+              <button
+                data-id="${t.id}"
+                class="take primary"
                 data-i18n="team.take_test"
                 aria-label="Начать тест: ${escapeHtml(t.title || 'Без названия')}"
-                type="button">
+                type="button"
+                ${isButtonDisabled(t)}>
                 Пройти
               </button>
             </li>
@@ -522,15 +618,33 @@ async function renderResultsSection(btn) {
   out.setAttribute('aria-busy', 'true');
   out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка результатов...</span></div><p data-i18n="team.loading_results">Загрузка результатов...</p>';
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
-  
+
   try {
+    // First fetch settings to check if results are published
+    const settingsRes = await fetch('/api/settings', { credentials: 'include' });
+    if (!settingsRes.ok) {
+      throw new Error(`HTTP ${settingsRes.status}`);
+    }
+    const settings = await settingsRes.json();
+    if (!settings || !settings.results_published) {
+      out.setAttribute('aria-busy', 'false');
+      out.innerHTML = `
+        <div class="empty-state" role="status" aria-live="polite">
+          <div class="empty-icon">🔒</div>
+          <p class="empty-message">Результаты ещё не опубликованы</p>
+        </div>
+      `;
+      AkylI18n.applyI18n(AkylI18n.getLang(), out);
+      return;
+    }
+
     const res = await fetch('/api/me/results', { credentials: 'include' });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
     const rows = await res.json();
     out.setAttribute('aria-busy', 'false');
-    
+
     if (!rows.length) {
       out.innerHTML = `
         <div class="empty-state" role="status" aria-live="polite">
@@ -542,7 +656,14 @@ async function renderResultsSection(btn) {
       AkylI18n.applyI18n(AkylI18n.getLang(), out);
       return;
     }
-    
+
+    function formatTimeTaken(sec) {
+      if (!sec && sec !== 0) return '—';
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m} мин ${s} сек`;
+    }
+
     out.innerHTML = `
       <section aria-labelledby="results-heading">
         <h3 id="results-heading" class="sr-only" data-i18n="team.tab.results">Результаты</h3>
@@ -554,6 +675,7 @@ async function renderResultsSection(btn) {
                 <th scope="col" data-i18n="team.team_name">Имя команды</th>
                 <th scope="col" data-i18n="team.score">Баллы</th>
                 <th scope="col" data-i18n="team.date">Время прохождения</th>
+                <th scope="col" data-i18n="team.time_taken">Затраченное время</th>
                 <th scope="col" data-i18n="team.category">Категория теста</th>
               </tr>
             </thead>
@@ -566,6 +688,7 @@ async function renderResultsSection(btn) {
                     <strong>${r.score_display || '0'}</strong>
                   </td>
                   <td role="cell" class="date">${escapeHtml(r.taken_at_formatted || 'Не указана')}</td>
+                  <td role="cell" class="time-taken">${formatTimeTaken(r.time_taken_sec)}</td>
                   <td role="cell">${escapeHtml(r.category_name || 'Не указана')}</td>
                 </tr>
               `).join('')}
@@ -579,7 +702,7 @@ async function renderResultsSection(btn) {
         </div>
       </section>
     `;
-    
+
     AkylI18n.applyI18n(AkylI18n.getLang(), out);
   } catch (err) {
     console.error(err);
@@ -599,6 +722,9 @@ async function startTest(id) {
   const out = document.getElementById('tabContent');
   out.innerHTML = t('team.loading_questions');
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
+
+  // Record when the user started the test
+  const started_at = Date.now();
   
   try {
     const res = await fetch('/api/tests/' + id);
@@ -776,7 +902,7 @@ async function startTest(id) {
             'Content-Type': 'application/json'
           },
           credentials: 'include',
-          body: JSON.stringify({ answers })
+          body: JSON.stringify({ answers, started_at })
         });
         const j = await resp.json();
         if (!j.ok) {
@@ -1365,7 +1491,7 @@ function attachTabHandlers() {
     tabHome: { section: 'main', render: renderHomeSection },
     tabTests: { section: 'tests', render: renderTestsSection },
     tabResults: { section: 'results', render: renderResultsSection },
-    tabPractice: { section: 'practice', render: renderPracticeSection },
+    tabLeaderboard: { section: 'leaderboard', render: renderLeaderboardSection },
     tabRules: { section: 'rules', render: renderRulesSection }
   };
 
@@ -1385,7 +1511,7 @@ function attachTabHandlers() {
   });
 }
 
-// Router для подстраниц: /team, /team/main, /team/tests, /team/results, /team/practice, /team/rules
+// Router для подстраниц: /team, /team/main, /team/tests, /team/results, /team/leaderboard, /team/rules
 function initTeamSectionFromUrl() {
   const path = window.location.pathname || '';
   const match = path.match(/^\/team\/([^/]+)/);
@@ -1394,7 +1520,7 @@ function initTeamSectionFromUrl() {
     main: 'tabHome',
     tests: 'tabTests',
     results: 'tabResults',
-    practice: 'tabPractice',
+    leaderboard: 'tabLeaderboard',
     rules: 'tabRules'
   };
   const btnId = map[section] || 'tabHome';

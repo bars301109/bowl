@@ -65,7 +65,7 @@ router.get('/api/admin/tests', async (req, res) => {
 
 router.post('/api/admin/tests', async (req, res) => {
   try {
-    const { title, description, lang, duration_minutes, window_start, window_end, window_range, category_id } = req.body;
+    const { title, description, preview_text, lang, duration_minutes, window_start, window_end, window_range, category_id, status } = req.body;
     const titleClean = sanitizeString(title || '', 200);
     if (!titleClean) return res.status(400).json({ error: 'title is required' });
 
@@ -82,9 +82,11 @@ router.post('/api/admin/tests', async (req, res) => {
     const dur = parseInt(duration_minutes, 10) || 30;
     if (dur <= 0) return res.status(400).json({ error: 'duration_minutes must be positive' });
 
+    const testStatus = ['draft', 'published', 'archived'].includes(status) ? status : 'draft';
+
     const result = await runAsync(
-      'INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, category_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,NOW()) RETURNING id',
-      [titleClean, description, lang || 'ru', dur, ws, we, catId]
+      'INSERT INTO tests (title, description, preview_text, lang, duration_minutes, window_start, window_end, status, category_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING id',
+      [titleClean, description, preview_text, lang || 'ru', dur, ws, we, testStatus, catId]
     );
     res.json({ ok: true, id: result.rows?.[0]?.id });
   } catch (e) {
@@ -94,7 +96,7 @@ router.post('/api/admin/tests', async (req, res) => {
 
 router.put('/api/admin/tests/:id', async (req, res) => {
   try {
-    const { title, description, lang, duration_minutes, window_start, window_end, window_range, category_id } = req.body;
+    const { title, description, preview_text, lang, duration_minutes, window_start, window_end, window_range, category_id, status } = req.body;
     const titleClean = sanitizeString(title || '', 200);
     if (!titleClean) return res.status(400).json({ error: 'title is required' });
 
@@ -111,10 +113,16 @@ router.put('/api/admin/tests/:id', async (req, res) => {
     const dur = parseInt(duration_minutes, 10) || 30;
     if (dur <= 0) return res.status(400).json({ error: 'duration_minutes must be positive' });
 
-    await runAsync(
-      'UPDATE tests SET title=$1, description=$2, lang=$3, duration_minutes=$4, window_start=$5, window_end=$6, category_id=$7 WHERE id=$8',
-      [titleClean, description, lang || 'ru', dur, ws, we, catId, req.params.id]
-    );
+    const testStatus = ['draft', 'published', 'archived'].includes(status) ? status : undefined;
+
+    const fields = ['title=$1', 'description=$2', 'preview_text=$3', 'lang=$4', 'duration_minutes=$5', 'window_start=$6', 'window_end=$7', 'category_id=$8'];
+    const params = [titleClean, description, preview_text, lang || 'ru', dur, ws, we, catId];
+    if (testStatus !== undefined) {
+      fields.push('status=$' + (params.length + 1));
+      params.push(testStatus);
+    }
+    params.push(req.params.id);
+    await runAsync(`UPDATE tests SET ${fields.join(', ')} WHERE id=$${params.length}`, params);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -161,11 +169,12 @@ router.get('/api/admin/tests/:id/questions', async (req, res) => {
 
 router.post('/api/admin/tests/:id/questions', async (req, res) => {
   try {
-    const { ordinal, text, options, correct, points, category_id, lang } = req.body;
+    const { ordinal, text, options, correct, points, category_id, lang, type, attachment_url } = req.body;
     const optsJson = JSON.stringify(Array.isArray(options) ? options : []);
+    const qType = type === 'text' ? 'text' : 'mcq';
     const result = await runAsync(
-      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',
-      [parseInt(req.params.id, 10), ordinal || 0, text || '', optsJson, correct ?? '', points || 1, lang || 'ru', category_id ? parseInt(category_id, 10) || null : null]
+      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type, attachment_url) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id',
+      [parseInt(req.params.id, 10), ordinal || 0, text || '', optsJson, correct ?? '', points || 1, lang || 'ru', category_id ? parseInt(category_id, 10) || null : null, qType, attachment_url || null]
     );
     res.json({ ok: true, id: result.rows?.[0]?.id });
   } catch (e) {
@@ -176,7 +185,7 @@ router.post('/api/admin/tests/:id/questions', async (req, res) => {
 router.put('/api/admin/questions/:qid', async (req, res) => {
   try {
     const qid = parseInt(req.params.qid, 10);
-    const { ordinal, text, options, correct, points, category_id } = req.body;
+    const { ordinal, text, options, correct, points, category_id, type, attachment_url } = req.body;
     const fields = [];
     const params = [];
 
@@ -186,6 +195,8 @@ router.put('/api/admin/questions/:qid', async (req, res) => {
     if (correct !== undefined) { fields.push('correct = $' + (params.length + 1)); params.push(correct ?? ''); }
     if (points !== undefined) { fields.push('points = $' + (params.length + 1)); params.push(points || 1); }
     if (category_id !== undefined) { fields.push('category_id = $' + (params.length + 1)); params.push(category_id ? parseInt(category_id, 10) || null : null); }
+    if (type !== undefined) { fields.push('type = $' + (params.length + 1)); params.push(type === 'text' ? 'text' : 'mcq'); }
+    if (attachment_url !== undefined) { fields.push('attachment_url = $' + (params.length + 1)); params.push(attachment_url || null); }
 
     if (!fields.length) return res.json({ ok: true });
     params.push(qid);
@@ -409,10 +420,78 @@ router.put('/api/admin/settings', async (req, res) => {
   try {
     const s = req.body || {};
     await runAsync(
-      'UPDATE settings SET day1_date=$1, day2_date=$2, day3_date=$3, final_place_ru=$4, final_place_ky=$5, updated_at=NOW() WHERE id=1',
-      [s.day1_date || null, s.day2_date || null, s.day3_date || null, s.final_place_ru || null, s.final_place_ky || null]
+      'UPDATE settings SET day1_date=$1, day2_date=$2, day3_date=$3, final_place_ru=$4, final_place_ky=$5, results_published=$6, one_submission_allowed=$7, updated_at=NOW() WHERE id=1',
+      [s.day1_date || null, s.day2_date || null, s.day3_date || null, s.final_place_ru || null, s.final_place_ky || null, s.results_published ? 1 : 0, s.one_submission_allowed ? 1 : 0]
     );
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Publish/Unpublish Results ---
+router.post('/api/admin/settings/publish-results', async (req, res) => {
+  try {
+    const { publish } = req.body || {};
+    await runAsync(
+      'UPDATE settings SET results_published=$1, updated_at=NOW() WHERE id=1',
+      [publish ? 1 : 0]
+    );
+    res.json({ ok: true, results_published: publish ? 1 : 0 });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Auto-update test statuses based on time windows ---
+router.post('/api/admin/tests/update-statuses', async (req, res) => {
+  try {
+    const tests = await allAsync('SELECT id, window_start, window_end, status FROM tests');
+    const now = Date.now();
+    let updated = 0;
+    for (const t of tests) {
+      const start = t.window_start ? new Date(t.window_start).getTime() : null;
+      const end = t.window_end ? new Date(t.window_end).getTime() : null;
+      let newStatus = t.status;
+      if (t.status !== 'published') continue; // only auto-update published tests
+      if (start && now < start) newStatus = 'scheduled';
+      else if (end && now > end) newStatus = 'closed';
+      else newStatus = 'active';
+      
+      if (newStatus !== t.status) {
+        await runAsync('UPDATE tests SET status=$1 WHERE id=$2', [newStatus, t.id]);
+        updated++;
+      }
+    }
+    res.json({ ok: true, updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Export results for a specific team ---
+router.get('/api/admin/results/team/:teamId/export-csv', async (req, res) => {
+  try {
+    const teamId = parseInt(req.params.teamId, 10);
+    const team = await getAsync('SELECT team_name FROM teams WHERE id=$1', [teamId]);
+    if (!team) return res.status(404).json({ error: 'Team not found' });
+
+    const results = await allAsync(
+      `SELECT r.id, r.score, r.taken_at, r.time_taken_sec, r.answers, r.test_id, t.title, c.name_ru as category_name
+       FROM results r
+       LEFT JOIN tests t ON t.id = r.test_id
+       LEFT JOIN categories c ON c.id = t.category_id
+       WHERE r.team_id = $1
+       ORDER BY r.taken_at DESC`,
+      [teamId]
+    );
+
+    const header = ['№', 'Тест', 'Баллы', 'Время прохождения', 'Затрачено секунд', 'Категория'].map(toCsvValue).join(',');
+    const processed = processResults(results);
+    const rows = processed.map((r, i) => [i + 1, r.title || '', r.score_display, r.taken_at_formatted, r.time_taken_sec || '', r.category_name || ''].map(toCsvValue).join(','));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="results_${team.team_name.replace(/\s+/g, '_')}.csv"`);
+    res.send('\ufeff' + header + '\n' + rows.join('\n'));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

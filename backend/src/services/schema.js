@@ -40,6 +40,8 @@ const DEFAULT_SETTINGS = {
   day3_date: '2025-12-27',
   final_place_ru: 'Президентский лицей «Акылман» (Чолпон-Ата)',
   final_place_ky: '«Акылман» Президенттик лицейи (Чолпон-Ата)',
+  results_published: 0,
+  one_submission_allowed: 0,
 };
 
 async function ensureSchema() {
@@ -76,10 +78,12 @@ async function ensureSchema() {
     id SERIAL PRIMARY KEY,
     title TEXT,
     description TEXT,
+    preview_text TEXT,
     lang TEXT DEFAULT 'ru',
     duration_minutes INTEGER DEFAULT 60,
     window_start TEXT,
     window_end TEXT,
+    status TEXT DEFAULT 'draft',
     category_id INTEGER,
     created_at TEXT
   )`);
@@ -142,6 +146,23 @@ async function ensureSchema() {
     updated_at TEXT
   )`);
 
+  // --- Add new columns to existing tables (idempotent) ---
+  // Tests: add preview_text, status
+  await runAsync('ALTER TABLE tests ADD COLUMN IF NOT EXISTS preview_text TEXT').catch(() => {});
+  await runAsync('ALTER TABLE tests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT \'draft\'').catch(() => {});
+  
+  // Questions: add type, attachment_url
+  await runAsync('ALTER TABLE questions ADD COLUMN IF NOT EXISTS type TEXT DEFAULT \'mcq\'').catch(() => {});
+  await runAsync('ALTER TABLE questions ADD COLUMN IF NOT EXISTS attachment_url TEXT').catch(() => {});
+  
+  // Results: add started_at, time_taken_sec
+  await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS started_at TEXT').catch(() => {});
+  await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS time_taken_sec INTEGER').catch(() => {});
+
+  // Settings: add results_published, one_submission_allowed
+  await runAsync('ALTER TABLE settings ADD COLUMN IF NOT EXISTS results_published INTEGER DEFAULT 0').catch(() => {});
+  await runAsync('ALTER TABLE settings ADD COLUMN IF NOT EXISTS one_submission_allowed INTEGER DEFAULT 0').catch(() => {});
+
   // Seed categories if empty
   const catCountRow = await getAsync('SELECT COUNT(*) AS cnt FROM categories');
   const catCount = parseInt(catCountRow?.cnt || 0, 10) || 0;
@@ -155,40 +176,19 @@ async function ensureSchema() {
     console.log('✓ Seeded default categories');
   }
 
-  // Seed demo test if empty
-  const anyTest = await getAsync('SELECT id FROM tests LIMIT 1');
-  if (!anyTest) {
-    const testResult = await runAsync(
-      'INSERT INTO tests (title, description, lang, duration_minutes, window_start, window_end, created_at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING id',
-      ['Demo Test', 'Sample demo test', 'ru', 30, null, null]
-    );
-    const testId = testResult.rows?.[0]?.id;
-    const qs = [
-      { ordinal: 1, text: 'What is the capital of Kyrgyzstan?', options: JSON.stringify(['Bishkek', 'Osh', 'Jalal-Abad', 'Naryn']), correct: '0', points: 1 },
-      { ordinal: 2, text: '2+2 = ?', options: JSON.stringify(['3', '4', '5', '22']), correct: '1', points: 1 },
-      { ordinal: 3, text: 'Name the largest lake in Kyrgyzstan.', options: JSON.stringify(['Issyk-Kul', 'Song-Kul', '', '']), correct: '0', points: 1 },
-    ];
-    for (const q of qs) {
-      await runAsync(
-        'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-        [testId, q.ordinal, q.text, q.options, q.correct, q.points, 'ru']
-      );
-    }
-    console.log('✓ Seeded demo test');
-  }
-
   // Seed settings if empty
   const sAny = await getAsync('SELECT id FROM settings WHERE id=1');
   if (!sAny) {
     await runAsync(
-      `INSERT INTO settings (id,badge1_ru,badge1_ky,badge2_ru,badge2_ky,badge3_ru,badge3_ky,day1_date,day2_date,day3_date,final_place_ru,final_place_ky,updated_at)
-       VALUES (1,$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW())`,
+      `INSERT INTO settings (id,badge1_ru,badge1_ky,badge2_ru,badge2_ky,badge3_ru,badge3_ky,day1_date,day2_date,day3_date,final_place_ru,final_place_ky,results_published,one_submission_allowed,updated_at)
+       VALUES (1,$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())`,
       [
         DEFAULT_SETTINGS.badge1_ru, DEFAULT_SETTINGS.badge1_ky,
         DEFAULT_SETTINGS.badge2_ru, DEFAULT_SETTINGS.badge2_ky,
         DEFAULT_SETTINGS.badge3_ru, DEFAULT_SETTINGS.badge3_ky,
         DEFAULT_SETTINGS.day1_date, DEFAULT_SETTINGS.day2_date, DEFAULT_SETTINGS.day3_date,
         DEFAULT_SETTINGS.final_place_ru, DEFAULT_SETTINGS.final_place_ky,
+        DEFAULT_SETTINGS.results_published, DEFAULT_SETTINGS.one_submission_allowed,
       ]
     );
   }

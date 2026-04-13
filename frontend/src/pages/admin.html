@@ -141,11 +141,39 @@ function toDatetimeLocalValue(iso){
   }catch{ return ''; }
 }
 
+function computeAutoStatus(t){
+  const now = new Date();
+  const ws = t.window_start ? new Date(t.window_start) : null;
+  const we = t.window_end ? new Date(t.window_end) : null;
+  if(t.status === 'published'){
+    if(ws && now < ws) return 'scheduled';
+    if(ws && we && now >= ws && now <= we) return 'active';
+    if(we && now > we) return 'closed';
+  }
+  return null;
+}
+
+function statusLabel(status, autoStatus){
+  if(autoStatus){
+    const labels = { scheduled: 'Запланирован', active: 'Активен', closed: 'Закрыт' };
+    return (labels[autoStatus] || autoStatus);
+  }
+  const labels = { draft: 'Черновик', published: 'Опубликован', archived: 'Архив' };
+  return labels[status] || status;
+}
+
 // Settings Tab
 async function renderSettings(){
   setActiveTab(document.getElementById('tabSettings'));
   showLoading('Загрузка настроек...');
-  const s = await (await fetch('/api/settings')).json();
+  const [sRes, testsRes] = await Promise.all([
+    fetch('/api/settings'),
+    adminFetch('/api/admin/tests', { headers: aHeaders() })
+  ]);
+  const s = await sRes.json();
+  const tests = testsRes.ok ? await testsRes.json() : [];
+  const oneSubmission = s?.one_submission_allowed || false;
+  const resultsPublished = s?.results_published || false;
   content.innerHTML = `
     <div class="admin-form">
       <h3>⚙️ Основные настройки</h3>
@@ -153,14 +181,55 @@ async function renderSettings(){
       <div class="form-row"><label>📅 День 3<input id="d3" type="date" class="admin-input" value="${esc(s?.day3_date||'')}"/></label></div>
       <h3 style="margin-top:10px">🏆 Финальное место</h3>
       <div class="form-row"><label>Финал RU (место)<input id="fpru" class="admin-input" placeholder="например: Биллик Лицей" value="${esc(s?.final_place_ru||'')}"/></label><label>Финал KY (орду)<input id="fpky" class="admin-input" placeholder="например: Биллик Лицей" value="${esc(s?.final_place_ky||'')}"/></label></div>
+      <h3 style="margin-top:16px">🔧 Управление тестами</h3>
+      <div class="form-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="one_submission" ${oneSubmission ? 'checked' : ''}/>
+          <span class="toggle-slider"></span>
+          <span class="toggle-text">Одна попытка на тест</span>
+        </label>
+      </div>
+      <div class="form-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="results_published" ${resultsPublished ? 'checked' : ''}/>
+          <span class="toggle-slider"></span>
+          <span class="toggle-text">Опубликовать результаты</span>
+        </label>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+        <button class="admin-button success" id="publishResults">✅ Опубликовать результаты</button>
+        <button class="admin-button secondary" id="hideResults">🙈 Скрыть результаты</button>
+        <button class="admin-button" id="updateStatuses">🔄 Обновить статусы тестов</button>
+      </div>
       <div class="mt-2"><button class="admin-button success" id="save">💾 Сохранить</button></div>
     </div>
   `;
   document.getElementById('save').onclick = async ()=>{
-    const body = { day1_date:val('d1'),day2_date:val('d2'),day3_date:val('d3'),final_place_ru:val('fpru'),final_place_ky:val('fpky') };
+    const body = { day1_date:val('d1'),day2_date:val('d2'),day3_date:val('d3'),final_place_ru:val('fpru'),final_place_ky:val('fpky'),
+      one_submission_allowed: document.getElementById('one_submission').checked,
+      results_published: document.getElementById('results_published').checked
+    };
     const r = await adminFetch('/api/admin/settings',{ method:'PUT', headers:aHeaders(), body: JSON.stringify(body) });
     if(!r.ok){ showAlert('Ошибка сохранения', 'error'); return; }
     showAlert('Настройки сохранены!', 'success');
+  };
+  document.getElementById('publishResults').onclick = async ()=>{
+    const r = await adminFetch('/api/admin/settings/publish-results',{ method:'POST', headers:aHeaders(), body: JSON.stringify({ publish: true }) });
+    if(!r.ok){ showAlert('Ошибка публикации результатов', 'error'); return; }
+    showAlert('Результаты опубликованы!', 'success');
+    renderSettings();
+  };
+  document.getElementById('hideResults').onclick = async ()=>{
+    const r = await adminFetch('/api/admin/settings/publish-results',{ method:'POST', headers:aHeaders(), body: JSON.stringify({ publish: false }) });
+    if(!r.ok){ showAlert('Ошибка скрытия результатов', 'error'); return; }
+    showAlert('Результаты скрыты!', 'success');
+    renderSettings();
+  };
+  document.getElementById('updateStatuses').onclick = async ()=>{
+    const r = await adminFetch('/api/admin/tests/update-statuses',{ method:'POST', headers:aHeaders() });
+    if(!r.ok){ showAlert('Ошибка обновления статусов', 'error'); return; }
+    showAlert('Статусы тестов обновлены!', 'success');
+    renderSettings();
   };
 }
 
@@ -199,6 +268,10 @@ async function renderTests(){
           </select>
         </label>
       </div>
+      <div class="form-row">
+        <label>📝 Превью/Описание<textarea id="t_preview" class="admin-input" rows="3" placeholder="Краткое описание теста для превью"></textarea></label>
+        <label>📌 Статус<select id="t_status" class="admin-input"><option value="draft" selected>Черновик</option><option value="published">Опубликован</option><option value="archived">Архив</option></select></label>
+      </div>
       <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap;">
         <button class="admin-button success" id="addTest">➕ Создать тест</button>
         <button class="admin-button danger" id="resetTests">🧹 Удалить все тесты</button>
@@ -210,6 +283,7 @@ async function renderTests(){
           <tr>
             <th>ID</th>
             <th>Название</th>
+            <th>Статус</th>
             <th>Язык</th>
             <th>Длит.</th>
             <th>Окно</th>
@@ -218,9 +292,12 @@ async function renderTests(){
           </tr>
         </thead>
         <tbody>
-          ${tests.length > 0 ? tests.map(t=>`<tr>
+          ${tests.length > 0 ? tests.map(t=>{
+            const autoStatus = computeAutoStatus(t);
+            return `<tr>
             <td>${t.id}</td>
             <td>${esc(t.title||'')}</td>
+            <td><span class="status-badge status-${esc(t.status||'draft')}">${statusLabel(t.status||'draft', autoStatus)}</span></td>
             <td>${esc(t.lang||'ru')}</td>
             <td>${t.duration_minutes||60} мин</td>
             <td>${esc(t.window_start||'-')} → ${esc(t.window_end||'-')}</td>
@@ -232,7 +309,8 @@ async function renderTests(){
                 <button data-id="${t.id}" class="admin-button qs">❓ Вопросы</button>
               </div>
             </td>
-          </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:12px;color:#718096">Нет тестов</td></tr>'}
+          </tr>`;
+          }).join('') : '<tr><td colspan="7" style="text-align:center;padding:12px;color:#718096">Нет тестов</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -248,6 +326,8 @@ async function renderTests(){
     const body = {
       title: titleV,
       description: val('t_desc'),
+      preview_text: val('t_preview'),
+      status: val('t_status'),
       lang: val('t_lang'),
       duration_minutes: num('t_dur'),
       window_start: val('t_start') ? new Date(val('t_start')).toISOString() : null,
@@ -310,6 +390,10 @@ async function editTest(id){
           </select>
         </label>
       </div>
+      <div class="form-row">
+        <label>📝 Превью/Описание<textarea id="t_preview" class="admin-input" rows="3" placeholder="Краткое описание теста для превью">${esc(t.preview_text||'')}</textarea></label>
+        <label>📌 Статус<select id="t_status" class="admin-input"><option value="draft" ${t.status==='draft'?'selected':''}>Черновик</option><option value="published" ${t.status==='published'?'selected':''}>Опубликован</option><option value="archived" ${t.status==='archived'?'selected':''}>Архив</option></select></label>
+      </div>
       <div style="margin-top:8px"><button class="admin-button success" id="save">💾 Сохранить</button> <button class="admin-button secondary" id="back">⬅️ Назад</button></div>
     </div>
   `;
@@ -325,6 +409,8 @@ async function editTest(id){
     const body = {
       title: titleV,
       description: val('t_desc'),
+      preview_text: val('t_preview'),
+      status: val('t_status'),
       lang: val('t_lang'),
       duration_minutes: num('t_dur'),
       window_start: val('t_start') ? new Date(val('t_start')).toISOString() : null,
