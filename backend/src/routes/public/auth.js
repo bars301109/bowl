@@ -160,7 +160,7 @@ router.post('/api/password-reset/verify-code', rateLimit(RATE_LIMITS.reset), asy
     if (!email || !code) return res.status(400).json({ error: 'Email and code required' });
 
     const resetCode = await getAsync(
-      'SELECT * FROM password_reset_codes WHERE email = $1 AND code = $2 AND used = 0 AND expires_at > NOW()',
+      'SELECT * FROM password_reset_codes WHERE email = $1 AND code = $2 AND used = 0 AND expires_at::timestamp > NOW()',
       [email.trim(), code]
     );
 
@@ -192,7 +192,7 @@ router.post('/api/password-reset/verify', rateLimit(RATE_LIMITS.reset), async (r
     }
 
     const resetCode = await getAsync(
-      'SELECT * FROM password_reset_codes WHERE email = $1 AND code = $2 AND used = 0 AND expires_at > NOW()',
+      'SELECT * FROM password_reset_codes WHERE email = $1 AND code = $2 AND used = 0 AND expires_at::timestamp > NOW()',
       [email.trim(), code]
     );
 
