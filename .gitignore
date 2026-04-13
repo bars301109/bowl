@@ -1,0 +1,12 @@
+node_modules/
+*.sqlite
+*.db
+.DS_Store
+data/
+backend/uploads/
+backend/db.better-sqlite3.sqlite
+.env
+.env.local
+dist/
+build/
+*.log
