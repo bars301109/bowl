@@ -65,6 +65,31 @@ app.get('/admin-login', (req, res, next) => sendPage(res, 'admin-login', next));
 app.get('/pages/:page', (req, res, next) => sendPage(res, req.params.page, next));
 
 // Static files (must be AFTER all API routes)
+// Serve css, js, images directly
+app.use('/css', express.static(path.join(FRONTEND_DIR, 'css'), {
+  maxAge: 5000,
+  etag: true,
+  lastModified: true,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'public, max-age=5');
+  },
+}));
+app.use('/js', express.static(path.join(FRONTEND_DIR, 'js'), {
+  maxAge: 5000,
+  etag: true,
+  lastModified: true,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'public, max-age=5');
+  },
+}));
+app.use('/images', express.static(path.join(FRONTEND_DIR, 'images'), {
+  maxAge: 5000,
+  etag: true,
+  lastModified: true,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'public, max-age=5');
+  },
+}));
 app.use('/', express.static(FRONTEND_DIR, {
   maxAge: 5000,
   etag: true,
