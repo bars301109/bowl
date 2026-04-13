@@ -21,7 +21,7 @@ const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const FRONTEND_DIR = path.join(__dirname, '..', 'frontend', 'src');
+const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend', 'src');
 
 // --- Middleware ---
 app.use(express.json({ limit: '1mb' }));
