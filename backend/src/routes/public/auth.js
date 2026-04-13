@@ -176,6 +176,8 @@ router.post('/api/password-reset/verify-code', rateLimit(RATE_LIMITS.reset), asy
 router.post('/api/password-reset/verify', rateLimit(RATE_LIMITS.reset), async (req, res) => {
   try {
     const { email, code, newPassword } = req.body;
+    console.log('Password reset verify:', { email, code, newPasswordLength: newPassword?.length });
+
     if (!email || !code || !newPassword) {
       return res.status(400).json({ error: 'Email, code and new password required' });
     }
@@ -189,6 +191,8 @@ router.post('/api/password-reset/verify', rateLimit(RATE_LIMITS.reset), async (r
       [email.trim(), code]
     );
 
+    console.log('Reset code lookup result:', resetCode ? 'found' : 'not found');
+
     if (!resetCode) {
       return res.status(400).json({ error: 'Неверный или истекший код' });
     }
@@ -200,7 +204,7 @@ router.post('/api/password-reset/verify', rateLimit(RATE_LIMITS.reset), async (r
     console.log(`Password reset successful for ${email}`);
     res.json({ ok: true, message: 'Password reset successfully' });
   } catch (e) {
-    console.error(e);
+    console.error('Password reset verify error:', e);
     res.status(500).json({ error: e.message });
   }
 });
