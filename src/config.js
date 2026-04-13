@@ -38,8 +38,9 @@ if (isProd) {
   if (!RESEND_API_KEY) missing.push('RESEND_API_KEY');
 
   if (missing.length > 0) {
-    console.error(`❌ Missing required env vars in production: ${missing.join(', ')}`);
-    process.exit(1);
+    console.error(`⚠️  Missing required env vars in production: ${missing.join(', ')}`);
+    console.error('⚠️  Server will start, but some features may not work.');
+    // Don't exit — let the server start anyway
   }
 }
 
