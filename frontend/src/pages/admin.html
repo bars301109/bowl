@@ -78,7 +78,11 @@ function aAuthHeaders(){
 }
 
 async function adminFetch(url, options = {}) {
-  const headers = { ...(options.headers || {}), ...aHeaders() };
+  let headers = options.headers || {};
+  // Don't set Content-Type for FormData — browser sets it with boundary
+  if (!(options.body instanceof FormData)) {
+    headers = { ...headers, ...aHeaders() };
+  }
   const res = await fetch(url, { ...options, headers, credentials: 'include' });
   if (res.status === 401 || res.status === 403) {
     window.location.href = '/admin-login';
@@ -349,7 +353,7 @@ async function renderTests(){
     if (!f) return;
     const form = new FormData();
     form.append('file', f);
-    const r = await adminFetch('/api/admin/tests/import-csv', { method:'POST', headers: aAuthHeaders(), body: form });
+    const r = await adminFetch('/api/admin/tests/import-csv', { method:'POST', body: form });
     if (!r.ok) {
       let msg = 'Ошибка импорта';
       try { const j = await r.json(); msg += ': ' + (j.error || ''); } catch {}
@@ -631,7 +635,7 @@ async function renderQuestions(testId){
   document.getElementById('importCsv').onclick = async ()=>{
     const f = document.getElementById('csvFile').files[0]; if(!f){ alert('Выберите файл'); return; }
     const form = new FormData(); form.append('file', f);
-    const r = await adminFetch('/api/admin/tests/'+currentTestId+'/questions/import-csv',{ method:'POST', headers: aAuthHeaders(), body: form });
+    const r = await adminFetch('/api/admin/tests/'+currentTestId+'/questions/import-csv',{ method:'POST', body: form });
     if(!r.ok){ alert('Ошибка импорта'); return; }
     renderQuestions(currentTestId);
   };
