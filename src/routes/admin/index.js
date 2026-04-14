@@ -286,6 +286,94 @@ router.post('/api/admin/tests/:id/questions/import-csv', upload.single('file'), 
   }
 });
 
+// --- Import FULL test from CSV (creates test + questions) ---
+router.post('/api/admin/tests/import-csv', upload.single('file'), async (req, res) => {
+  const filePath = req.file?.path;
+  try {
+    if (!filePath) return res.status(400).json({ error: 'No file' });
+
+    const text = fs.readFileSync(filePath, 'utf8');
+    const rows = parseCsv(text);
+    if (!rows.length) return res.status(400).json({ error: 'CSV file is empty' });
+
+    // Parse metadata lines at the top (format: key,value)
+    const metaKeys = ['test_title', 'test_description', 'test_duration', 'test_lang', 'test_status', 'test_preview', 'test_window_start', 'test_window_end'];
+    const meta = {};
+    while (rows.length > 0) {
+      const row = rows[0];
+      if (row.length >= 2 && metaKeys.includes(row[0])) {
+        meta[row[0]] = row[1] || '';
+        rows.shift();
+      } else {
+        break;
+      }
+    }
+
+    // Skip empty rows to find header
+    while (rows.length > 0 && !rows[0].length) rows.shift();
+    if (!rows.length) return res.status(400).json({ error: 'No question header found in CSV' });
+
+    const header = rows.shift() || [];
+    const idx = {
+      ordinal: header.indexOf('ordinal'),
+      text: header.indexOf('text'),
+      options: header.indexOf('options'),
+      correct: header.indexOf('correct'),
+      points: header.indexOf('points'),
+      type: header.indexOf('type'),
+    };
+
+    // Validate required metadata
+    const title = meta.test_title?.trim() || '';
+    if (!title) return res.status(400).json({ error: 'test_title is required in CSV (first lines: test_title,Your Test Name)' });
+    const categoryId = parseInt(meta.test_category_id || '', 10);
+    if (!categoryId) return res.status(400).json({ error: 'test_category_id is required in CSV (e.g. test_category_id,1)' });
+
+    const dur = parseInt(meta.test_duration || '60', 10) || 60;
+    const lang = meta.test_lang || 'ru';
+    const status = ['draft', 'published', 'archived'].includes(meta.test_status) ? meta.test_status : 'draft';
+    const ws = meta.test_window_start || null;
+    const we = meta.test_window_end || null;
+    const previewText = meta.test_preview || null;
+
+    // Create the test
+    const testResult = await runAsync(
+      'INSERT INTO tests (title, description, preview_text, lang, duration_minutes, window_start, window_end, status, category_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING id',
+      [title, meta.test_description || null, previewText, lang, dur, ws, we, status, categoryId]
+    );
+    const testId = testResult.rows?.[0]?.id;
+
+    // Import questions
+    let imported = 0;
+    for (const r of rows) {
+      if (!r.length) continue;
+      const ordinal = parseInt(r[idx.ordinal] || '0') || 0;
+      const textv = r[idx.text] || '';
+      const optionsRaw = r[idx.options] || '';
+      const correct = r[idx.correct] || '';
+      const points = parseInt(r[idx.points] || '1') || 1;
+      const qType = idx.type >= 0 && r[idx.type] ? (r[idx.type] === 'text' ? 'text' : 'mcq') : 'mcq';
+      let options = [];
+      try {
+        options = optionsRaw.trim().startsWith('[') ? JSON.parse(optionsRaw) : optionsRaw.split('|').map((s) => s.trim()).filter(Boolean);
+      } catch {
+        options = optionsRaw.split('|').map((s) => s.trim()).filter(Boolean);
+      }
+      await runAsync(
+        'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+        [testId, ordinal, textv, JSON.stringify(options), correct, points, lang, qType]
+      );
+      imported++;
+    }
+
+    res.json({ ok: true, test_id: testId, test_title: title, imported });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    if (filePath) try { fs.unlinkSync(filePath); } catch {}
+  }
+});
+
 // --- Categories CRUD ---
 router.get('/api/admin/categories', async (req, res) => {
   try {
