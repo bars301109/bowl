@@ -274,6 +274,8 @@ async function renderTests(){
       </div>
       <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap;">
         <button class="admin-button success" id="addTest">➕ Создать тест</button>
+        <button class="admin-button" id="importTestBtn">📥 Импорт теста из CSV</button>
+        <input type="file" id="testImportFile" accept=".csv" style="display:none"/>
         <button class="admin-button danger" id="resetTests">🧹 Удалить все тесты</button>
       </div>
     </div>
@@ -338,6 +340,26 @@ async function renderTests(){
     if(!r.ok){ let msg=''; try{ msg = await r.text(); }catch{} showAlert('Ошибка создания'+(msg?': '+msg:''), 'error'); return; }
     showAlert('Тест создан!', 'success');
     renderTests();
+  };
+  document.getElementById('importTestBtn').onclick = ()=>{
+    document.getElementById('testImportFile').click();
+  };
+  document.getElementById('testImportFile').onchange = async ()=>{
+    const f = document.getElementById('testImportFile').files[0];
+    if (!f) return;
+    const form = new FormData();
+    form.append('file', f);
+    const r = await adminFetch('/api/admin/tests/import-csv', { method:'POST', headers: aAuthHeaders(), body: form });
+    if (!r.ok) {
+      let msg = 'Ошибка импорта';
+      try { const j = await r.json(); msg += ': ' + (j.error || ''); } catch {}
+      showAlert(msg, 'error');
+      return;
+    }
+    const j = await r.json();
+    showAlert(`Тест "${j.test_title || 'импортированный'}" создан! Вопросы: ${j.imported || 0}`, 'success');
+    renderTests();
+    document.getElementById('testImportFile').value = '';
   };
   document.getElementById('resetTests').onclick = async ()=>{
     if(!confirm('🧹 Удалить ВСЕ тесты, вопросы и результаты? Это действие нельзя отменить!')) return;
