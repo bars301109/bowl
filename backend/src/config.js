@@ -4,17 +4,17 @@ const path = require('path');
 const isProd = process.env.NODE_ENV === 'production';
 
 // JWT
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'akylman-dev-jwt-secret-key-32chars';
 const JWT_EXPIRES_IN = '12h';
 
 // Admin
-const ADMIN_USER = process.env.ADMIN_USER;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET;
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin123!';
+const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'akylman-dev-admin-jwt-secret-key';
 const ADMIN_JWT_EXPIRES_IN = '8h';
 
 // Email — Resend only
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const RESEND_FROM = process.env.RESEND_FROM || 'Akylman Quiz <onboarding@resend.dev>';
 
 // Rate limits

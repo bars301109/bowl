@@ -1,0 +1,8 @@
+{
+  "name": "Akylman Quiz Bowl",
+  "description": "Quiz competition platform for Kyrgyzstan schools with online testing, team accounts, leaderboard, and admin management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

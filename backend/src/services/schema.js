@@ -193,6 +193,77 @@ async function ensureSchema() {
     );
   }
 
+  // Seed sample tests if empty
+  const testCountRow = await getAsync('SELECT COUNT(*) AS cnt FROM tests');
+  const testCount = parseInt(testCountRow?.cnt || 0, 10) || 0;
+  if (testCount === 0) {
+    // 1. Информатика
+    const t1 = await runAsync(
+      'INSERT INTO tests (title, description, preview_text, lang, duration_minutes, window_start, window_end, status, category_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING id',
+      [
+        'Отборочный тест по Информатике',
+        'Проверка базовых знаний по алгоритмам, логике и программированию',
+        'Тест включает 5 вопросов с выбором ответа и кратким ответом.',
+        'ru',
+        45,
+        null,
+        null,
+        'published',
+        1,
+      ]
+    );
+    const t1Id = t1.rows?.[0]?.id || 1;
+
+    await runAsync(
+      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [t1Id, 1, 'Какая структура данных работает по принципу LIFO (Last In, First Out)?', JSON.stringify(['Очередь (Queue)', 'Стек (Stack)', 'Массив (Array)', 'Связный список (Linked List)']), '1', 1, 'ru', 1, 'mcq']
+    );
+    await runAsync(
+      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [t1Id, 2, 'Сколько бит содержится в 4 байтах?', JSON.stringify(['16', '32', '64', '128']), '1', 1, 'ru', 1, 'mcq']
+    );
+    await runAsync(
+      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [t1Id, 3, 'Какая временная сложность у бинарного поиска в отсортированном массиве?', JSON.stringify(['O(1)', 'O(n)', 'O(log n)', 'O(n^2)']), '2', 1, 'ru', 1, 'mcq']
+    );
+    await runAsync(
+      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [t1Id, 4, 'Как называется процесс нахождения и исправления ошибок в коде?', JSON.stringify(['Компиляция', 'Дебаггинг / Отладка', 'Рефакторинг', 'Профилирование']), '1', 1, 'ru', 1, 'mcq']
+    );
+
+    // 2. Математика
+    const t2 = await runAsync(
+      'INSERT INTO tests (title, description, preview_text, lang, duration_minutes, window_start, window_end, status, category_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING id',
+      [
+        'Отборочный тур по Математике',
+        'Интеллектуальные олимпиадные и логические задачи по математике',
+        'Тест содержит задания по алгебре, геометрии и логике.',
+        'ru',
+        60,
+        null,
+        null,
+        'published',
+        2,
+      ]
+    );
+    const t2Id = t2.rows?.[0]?.id || 2;
+
+    await runAsync(
+      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [t2Id, 1, 'Чему равна сумма углов треугольника на плоскости?', JSON.stringify(['90°', '180°', '270°', '360°']), '1', 1, 'ru', 2, 'mcq']
+    );
+    await runAsync(
+      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [t2Id, 2, 'Какое наименьшее простое число?', JSON.stringify(['0', '1', '2', '3']), '2', 1, 'ru', 2, 'mcq']
+    );
+    await runAsync(
+      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [t2Id, 3, 'Чему равен 2 в 10 степени (2^10)?', JSON.stringify(['512', '1000', '1024', '2048']), '2', 1, 'ru', 2, 'mcq']
+    );
+
+    console.log('✓ Seeded sample tests and questions');
+  }
+
   console.log('Schema ready');
 }
 

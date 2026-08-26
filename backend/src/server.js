@@ -20,7 +20,7 @@ const teamRoutes = require('./routes/public/team');
 const adminRoutes = require('./routes/admin');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend', 'src');
 
 // --- Middleware ---
@@ -148,7 +148,7 @@ async function initializeApp() {
     console.error('⚠️  Starting server anyway, DB features may not work...');
   } finally {
     // Always start the server, even if DB init failed
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server listening on port ${PORT}`);
     });
   }
