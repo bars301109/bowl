@@ -42,18 +42,17 @@ function isStrongPassword(pw) {
 
 /**
  * Timing-safe string comparison
- * Uses constant-time comparison to prevent timing attacks
+ * Uses SHA-256 constant-time comparison to prevent timing attacks
  */
 function safeEqual(a, b) {
+  if (a === undefined || b === undefined || a === null || b === null) {
+    return false;
+  }
   const aStr = String(a);
   const bStr = String(b);
-  const maxLen = Math.max(aStr.length, bStr.length);
-  // Pad both strings to same length to prevent length-based timing attacks
-  const aBuf = Buffer.alloc(maxLen, 0);
-  const bBuf = Buffer.alloc(maxLen, 0);
-  aBuf.write(aStr, 0, Math.min(aStr.length, maxLen));
-  bBuf.write(bStr, 0, Math.min(bStr.length, maxLen));
-  return crypto.timingSafeEqual(aBuf, bBuf) && aStr.length === bStr.length;
+  const aHash = crypto.createHash('sha256').update(aStr).digest();
+  const bHash = crypto.createHash('sha256').update(bStr).digest();
+  return crypto.timingSafeEqual(aHash, bHash);
 }
 
 /**

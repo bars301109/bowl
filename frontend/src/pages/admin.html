@@ -45,25 +45,29 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 <script>
-// Check admin auth via API since we use httpOnly cookies
+// Check admin auth via API (supports cookie and Bearer token)
 async function checkAdminAuth() {
   try {
-    const res = await fetch('/api/admin/tests', { credentials: 'include' });
+    const adminToken = localStorage.getItem('adminToken');
+    const headers = {};
+    if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
+    const res = await fetch('/api/admin/check', { headers, credentials: 'include' });
     if (!res.ok) {
+      localStorage.removeItem('adminToken');
       window.location.href = '/admin-login';
       return false;
     }
     return true;
   } catch {
+    localStorage.removeItem('adminToken');
     window.location.href = '/admin-login';
     return false;
   }
 }
 
-checkAdminAuth();
-
 function logoutAdmin() {
   if (confirm('Вы уверены, что хотите выйти?')) {
+    localStorage.removeItem('adminToken');
     fetch('/api/admin/logout', { method: 'POST', credentials: 'include' }).finally(() => {
       window.location.href = '/admin-login';
     });
@@ -71,24 +75,40 @@ function logoutAdmin() {
 }
 
 function aHeaders(){
-  return { 'Content-Type':'application/json' };
+  const h = { 'Content-Type':'application/json' };
+  const adminToken = localStorage.getItem('adminToken');
+  if (adminToken) h['Authorization'] = `Bearer ${adminToken}`;
+  return h;
 }
 function aAuthHeaders(){
-  return {};
+  const h = {};
+  const adminToken = localStorage.getItem('adminToken');
+  if (adminToken) h['Authorization'] = `Bearer ${adminToken}`;
+  return h;
 }
 
 async function adminFetch(url, options = {}) {
   let headers = options.headers || {};
+  const adminToken = localStorage.getItem('adminToken');
+  if (adminToken && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${adminToken}`;
+  }
   // Don't set Content-Type for FormData — browser sets it with boundary
   if (!(options.body instanceof FormData)) {
     headers = { ...headers, ...aHeaders() };
   }
-  const res = await fetch(url, { ...options, headers, credentials: 'include' });
-  if (res.status === 401 || res.status === 403) {
-    window.location.href = '/admin-login';
-    throw new Error('Unauthorized');
+  try {
+    const res = await fetch(url, { ...options, headers, credentials: 'include' });
+    if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem('adminToken');
+      window.location.href = '/admin-login';
+      return { ok: false, status: res.status, json: async () => ({ error: 'Unauthorized' }), text: async () => 'Unauthorized' };
+    }
+    return res;
+  } catch (err) {
+    console.warn('adminFetch network error:', err);
+    return { ok: false, status: 0, json: async () => ({ error: err.message }), text: async () => err.message };
   }
-  return res;
 }
 const content = document.getElementById('content');
 
@@ -1216,7 +1236,13 @@ bResults.onclick = renderResults;
 bSettings.onclick = renderSettings;
 bHomepage.onclick = renderHomepage;
 
-// default
-renderTests();
+// Initial auth check and render
+async function initAdmin() {
+  const isAuth = await checkAdminAuth();
+  if (isAuth) {
+    renderTests();
+  }
+}
+initAdmin();
 </script>
 </body></html>

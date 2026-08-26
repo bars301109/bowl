@@ -101,6 +101,7 @@ router.post('/api/login', rateLimit(RATE_LIMITS.login), async (req, res) => {
 
     res.json({
       ok: true,
+      token,
       team: {
         id: team.id,
         team_name: team.team_name,

@@ -14,15 +14,20 @@ function signTeamToken(team) {
 function setTeamCookie(res, token) {
   res.cookie('team_token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 12 * 60 * 60 * 1000, // 12h
+    secure: true,
+    sameSite: 'none',
+    maxAge: 14 * 24 * 60 * 60 * 1000, // 14 days
     path: '/',
   });
 }
 
 function clearTeamCookie(res) {
-  res.clearCookie('team_token', { path: '/' });
+  res.clearCookie('team_token', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    path: '/',
+  });
 }
 
 function teamAuth(req, res, next) {
@@ -46,9 +51,9 @@ function teamAuth(req, res, next) {
 }
 
 // --- Admin JWT ---
-function signAdminToken() {
+function signAdminToken(username = 'admin') {
   return jwt.sign(
-    { role: 'admin', user: ADMIN_USER },
+    { role: 'admin', user: username },
     ADMIN_JWT_SECRET,
     { expiresIn: ADMIN_JWT_EXPIRES_IN }
   );
@@ -66,7 +71,7 @@ function adminAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, ADMIN_JWT_SECRET);
-    if (payload?.role !== 'admin' || payload?.user !== ADMIN_USER) {
+    if (!payload || payload.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden' });
     }
     req.admin = payload;

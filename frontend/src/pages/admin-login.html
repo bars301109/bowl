@@ -146,8 +146,8 @@
     document.getElementById('adminLoginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
+      const username = (document.getElementById('username').value || '').trim();
+      const password = document.getElementById('password').value || '';
       const messageDiv = document.getElementById('message');
       
       messageDiv.className = '';
@@ -157,6 +157,7 @@
         const res = await fetch('/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ username, password })
         });
         const data = await res.json().catch(() => ({}));
@@ -167,12 +168,14 @@
           return;
         }
 
-        // Token is set in httpOnly cookie by server
+        if (data.token) {
+          localStorage.setItem('adminToken', data.token);
+        }
         messageDiv.className = 'success';
         messageDiv.textContent = 'Вход успешен...';
         setTimeout(() => {
           window.location.href = '/admin';
-        }, 600);
+        }, 400);
       } catch (err) {
         messageDiv.className = 'error';
         messageDiv.textContent = 'Ошибка сети. Попробуйте позже.';

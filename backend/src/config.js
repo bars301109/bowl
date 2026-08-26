@@ -8,8 +8,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'akylman-dev-jwt-secret-key-32chars
 const JWT_EXPIRES_IN = '12h';
 
 // Admin
-const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin123!';
+const ADMIN_USER = String(process.env.ADMIN_USER || 'user182102').trim();
+const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || 'Fish!2493').trim();
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'akylman-dev-admin-jwt-secret-key';
 const ADMIN_JWT_EXPIRES_IN = '8h';
 

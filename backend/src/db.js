@@ -15,6 +15,7 @@ const memStore = {
     questions: [],
     results: [],
     homepage_blocks: [],
+    test_sessions: [],
   },
   autoId: {
     categories: 1,
@@ -25,6 +26,7 @@ const memStore = {
     questions: 1,
     results: 1,
     homepage_blocks: 1,
+    test_sessions: 1,
   },
 };
 
@@ -61,8 +63,8 @@ function executeInMemory(sql, params = []) {
   const cleanSql = sql.trim().replace(/\s+/g, ' ');
   const upper = cleanSql.toUpperCase();
 
-  // DDL: CREATE TABLE / ALTER TABLE
-  if (upper.startsWith('CREATE TABLE') || upper.startsWith('ALTER TABLE')) {
+  // DDL: CREATE TABLE / ALTER TABLE / CREATE INDEX
+  if (upper.startsWith('CREATE TABLE') || upper.startsWith('ALTER TABLE') || upper.startsWith('CREATE INDEX')) {
     const match = cleanSql.match(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-z0-9_]+)/i);
     if (match && !memStore.tables[match[1]]) {
       memStore.tables[match[1]] = [];

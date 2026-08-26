@@ -98,6 +98,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email: data.email, password: data.password })
     });
     const j = await res.json();
@@ -108,11 +109,20 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
       msg.className = 'small-muted error';
       return;
     }
-    // Token is now set in httpOnly cookie by the server — no need to store in localStorage
+    
+    // Store token and team info in localStorage for seamless auth across iframes and direct views
+    if (j.token) {
+      localStorage.setItem('token', j.token);
+    }
+    if (j.team) {
+      localStorage.setItem('team', JSON.stringify(j.team));
+      if (j.team.id) localStorage.setItem('team_id', String(j.team.id));
+    }
+
     msg.textContent = 'Успешно! Перенаправление...';
     msg.style.color = '#166534';
     msg.className = 'small-muted success';
-    setTimeout(() => location.href = '/team', 600);
+    setTimeout(() => location.href = '/team', 400);
   } catch (err) {
     console.error(err);
     msg.textContent = 'Сервер недоступен. Проверьте подключение к интернету.';

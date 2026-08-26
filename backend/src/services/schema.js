@@ -124,6 +124,23 @@ async function ensureSchema() {
     FOREIGN KEY(test_id) REFERENCES tests(id)
   )`);
 
+  // Test sessions (for server-side timer enforcement & anti-cheat)
+  await runAsync(`CREATE TABLE IF NOT EXISTS test_sessions (
+    id SERIAL PRIMARY KEY,
+    team_id INTEGER,
+    test_id INTEGER,
+    started_at TEXT,
+    status TEXT DEFAULT 'in_progress',
+    expires_at TEXT,
+    FOREIGN KEY(team_id) REFERENCES teams(id),
+    FOREIGN KEY(test_id) REFERENCES tests(id)
+  )`);
+
+  // Create performance indexes
+  await runAsync('CREATE INDEX IF NOT EXISTS idx_results_team_test ON results(team_id, test_id)').catch(() => {});
+  await runAsync('CREATE INDEX IF NOT EXISTS idx_questions_test_ord ON questions(test_id, ordinal)').catch(() => {});
+  await runAsync('CREATE INDEX IF NOT EXISTS idx_sessions_team_test ON test_sessions(team_id, test_id)').catch(() => {});
+
   // Settings
   await runAsync(`CREATE TABLE IF NOT EXISTS settings (
     id INTEGER PRIMARY KEY CHECK (id=1),

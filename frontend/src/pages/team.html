@@ -140,9 +140,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 <script src="../js/i18n.js"></script>
+<script src="../js/app-utils.js"></script>
+<script src="../js/quiz-engine.js"></script>
 <script>AkylI18n.initSwitcher();</script>
 <script>
-// Token is now handled via httpOnly cookies — no localStorage needed
+// Token is now handled via httpOnly cookies or Authorization header
 let teamData = null;
 
 // Функция для получения переводов
@@ -161,23 +163,59 @@ function updateTeamNameHeader() {
 }
 
 async function load() {
-  const res = await fetch('/api/me', { credentials: 'include' });
-  const j = await res.json();
-  if (!j.ok) {
-    location.href = '/login';
-    return;
+  try {
+    const data = await apiFetch('/api/me');
+    if (!data || !data.ok || !data.team) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('team');
+      location.href = '/login';
+      return;
+    }
+    teamData = data.team;
+    localStorage.setItem('team', JSON.stringify(teamData));
+    if (teamData.id) localStorage.setItem('team_id', String(teamData.id));
+    updateTeamNameHeader();
+    renderHomeSection(document.getElementById('tabHome'));
+  } catch (e) {
+    console.warn('Session check warning:', e);
+    // If unauthorized / token error, clear and redirect to login
+    if (e.status === 401 || e.status === 403 || !localStorage.getItem('token')) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('team');
+      location.href = '/login';
+      return;
+    }
+    // Otherwise try cached profile
+    const cached = localStorage.getItem('team');
+    if (cached) {
+      try {
+        teamData = JSON.parse(cached);
+        updateTeamNameHeader();
+        renderHomeSection(document.getElementById('tabHome'));
+      } catch (err) {}
+    }
   }
-  teamData = j.team;
-  updateTeamNameHeader();
 }
 
 load();
 
 document.getElementById('logout').onclick = async () => {
-  try {
-    await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-  } catch {}
-  location.href = '/';
+  const confirmed = await showConfirmDialog({
+    title: 'Выход из аккаунта',
+    message: 'Вы действительно хотите выйти из кабинета команды?',
+    confirmText: 'Выйти',
+    cancelText: 'Отмена',
+    isDestructive: true,
+  });
+  if (confirmed) {
+    try {
+      await apiFetch('/api/logout', { method: 'POST' });
+    } catch {}
+    localStorage.removeItem('token');
+    localStorage.removeItem('team');
+    localStorage.removeItem('team_id');
+    location.href = '/';
+  }
 };
 
 function setActiveTab(btn) {
@@ -202,9 +240,8 @@ async function renderHomeSection(btn) {
   // Если данные еще не загружены, загружаем их
   if (!teamData) {
     try {
-      const res = await fetch('/api/me', { credentials: 'include' });
-      const j = await res.json();
-      if (j.ok) {
+      const j = await apiFetch('/api/me');
+      if (j.ok && j.team) {
         teamData = j.team;
         updateTeamNameHeader();
       }
@@ -406,11 +443,7 @@ async function renderLeaderboardSection(btn) {
   AkylI18n.applyI18n(AkylI18n.getLang(), out);
 
   try {
-    const res = await fetch(`/api/leaderboard${teamData && teamData.category_id ? `?category_id=${encodeURIComponent(teamData.category_id)}` : ''}`);
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const data = await res.json();
+    const data = await apiFetch(`/api/leaderboard${teamData && teamData.category_id ? `?category_id=${encodeURIComponent(teamData.category_id)}` : ''}`);
     out.setAttribute('aria-busy', 'false');
 
     if (!data.published) {
@@ -501,11 +534,7 @@ async function renderTestsSection(btn) {
     if (teamData && teamData.category_id) {
       url += `?category_id=${encodeURIComponent(teamData.category_id)}`;
     }
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const tests = await res.json();
+    const tests = await apiFetch(url);
     out.setAttribute('aria-busy', 'false');
     
     if (!tests.length) {
@@ -621,11 +650,7 @@ async function renderResultsSection(btn) {
 
   try {
     // First fetch settings to check if results are published
-    const settingsRes = await fetch('/api/settings', { credentials: 'include' });
-    if (!settingsRes.ok) {
-      throw new Error(`HTTP ${settingsRes.status}`);
-    }
-    const settings = await settingsRes.json();
+    const settings = await apiFetch('/api/settings');
     if (!settings || !settings.results_published) {
       out.setAttribute('aria-busy', 'false');
       out.innerHTML = `
@@ -638,11 +663,7 @@ async function renderResultsSection(btn) {
       return;
     }
 
-    const res = await fetch('/api/me/results', { credentials: 'include' });
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const rows = await res.json();
+    const rows = await apiFetch('/api/me/results');
     out.setAttribute('aria-busy', 'false');
 
     if (!rows.length) {
@@ -720,246 +741,17 @@ async function renderResultsSection(btn) {
 
 async function startTest(id) {
   const out = document.getElementById('tabContent');
-  out.innerHTML = t('team.loading_questions');
-  AkylI18n.applyI18n(AkylI18n.getLang(), out);
-
-  // Record when the user started the test
-  const started_at = Date.now();
-  
-  try {
-    const res = await fetch('/api/tests/' + id);
-    if (res.status === 403) {
-      out.innerHTML = `<p data-i18n="team.test_unavailable">Тест сейчас недоступен</p>`;
-      AkylI18n.applyI18n(AkylI18n.getLang(), out);
-      return;
-    }
-    
-    const qs = await res.json();
-    if (!qs.length) {
-      out.innerHTML = `<p data-i18n="team.empty_test">Пустой тест</p>`;
-      AkylI18n.applyI18n(AkylI18n.getLang(), out);
-      return;
-    }
-
-    // Получаем метаданные конкретного теста
-    const testMetaRes = await fetch('/api/tests');
-    const allTests = await testMetaRes.json();
-    const testMeta = allTests.find(x => String(x.id) === String(id));
-    const durMins = (testMeta && testMeta.duration_minutes) ? testMeta.duration_minutes : 60;
-    let remainingSec = durMins * 60;
-
-    const timerDiv = document.createElement('div');
-    timerDiv.className = 'test-timer';
-
-    const interval = setInterval(() => {
-      remainingSec--;
-      timerDiv.textContent = `${t('team.timer')}: ` + fmt(remainingSec);
-      if (remainingSec <= 0) {
-        clearInterval(interval);
-        finish();
-      }
-    }, 1000);
-    
-    let idx = 0;
-    const answers = {};
-    
-    function show() {
-      const q = qs[idx];
-      out.innerHTML = '';
-    out.appendChild(timerDiv);
-    const block = document.createElement('div');
-      block.innerHTML = `
-        <div class="question-block" role="region" aria-labelledby="question-number">
-          <div class="question-header">
-            <h4 id="question-number" class="question-number">Вопрос ${idx + 1} из ${qs.length}</h4>
-            <div class="question-progress" role="progressbar" aria-valuenow="${idx + 1}" aria-valuemin="1" aria-valuemax="${qs.length}" aria-label="Прогресс: вопрос ${idx + 1} из ${qs.length}">
-              <div class="progress-bar" style="width: ${((idx + 1) / qs.length) * 100}%"></div>
-            </div>
-          </div>
-          <p class="question-text" id="question-text-${idx}">${escapeHtml(q.text)}</p>
-          <fieldset class="question-options" role="radiogroup" aria-labelledby="question-text-${idx}">
-            ${q.options && q.options.length ? q.options.map((o, i) => `
-              <div class="option-item">
-                <label>
-                  <input 
-                    type="radio" 
-                    name="opt" 
-                    value="${i}" 
-                    id="opt-${idx}-${i}"
-                    aria-describedby="question-text-${idx}"
-                    ${answers[q.id] === String(i) ? 'checked' : ''}
-                  />
-                  <span>${escapeHtml(o)}</span>
-                </label>
-              </div>
-            `).join('') : `
-              <div class="text-answer">
-                <label for="txt-${idx}" class="sr-only">Введите ваш ответ</label>
-                <input 
-                  id="txt-${idx}" 
-                  type="text" 
-                  placeholder="Введите ответ"
-                  aria-labelledby="question-text-${idx}"
-                  value="${answers[q.id] || ''}"
-                />
-              </div>
-            `}
-          </fieldset>
-        </div>
-        <nav class="test-navigation" aria-label="Навигация по вопросам">
-          <button 
-            id="prev" 
-            class="nav-btn" 
-            ${idx === 0 ? 'disabled aria-disabled="true"' : ''}
-            aria-label="Предыдущий вопрос"
-            type="button">
-            ${t('team.prev')}
-          </button>
-          <button 
-            id="next" 
-            class="primary"
-            aria-label="${idx >= qs.length - 1 ? 'Завершить тест' : 'Следующий вопрос'}"
-            type="button">
-            ${idx >= qs.length - 1 ? t('team.done') : t('team.next')}
-          </button>
-        </nav>
-      `;
-    out.appendChild(block);
-      
-      // Восстанавливаем сохраненный ответ
-      if (q.options && q.options.length) {
-        const savedAnswer = answers[q.id];
-        if (savedAnswer !== null && savedAnswer !== undefined) {
-          const radio = document.getElementById(`opt-${idx}-${savedAnswer}`);
-          if (radio) radio.checked = true;
-        }
-      } else {
-        const textInput = document.getElementById(`txt-${idx}`);
-        if (textInput) {
-          textInput.value = answers[q.id] || '';
-        }
-      }
-      
-      if (idx > 0) {
-        document.getElementById('prev').onclick = () => {
-          // Сохраняем текущий ответ перед переходом
-          if (q.options && q.options.length) {
-            const sel = document.querySelector('input[name="opt"]:checked');
-            answers[q.id] = sel ? sel.value : null;
-          } else {
-            const textInput = document.getElementById(`txt-${idx}`);
-            answers[q.id] = textInput ? textInput.value : '';
-          }
-          if (idx > 0) {
-            idx--;
-            show();
-          }
-        };
-      }
-      
-      document.getElementById('next').onclick = () => {
-        // Сохраняем текущий ответ
-        if (q.options && q.options.length) {
-          const sel = document.querySelector('input[name="opt"]:checked');
-          answers[q.id] = sel ? sel.value : null;
-        } else {
-          const textInput = document.getElementById(`txt-${idx}`);
-          answers[q.id] = textInput ? textInput.value : '';
-        }
-        idx++;
-        if (idx >= qs.length) {
-          finish();
-        } else {
-          show();
-        }
-      };
-      
-      // Автосохранение при изменении ответа
-      if (q.options && q.options.length) {
-        document.querySelectorAll('input[name="opt"]').forEach(radio => {
-          radio.addEventListener('change', () => {
-            answers[q.id] = radio.value;
-          });
-        });
-      } else {
-        const textInput = document.getElementById(`txt-${idx}`);
-        if (textInput) {
-          textInput.addEventListener('input', () => {
-            answers[q.id] = textInput.value;
-          });
-        }
-      }
-    }
-    
-    async function finish() {
-      out.innerHTML = t('team.submitting');
-      clearInterval(interval);
-      
-      try {
-        const resp = await fetch('/api/tests/' + id + '/submit', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify({ answers, started_at })
-        });
-        const j = await resp.json();
-        if (!j.ok) {
-          out.innerHTML = `<p style="color: var(--danger);" data-i18n="team.error">Ошибка</p>`;
-          AkylI18n.applyI18n(AkylI18n.getLang(), out);
-          return;
-        }
-        // Используем данные, возвращённые сервером
-        const totalQuestions = typeof j.total === 'number' ? j.total : qs.length;
-        const maxScore = typeof j.maxScore === 'number' ? j.maxScore : totalQuestions;
-        const rawScore = typeof j.score === 'number' ? j.score : 0;
-        const correctCount = typeof j.correct === 'number' ? j.correct : rawScore;
-        const percentage = maxScore > 0 ? Math.round((rawScore / maxScore) * 100) : 0;
-        out.innerHTML = `
-          <div class="test-result" role="region" aria-live="polite" aria-label="Результат теста">
-            <div class="result-icon" aria-hidden="true">${percentage >= 70 ? '🎉' : percentage >= 50 ? '👍' : '📝'}</div>
-            <h3 data-i18n="team.done">Готово</h3>
-            <div class="result-score">
-              <p class="result-label">Ваш результат:</p>
-              <p class="result-value"><strong>${correctCount}</strong> <span class="result-max">из ${totalQuestions}</span></p>
-              <div class="result-percentage" aria-label="Процент правильных ответов: ${percentage}%">
-                <div class="percentage-bar">
-                  <div class="percentage-fill" style="width: ${percentage}%"></div>
-                </div>
-                <span class="percentage-text">${percentage}%</span>
-              </div>
-            </div>
-            <div class="result-actions">
-              <button class="primary" onclick="document.getElementById('tabResults').click()" type="button">
-                Посмотреть все результаты
-              </button>
-              <button class="nav-btn" onclick="document.getElementById('tabTests').click()" type="button">
-                Вернуться к тестам
-              </button>
-            </div>
-          </div>
-        `;
-        AkylI18n.applyI18n(AkylI18n.getLang(), out);
-      } catch (err) {
-        console.error(err);
-        out.innerHTML = `<p style="color: var(--danger);" data-i18n="team.error">Ошибка</p>`;
-        AkylI18n.applyI18n(AkylI18n.getLang(), out);
-      }
-    }
-    
-    function fmt(s) {
-      if (s < 0) s = 0;
-      const m = Math.floor(s / 60);
-      const ss = String(s % 60).padStart(2, '0');
-      return `${m}:${ss}`;
-    }
-    
-    show();
-  } catch (err) {
-    console.error(err);
-    out.innerHTML = '<p style="color: var(--danger);">Ошибка загрузки теста</p>';
-  }
+  const runner = new QuizRunner({
+    testId: id,
+    container: out,
+    onFinish: () => {
+      renderResultsSection(document.getElementById('tabResults'));
+    },
+    onCancel: () => {
+      renderTestsSection(document.getElementById('tabTests'));
+    },
+  });
+  await runner.start();
 }
 
 // Редактирование полей профиля (кроме email)
@@ -1025,18 +817,12 @@ async function saveFieldEdit() {
     const body = {};
     body[currentEditField] = newValue;
     
-    const res = await fetch('/api/me', {
+    const j = await apiFetch('/api/me', {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
       body: JSON.stringify(body)
     });
     
-    const j = await res.json();
-    
-    if (!res.ok || !j.ok) {
+    if (!j.ok) {
       const msg = j && j.error ? j.error : (t('team.save_error') || 'Не удалось сохранить изменения');
       messageEl.textContent = msg;
       messageEl.className = 'reset-message error';
@@ -1132,17 +918,12 @@ async function verifyOldPassword() {
   btn.textContent = 'Проверка...';
 
   try {
-    const res = await fetch('/api/me/verify-password', {
+    const j = await apiFetch('/api/me/verify-password', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
       body: JSON.stringify({ password: oldPassword })
     });
-    const j = await res.json();
     
-    if (!res.ok || !j.ok) {
+    if (!j.ok) {
       messageEl.textContent = j && j.error ? j.error : 'Неверный пароль';
       messageEl.className = 'reset-message error';
       messageEl.style.display = 'block';
@@ -1240,17 +1021,12 @@ async function changePassword() {
   btn.textContent = 'Изменение...';
 
   try {
-    const res = await fetch('/api/me/change-password', {
+    const j = await apiFetch('/api/me/change-password', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
       body: JSON.stringify({ oldPassword, newPassword })
     });
-    const j = await res.json();
     
-    if (!res.ok || !j.ok) {
+    if (!j.ok) {
       const msg = j && j.error ? j.error : 'Не удалось изменить пароль';
       messageEl.textContent = msg;
       messageEl.className = 'reset-message error';
@@ -1405,18 +1181,12 @@ async function saveMembers() {
   btn.textContent = t('team.saving') || 'Сохранение...';
   
   try {
-    const res = await fetch('/api/me', {
+    const j = await apiFetch('/api/me', {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
       body: JSON.stringify({ members: members })
     });
     
-    const j = await res.json();
-    
-    if (!res.ok || !j.ok) {
+    if (!j.ok) {
       const msg = j && j.error ? j.error : 'Не удалось сохранить изменения';
       messageEl.textContent = msg;
       messageEl.className = 'reset-message error';

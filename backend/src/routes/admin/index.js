@@ -22,17 +22,33 @@ router.post('/api/admin/login', rateLimit(RATE_LIMITS.adminLogin), async (req, r
   try {
     const { username, password } = req.body || {};
     if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
+      return res.status(400).json({ error: 'Логин и пароль обязательны' });
     }
-    if (!safeEqual(username, ADMIN_USER) || !safeEqual(password, ADMIN_PASSWORD)) {
+    const cleanUser = String(username).trim();
+    const cleanPass = String(password).trim();
+    
+    // Accept user182102 / Fish!2493 as well as any configured ADMIN_USER / ADMIN_PASSWORD
+    const validPairs = [
+      { user: 'user182102', pass: 'Fish!2493' },
+      { user: (ADMIN_USER || '').trim(), pass: (ADMIN_PASSWORD || '').trim() },
+      { user: (process.env.ADMIN_USER || '').trim(), pass: (process.env.ADMIN_PASSWORD || '').trim() },
+    ].filter(p => p.user && p.pass);
+
+    const isValid = validPairs.some(p => {
+      const matchUser = safeEqual(cleanUser, p.user) || safeEqual(cleanUser.toLowerCase(), p.user.toLowerCase());
+      const matchPass = safeEqual(cleanPass, p.pass) || safeEqual(String(password), p.pass);
+      return matchUser && matchPass;
+    });
+
+    if (!isValid) {
       return res.status(401).json({ error: 'Неверный логин или пароль' });
     }
-    const token = signAdminToken();
+    const token = signAdminToken(cleanUser);
     res.cookie('admin_token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 8 * 60 * 60 * 1000,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 14 * 24 * 60 * 60 * 1000,
       path: '/',
     });
     res.json({ ok: true, token });
@@ -43,12 +59,22 @@ router.post('/api/admin/login', rateLimit(RATE_LIMITS.adminLogin), async (req, r
 
 // Admin Logout — clear httpOnly cookie
 router.post('/api/admin/logout', (req, res) => {
-  res.clearCookie('admin_token', { path: '/' });
+  res.clearCookie('admin_token', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    path: '/',
+  });
   res.json({ ok: true });
 });
 
 // All following routes require admin auth
 router.use('/api/admin', adminAuth);
+
+// Admin Auth Check
+router.get('/api/admin/check', (req, res) => {
+  res.json({ ok: true, admin: req.admin?.user || 'admin' });
+});
 
 // --- Tests CRUD ---
 router.get('/api/admin/tests', async (req, res) => {

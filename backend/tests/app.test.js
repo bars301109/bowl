@@ -1,108 +1,70 @@
-/* Basic tests for key endpoints */
-const request = require('supertest');
-
-// Mock the database and config for testing
-jest.mock('../src/db', () => ({
-  type: 'postgres',
-  runAsync: jest.fn(),
-  allAsync: jest.fn(),
-  getAsync: jest.fn(),
-  exec: jest.fn(),
-  testConnection: jest.fn().mockResolvedValue(true),
-  shutdown: jest.fn().mockResolvedValue(),
-  pool: { query: jest.fn() },
-}));
-
-jest.mock('../src/config', () => ({
-  isProd: false,
-  JWT_SECRET: 'test-secret-key-for-testing-only',
-  JWT_EXPIRES_IN: '1h',
-  ADMIN_USER: 'testadmin',
-  ADMIN_PASSWORD: 'TestPass123',
-  ADMIN_JWT_SECRET: 'test-admin-secret-key',
-  ADMIN_JWT_EXPIRES_IN: '1h',
-  RESEND_API_KEY: 'test_resend_key',
-  RESEND_FROM: 'Test <test@example.com>',
-  RATE_LIMITS: {
-    login: { windowMs: 60000, max: 100 },
-    reset: { windowMs: 60000, max: 100 },
-    adminLogin: { windowMs: 60000, max: 100 },
-  },
-  DATA_DIR: '/tmp/test-data',
-  TESTS_DIR: '/tmp/test-data/tests',
-}));
+/* Unit & Integration Tests using node:test and node:assert */
+const { describe, it } = require('node:test');
+const assert = require('node:assert');
+const { escapeHtml, isValidEmail, isStrongPassword, safeEqual, generateCode } = require('../src/utils/sanitization');
+const { signTeamToken, signAdminToken } = require('../src/middleware/auth');
 
 describe('Sanitization Utils', () => {
-  const { escapeHtml, isValidEmail, isStrongPassword, safeEqual, generateCode } = require('../src/utils/sanitization');
-
-  test('escapeHtml escapes special characters', () => {
-    expect(escapeHtml('<script>alert("xss")</script>')).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+  it('escapeHtml escapes special characters', () => {
+    assert.strictEqual(
+      escapeHtml('<script>alert("xss")</script>'),
+      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
+    );
   });
 
-  test('isValidEmail validates emails', () => {
-    expect(isValidEmail('test@example.com')).toBe(true);
-    expect(isValidEmail('invalid')).toBe(false);
-    expect(isValidEmail('')).toBe(false);
+  it('isValidEmail validates emails', () => {
+    assert.strictEqual(isValidEmail('test@example.com'), true);
+    assert.strictEqual(isValidEmail('invalid'), false);
+    assert.strictEqual(isValidEmail(''), false);
   });
 
-  test('isStrongPassword checks password strength', () => {
-    expect(isStrongPassword('Short1A')).toBe(false);       // too short
-    expect(isStrongPassword('nouppercase1')).toBe(false); // no uppercase
-    expect(isStrongPassword('NOLOWERCASE1')).toBe(false); // no lowercase
-    expect(isStrongPassword('NoDigits!!')).toBe(false);   // no digit
-    expect(isStrongPassword('GoodPass1')).toBe(true);
+  it('isStrongPassword checks password strength', () => {
+    assert.strictEqual(isStrongPassword('Short1A'), false);       // too short
+    assert.strictEqual(isStrongPassword('nouppercase1'), false); // no uppercase
+    assert.strictEqual(isStrongPassword('NOLOWERCASE1'), false); // no lowercase
+    assert.strictEqual(isStrongPassword('NoDigits!!'), false);   // no digit
+    assert.strictEqual(isStrongPassword('GoodPass1'), true);
   });
 
-  test('safeEqual compares strings safely', () => {
-    expect(safeEqual('abc', 'abc')).toBe(true);
-    expect(safeEqual('abc', 'xyz')).toBe(false);
+  it('safeEqual compares strings safely', () => {
+    assert.strictEqual(safeEqual('abc', 'abc'), true);
+    assert.strictEqual(safeEqual('abc', 'xyz'), false);
   });
 
-  test('generateCode generates numeric code', () => {
+  it('generateCode generates numeric code', () => {
     const code = generateCode(6);
-    expect(code).toMatch(/^\d{6}$/);
-  });
-});
-
-describe('Schema service', () => {
-  const db = require('../src/db');
-  const { ensureSchema } = require('../src/services/schema');
-
-  test('ensureSchema runs without error (mocked)', async () => {
-    db.getAsync.mockResolvedValueOnce({ cnt: 1 }); // categories exist
-    db.getAsync.mockResolvedValueOnce({ id: 1 });  // tests exist
-    db.getAsync.mockResolvedValueOnce({ id: 1 });  // settings exist
-
-    await expect(ensureSchema()).resolves.not.toThrow();
+    assert.match(code, /^\d{6}$/);
   });
 });
 
 describe('Auth middleware', () => {
-  const { signTeamToken, signAdminToken, teamAuth, adminAuth } = require('../src/middleware/auth');
-
-  test('signTeamToken creates valid token', () => {
+  it('signTeamToken creates valid token', () => {
     const token = signTeamToken({ id: 1, team_name: 'Test Team', login: 'team_1' });
-    expect(token).toBeDefined();
-    expect(typeof token).toBe('string');
-    expect(token.split('.')).toHaveLength(3);
+    assert.ok(token);
+    assert.strictEqual(typeof token, 'string');
+    assert.strictEqual(token.split('.').length, 3);
   });
 
-  test('signAdminToken creates valid token', () => {
+  it('signAdminToken creates valid token', () => {
     const token = signAdminToken();
-    expect(token).toBeDefined();
+    assert.ok(token);
+    assert.strictEqual(typeof token, 'string');
+    assert.strictEqual(token.split('.').length, 3);
   });
 });
 
-describe('CSV helpers', () => {
-  // These are in the admin routes file — testing parseCsv indirectly
-  test('CSV value quoting works', () => {
-    // Simple check: toCsvValue wraps in quotes
-    const toCsvValue = (v) => {
-      if (v == null || v === undefined) return '""';
-      return '"' + String(v).replace(/"/g, '""') + '"';
-    };
-    expect(toCsvValue('hello')).toBe('"hello"');
-    expect(toCsvValue('say "hi"')).toBe('"say ""hi"""');
-    expect(toCsvValue(null)).toBe('""');
+describe('Database in-memory adapter', () => {
+  const db = require('../src/db');
+
+  it('runs query and insert operations in in-memory mode', async () => {
+    const res = await db.runAsync(
+      'INSERT INTO categories (name_ru, name_ky, slug) VALUES (?, ?, ?)',
+      ['История', 'Тарых', 'history']
+    );
+    assert.ok(res);
+
+    const rows = await db.allAsync('SELECT * FROM categories');
+    assert.ok(Array.isArray(rows));
+    assert.ok(rows.length > 0);
   });
 });

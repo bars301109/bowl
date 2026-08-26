@@ -114,13 +114,130 @@ router.get('/api/tests/:id', async (req, res) => {
   }
 });
 
+// Start test session (Server-side timer & anti-cheat tracker)
+router.post('/api/tests/:id/start', teamAuth, async (req, res) => {
+  try {
+    const testId = req.params.id;
+    const teamId = req.team.id;
+    const now = Date.now();
+
+    const test = await getAsync(
+      'SELECT id, title, duration_minutes, window_start, window_end, status FROM tests WHERE id = $1',
+      [testId]
+    );
+    if (!test) return res.status(404).json({ error: 'Тест не найден' });
+    if (test.status !== 'published') return res.status(403).json({ error: 'Тест ещё не опубликован' });
+
+    // Time window check
+    const start = test.window_start ? new Date(test.window_start).getTime() : null;
+    const end = test.window_end ? new Date(test.window_end).getTime() : null;
+    if (start && now < start) return res.status(403).json({ error: 'Тест ещё недоступен' });
+    if (end && now > end) return res.status(403).json({ error: 'Окно теста уже закрыто' });
+
+    // Check if already submitted
+    const settings = await getAsync('SELECT one_submission_allowed FROM settings WHERE id=1');
+    if (settings && settings.one_submission_allowed) {
+      const existing = await getAsync(
+        'SELECT id FROM results WHERE team_id = $1 AND test_id = $2',
+        [teamId, testId]
+      );
+      if (existing) {
+        return res.status(400).json({ error: 'Вы уже сдали этот тест' });
+      }
+    }
+
+    // Check existing session
+    let session = await getAsync(
+      'SELECT * FROM test_sessions WHERE team_id = $1 AND test_id = $2',
+      [teamId, testId]
+    );
+
+    const durationSec = (test.duration_minutes || 60) * 60;
+
+    if (!session) {
+      const startedAtIso = new Date(now).toISOString();
+      const expiresAtIso = new Date(now + durationSec * 1000).toISOString();
+      await runAsync(
+        'INSERT INTO test_sessions (team_id, test_id, started_at, status, expires_at) VALUES ($1,$2,$3,$4,$5)',
+        [teamId, testId, startedAtIso, 'in_progress', expiresAtIso]
+      );
+      session = {
+        team_id: teamId,
+        test_id: testId,
+        started_at: startedAtIso,
+        status: 'in_progress',
+        expires_at: expiresAtIso,
+      };
+    }
+
+    const sessionStartMs = new Date(session.started_at).getTime();
+    const elapsedSec = Math.max(0, Math.floor((now - sessionStartMs) / 1000));
+    const remainingSec = Math.max(0, durationSec - elapsedSec);
+
+    res.json({
+      ok: true,
+      session: {
+        started_at: session.started_at,
+        duration_minutes: test.duration_minutes || 60,
+        server_now: new Date(now).toISOString(),
+        remaining_seconds: remainingSec,
+        is_expired: remainingSec <= 0,
+      },
+    });
+  } catch (e) {
+    console.error('Error starting test session:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Check session status
+router.get('/api/tests/:id/session', teamAuth, async (req, res) => {
+  try {
+    const testId = req.params.id;
+    const teamId = req.team.id;
+    const now = Date.now();
+
+    const session = await getAsync(
+      'SELECT * FROM test_sessions WHERE team_id = $1 AND test_id = $2',
+      [teamId, testId]
+    );
+    const result = await getAsync(
+      'SELECT id, score, taken_at FROM results WHERE team_id = $1 AND test_id = $2',
+      [teamId, testId]
+    );
+
+    if (!session) {
+      return res.json({ active: false, completed: !!result, result: result || null });
+    }
+
+    const test = await getAsync('SELECT duration_minutes FROM tests WHERE id = $1', [testId]);
+    const durationSec = ((test?.duration_minutes) || 60) * 60;
+    const sessionStartMs = new Date(session.started_at).getTime();
+    const elapsedSec = Math.max(0, Math.floor((now - sessionStartMs) / 1000));
+    const remainingSec = Math.max(0, durationSec - elapsedSec);
+
+    res.json({
+      active: session.status === 'in_progress' && !result,
+      completed: !!result,
+      result: result || null,
+      session: {
+        started_at: session.started_at,
+        remaining_seconds: remainingSec,
+        is_expired: remainingSec <= 0,
+      },
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Submit answers
 router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
   try {
     const testId = req.params.id;
     const teamId = req.team.id;
     const answers = req.body.answers || {};
-    const clientStartTime = req.body.started_at || null; // when team started the test (client-side)
+    const clientStartTime = req.body.started_at || null;
 
     // Check test exists and is published
     const test = await getAsync(
@@ -137,16 +254,14 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
     if (start && now < start) return res.status(403).json({ error: 'Тест ещё недоступен' });
     if (end && now > end) return res.status(403).json({ error: 'Окно теста уже закрыто' });
 
-    // Check one-time submission
+    // Check one-time submission / duplicate prevention
     const settings = await getAsync('SELECT one_submission_allowed FROM settings WHERE id=1');
-    if (settings && settings.one_submission_allowed) {
-      const existing = await getAsync(
-        'SELECT id FROM results WHERE team_id = $1 AND test_id = $2',
-        [teamId, testId]
-      );
-      if (existing) {
-        return res.status(400).json({ error: 'Вы уже сдали этот тест' });
-      }
+    const existing = await getAsync(
+      'SELECT id FROM results WHERE team_id = $1 AND test_id = $2',
+      [teamId, testId]
+    );
+    if (existing && settings && settings.one_submission_allowed) {
+      return res.status(400).json({ error: 'Вы уже сдали этот тест' });
     }
 
     const qs = await allAsync(
@@ -155,27 +270,31 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
     );
 
     if (!qs.length) {
-      return res.status(404).json({ error: 'No questions found for this test' });
+      return res.status(404).json({ error: 'В этом тесте пока нет вопросов' });
     }
 
-    // Server-side timer: compute time taken
-    let startedAt = null;
-    let timeTakenSec = null;
-    if (clientStartTime) {
-      startedAt = new Date(parseInt(clientStartTime, 10)).toISOString();
-      timeTakenSec = Math.round((now - parseInt(clientStartTime, 10)) / 1000);
-      // Check if time taken exceeds duration_minutes (server-side enforcement)
-      const maxSec = (test.duration_minutes || 60) * 60;
-      if (timeTakenSec > maxSec) {
-        return res.status(400).json({
-          error: 'Время вышло. Тест не принят.',
-          time_taken_sec: timeTakenSec,
-          max_sec: maxSec,
-        });
-      }
+    // Check session in server DB
+    const session = await getAsync(
+      'SELECT * FROM test_sessions WHERE team_id = $1 AND test_id = $2',
+      [teamId, testId]
+    );
+
+    let startedAt = session ? session.started_at : (clientStartTime ? new Date(parseInt(clientStartTime, 10)).toISOString() : new Date().toISOString());
+    const sessionStartMs = new Date(startedAt).getTime();
+    const timeTakenSec = Math.max(1, Math.round((now - sessionStartMs) / 1000));
+    
+    // Server-side anti-cheat duration check with 45s grace period for latency
+    const maxSec = (test.duration_minutes || 60) * 60;
+    const GRACE_PERIOD_SEC = 45;
+    if (timeTakenSec > (maxSec + GRACE_PERIOD_SEC)) {
+      return res.status(400).json({
+        error: 'Время на прохождение теста истекло. Ответы не приняты.',
+        time_taken_sec: timeTakenSec,
+        max_sec: maxSec,
+      });
     }
 
-    // Grade answers (correct field is ONLY used server-side)
+    // Grade answers
     let score = 0;
     let correctCount = 0;
     const answersArr = [];
@@ -196,7 +315,7 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
           qok = true;
         }
       } else {
-        // Text answer: case-insensitive exact match
+        // Text answer: case-insensitive match
         const givenText = String(given || '').trim().toLowerCase();
         const correctText = String(correct).trim().toLowerCase();
         if (givenText && givenText === correctText) {
@@ -211,13 +330,27 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
       answersArr.push({ question_id: qid, given, ok: qok, points: pts });
     }
 
+    // Record results atomically
     await runAsync(
       'INSERT INTO results (team_id, test_id, score, answers, taken_at, started_at, time_taken_sec) VALUES ($1,$2,$3,$4,NOW(),$5,$6)',
       [teamId, testId, score, JSON.stringify(answersArr), startedAt, timeTakenSec]
     );
 
-    console.log(`✓ Test submitted: team_id=${teamId}, test_id=${testId}, score=${score}, correct=${correctCount}/${qs.length}, time_sec=${timeTakenSec}`);
-    res.json({ ok: true, score, maxScore: qs.reduce((s, q) => s + (q.points || 1), 0), correct: correctCount, total: qs.length, time_taken_sec: timeTakenSec });
+    // Update test_sessions status
+    await runAsync(
+      'UPDATE test_sessions SET status = $1 WHERE team_id = $2 AND test_id = $3',
+      ['completed', teamId, testId]
+    ).catch(() => {});
+
+    console.log(`✓ Test submitted: team_id=${teamId}, test_id=${testId}, score=${score}/${qs.reduce((s, q) => s + (q.points || 1), 0)}, time=${timeTakenSec}s`);
+    res.json({
+      ok: true,
+      score,
+      maxScore: qs.reduce((s, q) => s + (q.points || 1), 0),
+      correct: correctCount,
+      total: qs.length,
+      time_taken_sec: timeTakenSec,
+    });
   } catch (e) {
     console.error('Error in /api/tests/:id/submit', e);
     res.status(500).json({ error: e.message });
