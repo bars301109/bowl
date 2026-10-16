@@ -3,6 +3,16 @@
  * Toast notifications, non-blocking modal dialogs, API client, and draft manager.
  */
 
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // --- 1. Toast Notification System ---
 const Toast = {
   container: null,
@@ -29,10 +39,11 @@ const Toast = {
       info: 'ℹ',
     };
 
+    const isKy = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang && AkylI18n.getLang() === 'ky');
     toast.innerHTML = `
       <span class="toast-icon">${icons[type] || 'ℹ'}</span>
       <span class="toast-message">${message}</span>
-      <button class="toast-close" aria-label="Закрыть">&times;</button>
+      <button class="toast-close" aria-label="${isKy ? 'Жабуу' : 'Close'}">&times;</button>
     `;
 
     const closeBtn = toast.querySelector('.toast-close');
@@ -68,13 +79,19 @@ const Toast = {
 
 // --- 2. Custom Modal Confirm Dialog ---
 function showConfirmDialog({
-  title = 'Подтверждение',
-  message = 'Вы уверены?',
-  confirmText = 'Да',
-  cancelText = 'Отмена',
+  title,
+  message,
+  confirmText,
+  cancelText,
   isDestructive = false,
 }) {
   return new Promise((resolve) => {
+    const isKy = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang && AkylI18n.getLang() === 'ky');
+    const cleanTitle = title || (isKy ? 'Тастыктоо' : 'Confirmation');
+    const cleanMessage = message || (isKy ? 'Ишеничтесизби?' : 'Are you sure?');
+    const cleanConfirm = confirmText || (isKy ? 'Ооба' : 'Confirm');
+    const cleanCancel = cancelText || (isKy ? 'Жокко чыгаруу' : 'Cancel');
+
     // Remove existing if any
     const existing = document.getElementById('akylman-confirm-modal');
     if (existing) existing.remove();
@@ -84,11 +101,11 @@ function showConfirmDialog({
     modal.className = 'custom-modal-overlay';
     modal.innerHTML = `
       <div class="custom-modal-card" role="dialog" aria-modal="true">
-        <h3 class="custom-modal-title">${title}</h3>
-        <div class="custom-modal-body">${message}</div>
+        <h3 class="custom-modal-title">${cleanTitle}</h3>
+        <div class="custom-modal-body">${cleanMessage}</div>
         <div class="custom-modal-actions">
-          <button class="btn btn-secondary modal-cancel-btn">${cancelText}</button>
-          <button class="btn ${isDestructive ? 'btn-danger' : 'btn-primary'} modal-confirm-btn">${confirmText}</button>
+          <button class="btn btn-secondary modal-cancel-btn">${cleanCancel}</button>
+          <button class="btn ${isDestructive ? 'btn-danger' : 'btn-primary'} modal-confirm-btn">${cleanConfirm}</button>
         </div>
       </div>
     `;
@@ -145,7 +162,8 @@ async function apiFetch(url, options = {}) {
     }
 
     if (!res.ok) {
-      const errorMsg = (data && data.error) ? data.error : `Ошибка сервера (${res.status})`;
+      const isKy = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang && AkylI18n.getLang() === 'ky');
+      const errorMsg = (data && data.error) ? data.error : (isKy ? `Сервер катасы (${res.status})` : `Server error (${res.status})`);
       const err = new Error(errorMsg);
       err.status = res.status;
       err.data = data;
@@ -196,6 +214,7 @@ const DraftManager = {
   },
 };
 
+window.escapeHtml = escapeHtml;
 window.Toast = Toast;
 window.showConfirmDialog = showConfirmDialog;
 window.apiFetch = apiFetch;

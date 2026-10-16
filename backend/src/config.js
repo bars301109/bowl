@@ -13,15 +13,26 @@ const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || 'Fish!2493').trim();
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'akylman-dev-admin-jwt-secret-key';
 const ADMIN_JWT_EXPIRES_IN = '8h';
 
-// Email — Resend only
+// Email — Resend and SMTP/Gmail
+const rawResendFrom = String(process.env.RESEND_FROM || '').trim();
+const RESEND_FROM = (rawResendFrom && rawResendFrom.includes('@') && rawResendFrom !== '123')
+  ? rawResendFrom
+  : 'Akylman Quiz Bowl <onboarding@resend.dev>';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const RESEND_FROM = process.env.RESEND_FROM || 'Akylman Quiz <onboarding@resend.dev>';
+
+const GMAIL_USER = process.env.GMAIL_USER || '';
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD || '';
+const SMTP_HOST = process.env.SMTP_HOST || '';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
+const SMTP_USER = process.env.SMTP_USER || GMAIL_USER || '';
+const SMTP_PASS = process.env.SMTP_PASS || GMAIL_APP_PASSWORD || '';
+const SMTP_FROM = process.env.SMTP_FROM || GMAIL_USER || 'noreply@akylman.edu.kg';
 
 // Rate limits
 const RATE_LIMITS = {
   login: { windowMs: 10 * 60 * 1000, max: 20 },
   reset: { windowMs: 10 * 60 * 1000, max: 10 },
-  adminLogin: { windowMs: 10 * 60 * 1000, max: 10 },
+  adminLogin: { windowMs: 5 * 60 * 1000, max: 50 },
 };
 
 // Data
@@ -54,6 +65,13 @@ module.exports = {
   ADMIN_JWT_EXPIRES_IN,
   RESEND_API_KEY,
   RESEND_FROM,
+  GMAIL_USER,
+  GMAIL_APP_PASSWORD,
+  SMTP_HOST,
+  SMTP_PORT,
+  SMTP_USER,
+  SMTP_PASS,
+  SMTP_FROM,
   RATE_LIMITS,
   DATA_DIR,
   TESTS_DIR,

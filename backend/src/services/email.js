@@ -1,24 +1,46 @@
-/* Email service — Resend HTTP API only */
-const { RESEND_API_KEY, RESEND_FROM } = require('../config');
+/* Email service — Supports Gmail / SMTP (via Nodemailer) and Resend HTTP API */
+const nodemailer = require('nodemailer');
+const {
+  RESEND_API_KEY,
+  RESEND_FROM,
+  GMAIL_USER,
+  GMAIL_APP_PASSWORD,
+  SMTP_HOST,
+  SMTP_PORT,
+  SMTP_USER,
+  SMTP_PASS,
+  SMTP_FROM,
+} = require('../config');
 
 function buildPasswordResetEmailHtml(team, code) {
+  const teamName = team && team.team_name ? team.team_name : 'участник';
   return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #1e40af;">Сброс пароля</h2>
-      <p>Здравствуйте, ${escapeHtml(team.captain_name || 'пользователь')}!</p>
-      <p>Вы запросили сброс пароля для вашей команды в Akylman Quiz Bowl.</p>
-      <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
-        <p style="font-size: 14px; color: #6b7280; margin: 0 0 10px 0;">Ваш код для сброса пароля:</p>
-        <p style="font-size: 32px; font-weight: bold; color: #1e40af; letter-spacing: 8px; margin: 0; font-family: monospace;">${escapeHtml(code)}</p>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; background: #fdfcf9; border: 1px solid #dcd5c7; border-radius: 8px;">
+      <div style="border-bottom: 2px solid #9a3a24; padding-bottom: 14px; margin-bottom: 20px;">
+        <h2 style="color: #1d1b18; font-size: 22px; margin: 0; font-weight: 700;">Akylman Quiz Bowl</h2>
+        <p style="color: #857f73; font-size: 13px; margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.05em;">Сброс пароля команды</p>
       </div>
-      <p style="color: #6b7280; font-size: 14px;">Этот код действителен в течение 15 минут.</p>
-      <p style="color: #ef4444; font-size: 14px;">Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
+
+      <p style="color: #1d1b18; font-size: 15px; line-height: 1.5;">Здравствуйте, команда <strong>«${escapeHtml(teamName)}»</strong>!</p>
+      <p style="color: #4b473f; font-size: 14.5px; line-height: 1.5;">Вы запросили сброс пароля для входа в кабинет турнира Akylman Quiz Bowl.</p>
+
+      <div style="background: #faf7f0; border: 1px solid #b8b0a0; padding: 22px; border-radius: 6px; text-align: center; margin: 24px 0;">
+        <p style="font-size: 12.5px; color: #857f73; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 10px 0; font-weight: 600;">Ваш код подтверждения:</p>
+        <div style="font-size: 34px; font-weight: 800; color: #9a3a24; letter-spacing: 10px; font-family: monospace, monospace;">${escapeHtml(code)}</div>
+        <p style="font-size: 13px; color: #857f73; margin: 10px 0 0 0;">Действителен в течение 15 минут</p>
+      </div>
+
+      <p style="color: #857f73; font-size: 13px; line-height: 1.5; margin-top: 20px;">Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо. Пароль вашей команды останется без изменений.</p>
+
+      <div style="border-top: 1px solid #e8e3d8; padding-top: 14px; margin-top: 24px; font-size: 12px; color: #968f82; text-align: center;">
+        Президентский лицей «Акылман» (Чолпон-Ата) • Akylman Quiz Bowl
+      </div>
     </div>
   `;
 }
 
 function escapeHtml(str) {
-  return String(str)
+  return String(str || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -26,15 +48,54 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-async function sendPasswordResetEmail({ email, team, code }) {
-  if (!RESEND_API_KEY) {
-    throw new Error('RESEND_API_KEY is not configured');
+async function sendViaNodemailer({ to, subject, html }) {
+  let transporter = null;
+  let fromAddress = '';
+
+  if (GMAIL_USER && GMAIL_APP_PASSWORD) {
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: GMAIL_USER,
+        pass: GMAIL_APP_PASSWORD.replace(/\s+/g, ''),
+      },
+    });
+    fromAddress = `Akylman Quiz Bowl <${GMAIL_USER}>`;
+  } else if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
+    transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT || 587,
+      secure: SMTP_PORT === 465,
+      auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS,
+      },
+    });
+    fromAddress = SMTP_FROM || `Akylman Quiz Bowl <${SMTP_USER}>`;
   }
 
-  const subject = 'Код сброса пароля - Akylman Quiz Bowl';
-  const html = buildPasswordResetEmailHtml(team, code);
+  if (!transporter) {
+    return { ok: false, reason: 'No SMTP/Gmail credentials configured' };
+  }
 
-  console.log(`Sending password reset email via Resend to ${email}...`);
+  const info = await transporter.sendMail({
+    from: fromAddress,
+    to,
+    subject,
+    html,
+  });
+
+  return { ok: true, messageId: info.messageId };
+}
+
+async function sendViaResend({ to, subject, html }) {
+  if (!RESEND_API_KEY || RESEND_API_KEY.startsWith('re_xx') || RESEND_API_KEY.length < 25) {
+    return { ok: false, reason: 'RESEND_API_KEY is not a valid Resend key' };
+  }
+
+  const sender = (RESEND_FROM && RESEND_FROM.includes('@') && RESEND_FROM !== '123')
+    ? RESEND_FROM
+    : 'Akylman Quiz Bowl <onboarding@resend.dev>';
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -43,8 +104,8 @@ async function sendPasswordResetEmail({ email, team, code }) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: RESEND_FROM,
-      to: email,
+      from: sender,
+      to,
       subject,
       html,
     }),
@@ -52,11 +113,65 @@ async function sendPasswordResetEmail({ email, team, code }) {
 
   const text = await response.text();
   if (!response.ok) {
-    console.error('✗ Resend API error:', response.status, text);
-    throw new Error(`Resend API error: ${response.status}`);
+    return { ok: false, status: response.status, error: text };
   }
 
-  console.log(`✓ Password reset email sent via Resend to ${email}`);
+  return { ok: true, data: text };
+}
+
+async function sendPasswordResetEmail({ email, team, code }) {
+  const subject = 'Код сброса пароля: ' + code + ' — Akylman Quiz Bowl';
+  const html = buildPasswordResetEmailHtml(team, code);
+
+  console.log(`[EMAIL] Initiating password reset dispatch to ${email}...`);
+  let lastErrorDetail = '';
+
+  // 1. Try Nodemailer (Gmail / SMTP) if credentials provided
+  try {
+    const smtpRes = await sendViaNodemailer({ to: email, subject, html });
+    if (smtpRes.ok) {
+      console.log(`✓ Password reset email sent via SMTP/Gmail to ${email} (ID: ${smtpRes.messageId})`);
+      return { success: true, provider: 'smtp' };
+    } else if (smtpRes.reason) {
+      lastErrorDetail = smtpRes.reason;
+    }
+  } catch (smtpErr) {
+    console.error('SMTP send attempt failed:', smtpErr.message);
+    if (smtpErr.code === 'EAUTH' || (smtpErr.message && smtpErr.message.includes('535'))) {
+      lastErrorDetail = 'Google отклонил пароль (535 BadCredentials). Для Gmail нужен 16-значный пароль приложения (myaccount.google.com/apppasswords), а не обычный пароль от аккаунта.';
+    } else {
+      lastErrorDetail = `Ошибка SMTP: ${smtpErr.message}`;
+    }
+  }
+
+  // 2. Try Resend if configured
+  try {
+    const resendRes = await sendViaResend({ to: email, subject, html });
+    if (resendRes.ok) {
+      console.log(`✓ Password reset email sent via Resend to ${email}`);
+      return { success: true, provider: 'resend' };
+    } else {
+      console.warn('Resend send attempt failed:', resendRes.reason || resendRes.error);
+      if (!lastErrorDetail) {
+        lastErrorDetail = resendRes.reason || 'Ошибка сервиса Resend';
+      }
+    }
+  } catch (resendErr) {
+    console.error('Resend send attempt error:', resendErr.message);
+    if (!lastErrorDetail) {
+      lastErrorDetail = `Ошибка Resend: ${resendErr.message}`;
+    }
+  }
+
+  console.error(`✗ Failed to deliver password reset email to ${email}. Detail: ${lastErrorDetail}`);
+
+  return {
+    success: false,
+    reason: lastErrorDetail || 'Почтовый сервис не настроен или отклонил отправку.',
+    userMessage: lastErrorDetail
+      ? `Не удалось отправить письмо: ${lastErrorDetail}`
+      : 'Не удалось отправить письмо с кодом. Пожалуйста, проверьте настройки почтового сервера.',
+  };
 }
 
 module.exports = {

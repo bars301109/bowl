@@ -1,0 +1,1011 @@
+/* Modern Admin Panel Styles for Akylman Quiz — Team Cabinet Paper & Ink Alignment */
+:root {
+  --adm-bg: #f4f1ea;
+  --adm-card-bg: #fffdf9;
+  --adm-surface-2: #faf7f0;
+  --adm-ink: #1d1b18;
+  --adm-ink-2: #4b473f;
+  --adm-ink-3: #857f73;
+  --adm-primary: #9a3a24;
+  --adm-primary-hover: #7a2b19;
+  --adm-primary-light: #f3e5de;
+  --adm-border: #b8b0a0;
+  --adm-border-soft: #cfc7b9;
+  --adm-border-strong: #8e8574;
+  --adm-gold: #9a3a24;
+  --adm-gold-light: #f3e5de;
+  --adm-text-main: #1d1b18;
+  --adm-text-muted: #857f73;
+  --adm-border-focus: #1d1b18;
+  --adm-success: #3d6a4d;
+  --adm-success-hover: #2d5039;
+  --adm-danger: #a3302b;
+  --adm-danger-hover: #8a2722;
+  --adm-warning: #86610f;
+  --adm-radius-sm: 4px;
+  --adm-radius-md: 6px;
+  --adm-radius-lg: 8px;
+  --adm-shadow-sm: 0 1px 3px rgba(29, 27, 24, 0.05);
+  --adm-shadow-md: 0 4px 6px -1px rgba(29, 27, 24, 0.06);
+  --adm-shadow-lg: 0 10px 24px -3px rgba(29, 27, 24, 0.08);
+
+  --line: #b8b0a0;
+  --line-soft: #cfc7b9;
+  --line-strong: #8e8574;
+  --border: #b8b0a0;
+}
+
+body.admin-app-body {
+  background-color: #f4f1ea !important;
+  color: var(--adm-text-main) !important;
+  font-family: 'Onest', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Topbar Links */
+.admin-topbar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--adm-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  background: #fffdf9;
+  color: #1d1b18;
+  border: 1px solid var(--adm-border);
+  transition: all 0.15s ease;
+}
+.admin-topbar-link:hover {
+  background: #faf7f0;
+  border-color: #1d1b18;
+  color: #1d1b18;
+}
+
+.admin-topbar-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--adm-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  background: #fffdf9;
+  color: #a3302b;
+  border: 1px solid #dca8a5;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.admin-topbar-logout:hover {
+  background: #fbeae9;
+  border-color: #a3302b;
+  color: #8a2420;
+}
+
+/* Main Content Workspace */
+.team-app-content #content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Modern Form & Container Cards with CRISP VISIBLE BORDERS */
+.admin-form,
+.admin-panel .admin-form {
+  background: #fffdf9 !important;
+  border: 1px solid var(--adm-border) !important;
+  border-radius: var(--adm-radius-md) !important;
+  padding: 24px 28px;
+  box-shadow: var(--adm-shadow-sm);
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.admin-subcard {
+  background: #faf7f0 !important;
+  border: 1px solid var(--adm-border) !important;
+  border-radius: var(--adm-radius-sm) !important;
+  padding: 18px 20px;
+}
+
+.admin-form.card-gold-top {
+  border-top: 3px solid var(--adm-primary) !important;
+}
+.admin-form.card-blue-top {
+  border-top: 3px solid var(--adm-primary) !important;
+}
+
+.admin-panel .admin-form h3,
+.admin-form h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1d1b18;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Inputs, Textareas, Selects with CRISP VISIBLE BORDERS */
+.form-row,
+.admin-panel .form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.form-row label,
+.admin-panel .form-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d1b18;
+  flex: 1;
+  min-width: 220px;
+}
+
+.admin-input,
+.admin-panel .admin-input,
+.admin-panel input[type="text"],
+.admin-panel input[type="number"],
+.admin-panel input[type="datetime-local"],
+.admin-panel input[type="date"],
+.admin-panel select,
+.admin-panel textarea,
+input.admin-input,
+select.admin-input,
+textarea.admin-input {
+  background-color: #fffdf9 !important;
+  border: 1px solid var(--adm-border) !important;
+  border-radius: var(--adm-radius-sm) !important;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: #1d1b18 !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-input:focus,
+.admin-panel input:focus,
+.admin-panel select:focus,
+.admin-panel textarea:focus,
+input.admin-input:focus,
+select.admin-input:focus,
+textarea.admin-input:focus {
+  outline: none !important;
+  border-color: #1d1b18 !important;
+  box-shadow: 0 0 0 2px rgba(29, 27, 24, 0.15) !important;
+}
+
+/* =========================================================================
+   UNIFIED BUTTON TEMPLATE FOR ADMIN PANEL & TESTS SECTION
+   All buttons share one consistent anatomy, typography, padding and radii.
+   ========================================================================= */
+.admin-button,
+.admin-panel .admin-button {
+  background: #fffdf9;
+  color: #1d1b18;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius-sm);
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Onest', system-ui, sans-serif;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  line-height: 1.35;
+  white-space: nowrap;
+  box-sizing: border-box;
+  text-decoration: none;
+  user-select: none;
+}
+
+.admin-button:hover,
+.admin-panel .admin-button:hover {
+  background: #f4f1ea;
+  color: #1d1b18;
+  border-color: #1d1b18;
+}
+
+/* Primary Button (Terracotta Ink Accent) */
+.admin-button.primary,
+.admin-panel .admin-button.primary {
+  background: var(--adm-primary) !important;
+  color: #fffdf9 !important;
+  border-color: var(--adm-primary-hover) !important;
+  font-weight: 600 !important;
+}
+.admin-button.primary:hover,
+.admin-panel .admin-button.primary:hover {
+  background: var(--adm-primary-hover) !important;
+  border-color: #5c1e10 !important;
+}
+
+/* Secondary Button (Neutral Paper Button) */
+.admin-button.secondary,
+.admin-panel .admin-button.secondary {
+  background: #fffdf9 !important;
+  color: #1d1b18 !important;
+  border: 1px solid var(--adm-border) !important;
+  font-weight: 500 !important;
+}
+.admin-button.secondary:hover,
+.admin-panel .admin-button.secondary:hover {
+  background: #f4f1ea !important;
+  border-color: #1d1b18 !important;
+  color: #1d1b18 !important;
+}
+
+/* Success Button (Deep Forest Ink Green) */
+.admin-button.success,
+.admin-panel .admin-button.success {
+  background: var(--adm-success) !important;
+  color: #fffdf9 !important;
+  border-color: var(--adm-success-hover) !important;
+  font-weight: 600 !important;
+}
+.admin-button.success:hover,
+.admin-panel .admin-button.success:hover {
+  background: var(--adm-success-hover) !important;
+  border-color: #1e3626 !important;
+}
+
+/* Danger Button (Crisp Warning/Delete Button) */
+.admin-button.danger,
+.admin-panel .admin-button.danger {
+  background: #fffdf9 !important;
+  color: var(--adm-danger) !important;
+  border: 1px solid #dca8a5 !important;
+  font-weight: 500 !important;
+}
+.admin-button.danger:hover,
+.admin-panel .admin-button.danger:hover {
+  background: #fbeae9 !important;
+  border-color: var(--adm-danger) !important;
+  color: var(--adm-danger-hover) !important;
+}
+
+/* Toolbar button container */
+.admin-toolbar-actions,
+.admin-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Table Row Action Buttons — STRICT UNIFIED TEMPLATE */
+.admin-table-actions {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-wrap: nowrap !important;
+}
+
+.admin-table-actions .admin-button {
+  height: 28px !important;
+  padding: 4px 9px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--adm-border) !important;
+}
+
+.admin-table-actions .admin-button.qs {
+  background: var(--adm-primary) !important;
+  color: #fffdf9 !important;
+  border-color: var(--adm-primary-hover) !important;
+  font-weight: 600 !important;
+}
+.admin-table-actions .admin-button.qs:hover {
+  background: var(--adm-primary-hover) !important;
+}
+
+.admin-table-actions .admin-button.export-test-json,
+.admin-table-actions .admin-button.import-test-json,
+.admin-table-actions .admin-button.export-q-csv,
+.admin-table-actions .admin-button.edit {
+  background: #fffdf9 !important;
+  color: #1d1b18 !important;
+  border-color: var(--adm-border) !important;
+}
+.admin-table-actions .admin-button.export-test-json:hover,
+.admin-table-actions .admin-button.import-test-json:hover,
+.admin-table-actions .admin-button.export-q-csv:hover,
+.admin-table-actions .admin-button.edit:hover {
+  background: #f4f1ea !important;
+  border-color: #1d1b18 !important;
+  color: #1d1b18 !important;
+}
+
+.admin-table-actions .admin-button.del {
+  background: #fffdf9 !important;
+  color: var(--adm-danger) !important;
+  border-color: #dca8a5 !important;
+  padding: 4px 8px !important;
+}
+.admin-table-actions .admin-button.del:hover {
+  background: #fbeae9 !important;
+  border-color: var(--adm-danger) !important;
+}
+
+/* =========================================================================
+   TABLES & BORDERS — HIGH-CONTRAST, CRISP, LEGIBLE PAPER & INK TABLES
+   ========================================================================= */
+.admin-table-wrapper,
+.admin-panel .admin-table-wrapper {
+  background: #fffdf9 !important;
+  border: 1px solid var(--adm-border-strong) !important;
+  border-radius: var(--adm-radius-md) !important;
+  box-shadow: 0 1px 4px rgba(29, 27, 24, 0.06) !important;
+  overflow-x: auto !important;
+  margin-top: 18px !important;
+}
+
+.admin-table,
+.admin-panel .admin-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  font-size: 13.5px !important;
+  text-align: left !important;
+}
+
+.admin-table thead,
+.admin-panel .admin-table thead {
+  background: #ebe5d8 !important;
+  border-bottom: 2px solid var(--adm-border-strong) !important;
+}
+
+.admin-table th,
+.admin-panel .admin-table th {
+  padding: 12px 14px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #1d1b18 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  border-bottom: 2px solid var(--adm-border-strong) !important;
+  border-right: 1px solid var(--adm-border-soft) !important;
+  background: #ebe5d8 !important;
+  white-space: nowrap !important;
+}
+
+.admin-table th:last-child,
+.admin-panel .admin-table th:last-child {
+  border-right: none !important;
+}
+
+.admin-table td,
+.admin-panel .admin-table td {
+  padding: 11px 14px !important;
+  border-bottom: 1px solid var(--adm-border) !important;
+  border-right: 1px solid var(--adm-border-soft) !important;
+  color: #1d1b18 !important;
+  vertical-align: middle !important;
+  background: #fffdf9;
+}
+
+.admin-table td:last-child,
+.admin-panel .admin-table td:last-child {
+  border-right: none !important;
+}
+
+.admin-table tbody tr:nth-child(even) td,
+.admin-panel .admin-table tbody tr:nth-child(even) td {
+  background: #faf6ee !important;
+}
+
+.admin-table tbody tr:hover td,
+.admin-panel .admin-table tbody tr:hover td {
+  background: #f4ede0 !important;
+}
+
+/* Question Cards & Drag items */
+.q-list,
+.admin-panel .q-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card,
+.admin-panel .card {
+  background: #fffdf9 !important;
+  border: 1px solid var(--adm-border) !important;
+  border-radius: var(--adm-radius-md) !important;
+  padding: 18px 20px;
+  box-shadow: var(--adm-shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover,
+.admin-panel .card:hover {
+  border-color: #1d1b18 !important;
+  box-shadow: var(--adm-shadow-md);
+}
+
+.drag-handle,
+.admin-panel .drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--adm-radius-sm);
+  background: #faf7f0;
+  border: 1px solid var(--adm-border);
+  color: #1d1b18;
+  cursor: grab;
+  font-size: 16px;
+  user-select: none;
+  transition: background 0.15s;
+}
+.drag-handle:hover,
+.admin-panel .drag-handle:hover {
+  background: #f4f1ea;
+  border-color: #1d1b18;
+}
+
+.q-ord-pill,
+.admin-panel .q-ord-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  background: #faf7f0;
+  border: 1px solid var(--adm-border);
+  color: #1d1b18;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* Image Widget Component */
+.q-image-widget,
+.admin-panel .q-image-widget {
+  background: #faf7f0 !important;
+  border: 1px solid var(--adm-border) !important;
+  border-radius: var(--adm-radius-md);
+  padding: 12px 14px;
+  margin-top: 10px;
+  transition: border-color 0.15s;
+}
+
+.q-image-dropzone,
+.admin-panel .q-image-dropzone {
+  border: 2px dashed var(--adm-border) !important;
+  border-radius: var(--adm-radius-md);
+  padding: 14px;
+  text-align: center;
+  background: #fffdf9 !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.q-image-dropzone:hover,
+.admin-panel .q-image-dropzone:hover {
+  border-color: #1d1b18 !important;
+  background: #faf7f0 !important;
+}
+
+.dropzone-icon {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+.dropzone-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d1b18;
+}
+.dropzone-hint {
+  font-size: 11.5px;
+  color: var(--adm-ink-3);
+  margin-top: 2px;
+}
+
+.q-image-preview-thumb {
+  max-width: 120px;
+  max-height: 80px;
+  border-radius: var(--adm-radius-sm);
+  border: 1px solid var(--adm-border);
+  object-fit: cover;
+  background: #faf7f0;
+  cursor: zoom-in;
+  transition: transform 0.15s;
+}
+.q-image-preview-thumb:hover {
+  transform: scale(1.04);
+}
+
+.q-image-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--adm-success);
+  background: #e5ede6;
+  border: 1px solid var(--adm-success);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  margin-bottom: 4px;
+}
+
+/* Status Badges */
+.status-badge,
+.admin-panel .status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-published,
+.status-active,
+.admin-panel .status-published,
+.admin-panel .status-active {
+  background: #e5ede6 !important;
+  color: var(--adm-success) !important;
+  border: 1px solid var(--adm-success) !important;
+}
+
+.status-draft,
+.status-scheduled,
+.admin-panel .status-draft,
+.admin-panel .status-scheduled {
+  background: #f4ebd2 !important;
+  color: var(--adm-warning) !important;
+  border: 1px solid var(--adm-warning) !important;
+}
+
+.status-archived,
+.status-closed,
+.admin-panel .status-archived,
+.admin-panel .status-closed {
+  background: #faf7f0 !important;
+  color: var(--adm-ink-3) !important;
+  border: 1px solid var(--adm-border) !important;
+}
+
+/* Storage Status Bar */
+#storageStatusBadge,
+.admin-panel #storageStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #e5ede6;
+  border: 1px solid var(--adm-success);
+  color: var(--adm-success);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+/* Modern Modals */
+.reset-modal,
+.admin-panel .reset-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(29, 27, 24, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.reset-modal-content,
+.admin-panel .reset-modal-content {
+  background: #fffdf9 !important;
+  border: 1px solid var(--adm-border-strong) !important;
+  border-radius: var(--adm-radius-md);
+  box-shadow: 0 16px 36px -6px rgba(29, 27, 24, 0.25);
+  width: 100%;
+  max-width: 520px;
+  padding: 24px 28px;
+}
+
+.reset-modal-header,
+.admin-panel .reset-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--adm-border);
+  padding-bottom: 12px;
+}
+
+.reset-modal-header h3,
+.admin-panel .reset-modal-header h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0;
+  color: #1d1b18;
+}
+
+/* Modern Toast Alerts */
+.admin-panel-toasts {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 380px;
+  pointer-events: none;
+}
+
+.admin-toast {
+  pointer-events: auto;
+  padding: 12px 16px;
+  border-radius: var(--adm-radius-sm);
+  font-size: 13.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--adm-shadow-md);
+  border: 1px solid var(--adm-border);
+  background: #fffdf9;
+  color: #1d1b18;
+}
+
+.admin-toast.success { background: #e5ede6; border-color: var(--adm-success); color: var(--adm-success); }
+.admin-toast.error { background: #fbeae9; border-color: var(--adm-danger); color: var(--adm-danger); }
+.admin-toast.info { background: #faf7f0; border-color: var(--adm-border); color: #1d1b18; }
+
+/* Image Lightbox Modal */
+#imgZoomModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(29, 27, 24, 0.85);
+  backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 24px;
+}
+
+#imgZoomModal img {
+  max-width: 90vw;
+  max-height: 85vh;
+  border-radius: 6px;
+  border: 1px solid var(--adm-border);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  object-fit: contain;
+}
+
+#imgZoomModal .close-zoom {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  color: #fffdf9;
+  font-size: 32px;
+  cursor: pointer;
+  background: rgba(29, 27, 24, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+#imgZoomModal .close-zoom:hover {
+  background: rgba(29, 27, 24, 0.8);
+}
+
+/* ==========================================================================
+   Admin Sidebar Navigation & Mobile Drawer
+   ========================================================================== */
+.admin-app-body .mobile-menu-toggle {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  margin-right: 14px !important;
+  background: #fffdf9 !important;
+  border: 1.5px solid #8e8574 !important;
+  border-radius: var(--adm-radius-sm, 9px) !important;
+  color: #1d1b18 !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  transition: all 0.15s ease !important;
+  z-index: 100 !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+  user-select: none !important;
+  box-shadow: 0 2px 6px rgba(29, 27, 24, 0.08) !important;
+}
+
+.admin-app-body .mobile-menu-toggle:hover {
+  background: #f4efe4 !important;
+  border-color: #1d1b18 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 10px rgba(29, 27, 24, 0.12) !important;
+}
+
+.admin-app-body .mobile-menu-toggle:active {
+  transform: scale(0.95) !important;
+}
+
+.admin-app-body .mobile-menu-toggle svg {
+  pointer-events: none !important;
+  display: block !important;
+}
+
+/* Sidebar Close Button */
+.sidebar-close-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: rgba(232, 227, 216, 0.12);
+  border: 1px solid rgba(232, 227, 216, 0.25);
+  border-radius: 8px;
+  color: #f6f2e8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  pointer-events: auto;
+}
+
+.sidebar-close-btn:hover {
+  background: rgba(232, 227, 216, 0.25);
+  border-color: #f6f2e8;
+}
+
+.sidebar-close-btn svg {
+  pointer-events: none;
+}
+
+/* Mobile/Tablet Backdrop */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(29, 27, 24, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 9998 !important;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.sidebar-backdrop.visible {
+  display: block !important;
+  opacity: 1 !important;
+}
+
+/* Global open state for sidebar as drawer across any viewport */
+.team-app-sidebar.open,
+.team-app-sidebar.mobile-open {
+  transform: translateX(0) !important;
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 85vw !important;
+  visibility: visible !important;
+  display: flex !important;
+  z-index: 9999 !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Responsive Drawer for Tablet & Mobile (<= 1024px) */
+@media (max-width: 1024px) {
+  .team-app-sidebar {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    height: 100vh !important;
+    width: 280px !important;
+    max-width: 85vw !important;
+    z-index: 9999 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: none !important;
+  }
+
+  .sidebar-close-btn {
+    display: inline-flex !important;
+  }
+}
+
+/* Desktop Collapse Mode (> 1024px) */
+@media (min-width: 1025px) {
+  body.sidebar-collapsed .team-app-sidebar:not(.open):not(.mobile-open) {
+    transform: translateX(-100%) !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+  }
+
+  .team-app-sidebar {
+    transition: width 0.25s ease, transform 0.25s ease, margin 0.25s ease !important;
+  }
+}
+
+/* ==========================================================================
+   Admin Announcements & Support Management
+   ========================================================================== */
+.admin-tab-filter-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--adm-card-bg);
+  padding: 10px 14px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius-md);
+  margin-bottom: 16px;
+}
+
+.admin-filter-pill {
+  padding: 6px 14px;
+  border-radius: var(--adm-radius-sm);
+  border: 1px solid var(--adm-border);
+  background: transparent;
+  color: var(--adm-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-filter-pill.active,
+.admin-filter-pill:hover {
+  background: var(--adm-primary);
+  border-color: var(--adm-primary);
+  color: #fff;
+}
+
+.admin-support-grid {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .admin-support-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-tickets-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+}
+
+.admin-ticket-item {
+  background: var(--adm-card-bg);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius-md);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-ticket-item:hover,
+.admin-ticket-item.active {
+  border-color: var(--adm-ink);
+  box-shadow: 0 4px 12px -2px rgba(29, 27, 24, 0.08);
+  background: #fffdf9;
+}
+
+.admin-ticket-item.active {
+  border-left: 4px solid var(--adm-primary);
+}
+
+.admin-chat-pane {
+  background: var(--adm-card-bg);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 540px;
+}
+
+.admin-chat-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--adm-border);
+  background: var(--adm-surface-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-chat-stream {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  max-height: 480px;
+  overflow-y: auto;
+  background: #f8f6f0;
+}
+
+.admin-chat-bubble {
+  max-width: 82%;
+  padding: 12px 16px;
+  border-radius: var(--adm-radius-md);
+  font-size: 14px;
+  line-height: 1.5;
+  border: 1px solid var(--adm-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-chat-bubble.from-team {
+  align-self: flex-start;
+  background: #fffdf9;
+  border-left: 3px solid #2d6a4f;
+}
+
+.admin-chat-bubble.from-admin {
+  align-self: flex-end;
+  background: #fff;
+  border-left: 3px solid var(--adm-primary);
+}
+
+.admin-chat-composer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--adm-border);
+  background: var(--adm-card-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+

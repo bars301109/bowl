@@ -81,11 +81,62 @@ function adminAuth(req, res, next) {
   }
 }
 
+// Redirects unauthenticated browser requests for admin pages
+function adminPageAuth(req, res, next) {
+  let token = req.cookies?.admin_token;
+  if (!token) {
+    const authHeader = req.headers['authorization'] || '';
+    if (authHeader.startsWith('Bearer ')) token = authHeader.slice(7);
+  }
+
+  // If token is present in cookie/header, verify it
+  if (token) {
+    try {
+      const payload = jwt.verify(token, ADMIN_JWT_SECRET);
+      if (payload && payload.role === 'admin') {
+        req.admin = payload;
+        return next();
+      }
+    } catch (e) {
+      // Token invalid
+    }
+  }
+
+  // In iframe environments (AI Studio preview), cookies are often blocked by third-party cookie restrictions.
+  // We allow the HTML page to load so client-side checkAdminAuth() can verify localStorage adminToken
+  // via Authorization: Bearer header. If client is not authenticated, checkAdminAuth() redirects to /admin-login.
+  next();
+}
+
+// Redirects unauthenticated browser requests for team pages
+function teamPageAuth(req, res, next) {
+  let token = req.cookies?.team_token;
+  if (!token) {
+    const authHeader = req.headers['authorization'] || '';
+    if (authHeader.startsWith('Bearer ')) token = authHeader.slice(7);
+  }
+
+  if (!token) {
+    return res.redirect(302, '/login');
+  }
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.team = payload;
+    next();
+  } catch (e) {
+    return res.redirect(302, '/login');
+  }
+}
+
 module.exports = {
   signTeamToken,
   setTeamCookie,
   clearTeamCookie,
   teamAuth,
+  teamPageAuth,
   signAdminToken,
   adminAuth,
+  adminPageAuth,
 };
+

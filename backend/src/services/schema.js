@@ -1,40 +1,7 @@
-/* Schema initialization and seeding */
+/* Schema initialization and settings */
 const db = require('../db');
 
-const DEFAULT_CATEGORIES = [
-  {
-    ru: 'Информатика',
-    ky: 'Информатика',
-    desc_ru: 'Основы программирования, алгоритмы и структуры данных. Работа с компьютерными системами и программным обеспечением. Веб-разработка и современные технологии. Кибербезопасность и защита информации. Искусственный интеллект и машинное обучение.',
-    desc_ky: 'Программалоонун негиздери, алгоритмдер жана маалымат структуралары. Компьютердик системалар жана программалык камсыздоо менен иштөө. Веб-иштеп чыгуу жана заманбап технологиялар. Киберкоопсуздук жана маалыматты коргоо. Жасалма интеллект жана машиналык үйрөнүү.',
-  },
-  {
-    ru: 'Математика',
-    ky: 'Математика',
-    desc_ru: 'Алгебра, геометрия и тригонометрия. Математический анализ и теория вероятностей. Логическое мышление и решение задач. Применение математики в реальной жизни. Олимпиадные задачи и нестандартные подходы.',
-    desc_ky: 'Алгебра, геометрия жана тригонометрия. Математикалык анализ жана ыктымалдыктар теориясы. Логикалык ой жүгүртүү жана маселелерди чечүү. Математиканы чыныгы жашоодо колдонуу. Олимпиадалык маселелер жана стандарттык эмес ыкмалар.',
-  },
-  {
-    ru: 'Кыргызстан таануу',
-    ky: 'Кыргызстан таануу',
-    desc_ru: 'Глубокое изучение истории Кыргызстана, её географии и природного богатства. Знакомство с национальной культурой, древними традициями и обычаями кыргызского народа. Основы Конституции и государственного устройства. Выдающиеся личности, сформировавшие историю нации. Экономическое развитие и будущее страны.',
-    desc_ky: 'Кыргызстандын бай тарыхын, географиясын жана табигый ресурсаларын изилдөө. Улуттук маданият, салт-санаа жана каада-жөрөлгөлөр менен таанышуу. Конституция, мамлекеттик түзүлүш жана жарандык жоопкерчилик боюнча негизги түшүнүктөр. Өлкөнүн өнүгүшүнө салым кошкон тарыхый инсандар. Бүгүнкү Кыргызстан жана анын келечеги жөнүндө ой жүгүртүү.',
-  },
-  {
-    ru: 'Англис тили',
-    ky: 'Англис тили',
-    desc_ru: 'Грамматика английского языка и правильное использование времен. Расширение словарного запаса и идиоматические выражения. Чтение и понимание текстов различной сложности. Письменная и устная коммуникация. Культура англоязычных стран.',
-    desc_ky: 'Англис тилинин грамматикасы жана мезгилдерди туура колдонуу. Сөздүктү кеңейтүү жана идиоматикалык сөз айкаштары. Ар кандай татаалдыктагы тексттерди окуу жана түшүнүү. Жазуу жана сөздөн баарлашуу. Англис тилдүү өлкөлөрдүн маданияты.',
-  },
-];
-
 const DEFAULT_SETTINGS = {
-  badge1_ru: 'Регистрация открыта!',
-  badge1_ky: 'Каттоо ачык!',
-  badge2_ru: 'Сдайте тест в кабинете.',
-  badge2_ky: 'Кабинетте тест тапшырыңыз.',
-  badge3_ru: 'Удачи!',
-  badge3_ky: 'Ийгилик!',
   day1_date: '2025-12-05',
   day2_date: '2025-12-15',
   day3_date: '2025-12-27',
@@ -47,162 +14,459 @@ const DEFAULT_SETTINGS = {
 async function ensureSchema() {
   const { runAsync, allAsync, getAsync } = db;
 
-  // Teams
-  await runAsync(`CREATE TABLE IF NOT EXISTS teams (
-    id SERIAL PRIMARY KEY,
-    team_name TEXT,
-    login TEXT,
-    password TEXT,
-    captain_name TEXT,
-    captain_email TEXT UNIQUE,
-    captain_phone TEXT,
-    members TEXT,
-    school TEXT,
-    city TEXT,
-    category_id INTEGER,
-    created_at TEXT
-  )`);
+  // DDL statements: run each independently so one existing table/constraint never blocks others
+  const ddlList = [
+    // Categories (must be created before announcements / tests)
+    `CREATE TABLE IF NOT EXISTS categories (
+      id SERIAL PRIMARY KEY,
+      name_ru TEXT NOT NULL,
+      name_ky TEXT NOT NULL,
+      desc_ru TEXT,
+      desc_ky TEXT,
+      created_at TEXT
+    )`,
 
-  // Password reset codes
-  await runAsync(`CREATE TABLE IF NOT EXISTS password_reset_codes (
-    id SERIAL PRIMARY KEY,
-    email TEXT,
-    code TEXT,
-    expires_at TEXT,
-    used INTEGER DEFAULT 0,
-    created_at TEXT
-  )`);
+    // Teams
+    `CREATE TABLE IF NOT EXISTS teams (
+      id SERIAL PRIMARY KEY,
+      team_name TEXT NOT NULL,
+      login TEXT,
+      password TEXT NOT NULL,
+      team_email TEXT,
+      email TEXT,
+      phone TEXT,
+      members TEXT,
+      school TEXT,
+      city TEXT,
+      category_id INTEGER,
+      created_at TEXT
+    )`,
+    // Ensure all columns exist on teams table
+    'ALTER TABLE teams ADD COLUMN IF NOT EXISTS team_email TEXT',
+    'ALTER TABLE teams ADD COLUMN IF NOT EXISTS email TEXT',
+    'ALTER TABLE teams ADD COLUMN IF NOT EXISTS phone TEXT',
+    'ALTER TABLE teams ADD COLUMN IF NOT EXISTS members TEXT',
+    'ALTER TABLE teams ADD COLUMN IF NOT EXISTS school TEXT',
+    'ALTER TABLE teams ADD COLUMN IF NOT EXISTS city TEXT',
+    'ALTER TABLE teams ADD COLUMN IF NOT EXISTS category_id INTEGER',
+    'ALTER TABLE teams ADD COLUMN IF NOT EXISTS login TEXT',
+    'ALTER TABLE teams ADD COLUMN IF NOT EXISTS password TEXT',
+    'ALTER TABLE teams ADD COLUMN IF NOT EXISTS team_name TEXT',
 
-  // Tests
-  await runAsync(`CREATE TABLE IF NOT EXISTS tests (
-    id SERIAL PRIMARY KEY,
-    title TEXT,
-    description TEXT,
-    preview_text TEXT,
-    lang TEXT DEFAULT 'ru',
-    duration_minutes INTEGER DEFAULT 60,
-    window_start TEXT,
-    window_end TEXT,
-    status TEXT DEFAULT 'draft',
-    category_id INTEGER,
-    created_at TEXT
-  )`);
+    // Uploaded files
+    `CREATE TABLE IF NOT EXISTS public.uploaded_files (
+      id SERIAL PRIMARY KEY,
+      filename TEXT UNIQUE NOT NULL,
+      mime_type TEXT NOT NULL,
+      data_base64 TEXT NOT NULL,
+      size_bytes INTEGER DEFAULT 0,
+      created_at TEXT
+    )`,
+    'GRANT ALL ON public.uploaded_files TO public',
+    'GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO public',
 
-  // Categories
-  await runAsync(`CREATE TABLE IF NOT EXISTS categories (
-    id SERIAL PRIMARY KEY,
-    name_ru TEXT NOT NULL,
-    name_ky TEXT NOT NULL,
-    desc_ru TEXT,
-    desc_ky TEXT,
-    created_at TEXT
-  )`);
+    // Password reset codes
+    `CREATE TABLE IF NOT EXISTS password_reset_codes (
+      id SERIAL PRIMARY KEY,
+      email TEXT,
+      code TEXT,
+      expires_at TEXT,
+      used INTEGER DEFAULT 0,
+      created_at TEXT
+    )`,
 
-  // Questions
-  await runAsync(`CREATE TABLE IF NOT EXISTS questions (
-    id SERIAL PRIMARY KEY,
-    test_id INTEGER,
-    ordinal INTEGER,
-    text TEXT,
-    options TEXT,
-    correct TEXT,
-    points INTEGER DEFAULT 1,
-    lang TEXT DEFAULT 'ru',
-    category_id INTEGER,
-    FOREIGN KEY(test_id) REFERENCES tests(id)
-  )`);
+    // Tests
+    `CREATE TABLE IF NOT EXISTS tests (
+      id SERIAL PRIMARY KEY,
+      title TEXT,
+      description TEXT,
+      preview_text TEXT,
+      lang TEXT DEFAULT 'ru',
+      duration_minutes INTEGER DEFAULT 60,
+      window_start TEXT,
+      window_end TEXT,
+      status TEXT DEFAULT 'draft',
+      category_id INTEGER,
+      created_at TEXT
+    )`,
+    'ALTER TABLE tests ADD COLUMN IF NOT EXISTS preview_text TEXT',
+    'ALTER TABLE tests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT \'draft\'',
 
-  // Results
-  await runAsync(`CREATE TABLE IF NOT EXISTS results (
-    id SERIAL PRIMARY KEY,
-    team_id INTEGER,
-    test_id INTEGER,
-    score INTEGER,
-    answers TEXT,
-    taken_at TEXT,
-    FOREIGN KEY(team_id) REFERENCES teams(id),
-    FOREIGN KEY(test_id) REFERENCES tests(id)
-  )`);
+    // Questions
+    `CREATE TABLE IF NOT EXISTS questions (
+      id SERIAL PRIMARY KEY,
+      test_id INTEGER,
+      ordinal INTEGER,
+      text TEXT,
+      options TEXT,
+      correct TEXT,
+      points INTEGER DEFAULT 1,
+      lang TEXT DEFAULT 'ru',
+      category_id INTEGER,
+      FOREIGN KEY(test_id) REFERENCES tests(id)
+    )`,
+    'ALTER TABLE questions ADD COLUMN IF NOT EXISTS type TEXT DEFAULT \'mcq\'',
+    'ALTER TABLE questions ADD COLUMN IF NOT EXISTS attachment_url TEXT',
 
-  // Test sessions (for server-side timer enforcement & anti-cheat)
-  await runAsync(`CREATE TABLE IF NOT EXISTS test_sessions (
-    id SERIAL PRIMARY KEY,
-    team_id INTEGER,
-    test_id INTEGER,
-    started_at TEXT,
-    status TEXT DEFAULT 'in_progress',
-    expires_at TEXT,
-    FOREIGN KEY(team_id) REFERENCES teams(id),
-    FOREIGN KEY(test_id) REFERENCES tests(id)
-  )`);
+    // Results
+    `CREATE TABLE IF NOT EXISTS results (
+      id SERIAL PRIMARY KEY,
+      team_id INTEGER,
+      test_id INTEGER,
+      score INTEGER,
+      answers TEXT,
+      taken_at TEXT,
+      FOREIGN KEY(team_id) REFERENCES teams(id),
+      FOREIGN KEY(test_id) REFERENCES tests(id)
+    )`,
+    'ALTER TABLE results ADD COLUMN IF NOT EXISTS started_at TEXT',
+    'ALTER TABLE results ADD COLUMN IF NOT EXISTS time_taken_sec INTEGER',
 
-  // Create performance indexes
-  await runAsync('CREATE INDEX IF NOT EXISTS idx_results_team_test ON results(team_id, test_id)').catch(() => {});
-  await runAsync('CREATE INDEX IF NOT EXISTS idx_questions_test_ord ON questions(test_id, ordinal)').catch(() => {});
-  await runAsync('CREATE INDEX IF NOT EXISTS idx_sessions_team_test ON test_sessions(team_id, test_id)').catch(() => {});
+    // Test sessions
+    `CREATE TABLE IF NOT EXISTS test_sessions (
+      id SERIAL PRIMARY KEY,
+      team_id INTEGER,
+      test_id INTEGER,
+      started_at TEXT,
+      status TEXT DEFAULT 'in_progress',
+      expires_at TEXT,
+      FOREIGN KEY(team_id) REFERENCES teams(id),
+      FOREIGN KEY(test_id) REFERENCES tests(id)
+    )`,
 
-  // Settings
-  await runAsync(`CREATE TABLE IF NOT EXISTS settings (
-    id INTEGER PRIMARY KEY CHECK (id=1),
-    badge1_ru TEXT, badge1_ky TEXT,
-    badge2_ru TEXT, badge2_ky TEXT,
-    badge3_ru TEXT, badge3_ky TEXT,
-    day1_date TEXT, day2_date TEXT, day3_date TEXT,
-    final_place_ru TEXT, final_place_ky TEXT,
-    updated_at TEXT
-  )`);
+    // Settings
+    `CREATE TABLE IF NOT EXISTS settings (
+      id INTEGER PRIMARY KEY CHECK (id=1),
+      day1_date TEXT, day2_date TEXT, day3_date TEXT,
+      final_place_ru TEXT, final_place_ky TEXT,
+      results_published INTEGER DEFAULT 0,
+      one_submission_allowed INTEGER DEFAULT 1,
+      updated_at TEXT
+    )`,
+    'ALTER TABLE settings ADD COLUMN IF NOT EXISTS results_published INTEGER DEFAULT 0',
+    'ALTER TABLE settings ADD COLUMN IF NOT EXISTS one_submission_allowed INTEGER DEFAULT 0',
 
-  // Homepage blocks
-  await runAsync(`CREATE TABLE IF NOT EXISTS homepage_blocks (
-    id SERIAL PRIMARY KEY,
-    block_key TEXT UNIQUE NOT NULL,
-    title_ru TEXT,
-    title_ky TEXT,
-    content_ru TEXT,
-    content_ky TEXT,
-    updated_at TEXT
-  )`);
+    // Homepage blocks
+    `CREATE TABLE IF NOT EXISTS homepage_blocks (
+      id SERIAL PRIMARY KEY,
+      block_key TEXT UNIQUE,
+      badge_en TEXT DEFAULT '',
+      badge_ky TEXT DEFAULT '',
+      badge_ru TEXT DEFAULT '',
+      title_en TEXT DEFAULT '',
+      title_ky TEXT DEFAULT '',
+      title_ru TEXT DEFAULT '',
+      content_en TEXT DEFAULT '',
+      content_ky TEXT DEFAULT '',
+      content_ru TEXT DEFAULT '',
+      updated_at TEXT
+    )`,
+    'ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS badge_en TEXT DEFAULT \'\'',
+    'ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS badge_ky TEXT DEFAULT \'\'',
+    'ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS badge_ru TEXT DEFAULT \'\'',
+    'ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS title_en TEXT DEFAULT \'\'',
+    'ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS title_ky TEXT DEFAULT \'\'',
+    'ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS title_ru TEXT DEFAULT \'\'',
+    'ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS content_en TEXT DEFAULT \'\'',
+    'ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS content_ky TEXT DEFAULT \'\'',
+    'ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS content_ru TEXT DEFAULT \'\'',
 
-  // --- Add new columns to existing tables (idempotent) ---
-  // Tests: add preview_text, status
-  await runAsync('ALTER TABLE tests ADD COLUMN IF NOT EXISTS preview_text TEXT').catch(() => {});
-  await runAsync('ALTER TABLE tests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT \'draft\'').catch(() => {});
-  
-  // Questions: add type, attachment_url
-  await runAsync('ALTER TABLE questions ADD COLUMN IF NOT EXISTS type TEXT DEFAULT \'mcq\'').catch(() => {});
-  await runAsync('ALTER TABLE questions ADD COLUMN IF NOT EXISTS attachment_url TEXT').catch(() => {});
-  
-  // Results: add started_at, time_taken_sec
-  await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS started_at TEXT').catch(() => {});
-  await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS time_taken_sec INTEGER').catch(() => {});
+    // Announcements
+    `CREATE TABLE IF NOT EXISTS announcements (
+      id SERIAL PRIMARY KEY,
+      title_ru TEXT DEFAULT '',
+      title_ky TEXT DEFAULT '',
+      title_en TEXT DEFAULT '',
+      content_ru TEXT DEFAULT '',
+      content_ky TEXT DEFAULT '',
+      content_en TEXT DEFAULT '',
+      target_type TEXT DEFAULT 'all',
+      target_category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+      priority TEXT DEFAULT 'normal',
+      is_published INTEGER DEFAULT 1,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )`,
+    'ALTER TABLE announcements ADD COLUMN IF NOT EXISTS title_ru TEXT DEFAULT \'\'',
+    'ALTER TABLE announcements ADD COLUMN IF NOT EXISTS title_ky TEXT DEFAULT \'\'',
+    'ALTER TABLE announcements ADD COLUMN IF NOT EXISTS title_en TEXT DEFAULT \'\'',
+    'ALTER TABLE announcements ADD COLUMN IF NOT EXISTS content_ru TEXT DEFAULT \'\'',
+    'ALTER TABLE announcements ADD COLUMN IF NOT EXISTS content_ky TEXT DEFAULT \'\'',
+    'ALTER TABLE announcements ADD COLUMN IF NOT EXISTS content_en TEXT DEFAULT \'\'',
+    'ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_type TEXT DEFAULT \'all\'',
+    'ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_category_id INTEGER',
+    'ALTER TABLE announcements ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT \'normal\'',
+    'ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_published INTEGER DEFAULT 1',
 
-  // Settings: add results_published, one_submission_allowed
-  await runAsync('ALTER TABLE settings ADD COLUMN IF NOT EXISTS results_published INTEGER DEFAULT 0').catch(() => {});
-  await runAsync('ALTER TABLE settings ADD COLUMN IF NOT EXISTS one_submission_allowed INTEGER DEFAULT 0').catch(() => {});
+    // Support tickets
+    `CREATE TABLE IF NOT EXISTS support_tickets (
+      id SERIAL PRIMARY KEY,
+      team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+      subject TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      status TEXT DEFAULT 'open',
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )`,
+    'ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS category TEXT DEFAULT \'general\'',
+    'ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS status TEXT DEFAULT \'open\'',
 
-  // Seed categories if empty
-  const catCountRow = await getAsync('SELECT COUNT(*) AS cnt FROM categories');
-  const catCount = parseInt(catCountRow?.cnt || 0, 10) || 0;
-  if (catCount === 0) {
-    for (const c of DEFAULT_CATEGORIES) {
-      await runAsync(
-        'INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES ($1,$2,$3,$4,NOW())',
-        [c.ru, c.ky, c.desc_ru, c.desc_ky]
-      );
+    // Support ticket messages
+    `CREATE TABLE IF NOT EXISTS support_messages (
+      id SERIAL PRIMARY KEY,
+      ticket_id INTEGER REFERENCES support_tickets(id) ON DELETE CASCADE,
+      sender_type TEXT NOT NULL,
+      sender_name TEXT,
+      message TEXT NOT NULL,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )`,
+  ];
+
+  for (const stmt of ddlList) {
+    try {
+      await runAsync(stmt);
+    } catch (err) {
+      console.warn('DDL execution notice:', err.message, 'in statement:', stmt.slice(0, 60));
     }
-    console.log('✓ Seeded default categories');
+  }
+
+  // Sync team_email
+  try {
+    await runAsync(`UPDATE teams SET team_email = COALESCE(team_email, email) WHERE team_email IS NULL OR team_email = ''`);
+    await runAsync(`UPDATE teams SET email = COALESCE(email, team_email) WHERE email IS NULL OR email = ''`);
+  } catch (err) {}
+
+    // Migrate any existing files on disk into uploaded_files table in Cloud SQL
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const uploadsDir = path.resolve(process.cwd(), 'uploads');
+      if (fs.existsSync(uploadsDir)) {
+        const files = fs.readdirSync(uploadsDir);
+        for (const fname of files) {
+          if (fname.startsWith('.')) continue;
+          const fullPath = path.join(uploadsDir, fname);
+          if (fs.statSync(fullPath).isFile()) {
+            const existing = await getAsync('SELECT id FROM uploaded_files WHERE filename = $1', [fname]).catch(() => null);
+            if (!existing) {
+              const buf = fs.readFileSync(fullPath);
+              const ext = path.extname(fname).toLowerCase().replace('.', '') || 'png';
+              const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+                : ext === 'png' ? 'image/png'
+                : ext === 'webp' ? 'image/webp'
+                : ext === 'gif' ? 'image/gif'
+                : ext === 'svg' ? 'image/svg+xml'
+                : 'application/octet-stream';
+              await runAsync(
+                'INSERT INTO uploaded_files (filename, mime_type, data_base64, size_bytes, created_at) VALUES ($1,$2,$3,$4,NOW())',
+                [fname, mime, buf.toString('base64'), buf.length]
+              ).catch(() => {});
+            }
+          }
+        }
+      }
+
+      // Also ensure rules.pdf is stored in uploaded_files in SQL
+      const rulesPdfPath = path.resolve(process.cwd(), 'frontend', 'src', 'pages', 'rules.pdf');
+      if (fs.existsSync(rulesPdfPath)) {
+        const existingPdf = await getAsync('SELECT id FROM uploaded_files WHERE filename = $1', ['rules.pdf']).catch(() => null);
+        if (!existingPdf) {
+          const pdfBuf = fs.readFileSync(rulesPdfPath);
+          await runAsync(
+            'INSERT INTO uploaded_files (filename, mime_type, data_base64, size_bytes, created_at) VALUES ($1,$2,$3,$4,NOW())',
+            ['rules.pdf', 'application/pdf', pdfBuf.toString('base64'), pdfBuf.length]
+          ).catch(() => {});
+        }
+      }
+    } catch (migErr) {
+      console.warn('Files migration to Cloud SQL notice:', migErr.message);
+    }
+
+    await runAsync('ALTER TABLE tests ADD COLUMN IF NOT EXISTS preview_text TEXT').catch(() => {});
+    await runAsync('ALTER TABLE tests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT \'draft\'').catch(() => {});
+    await runAsync('ALTER TABLE questions ADD COLUMN IF NOT EXISTS type TEXT DEFAULT \'mcq\'').catch(() => {});
+    await runAsync('ALTER TABLE questions ADD COLUMN IF NOT EXISTS attachment_url TEXT').catch(() => {});
+    await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS started_at TEXT').catch(() => {});
+    await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS time_taken_sec INTEGER').catch(() => {});
+    await runAsync('ALTER TABLE settings ADD COLUMN IF NOT EXISTS results_published INTEGER DEFAULT 0').catch(() => {});
+    await runAsync('ALTER TABLE settings ADD COLUMN IF NOT EXISTS one_submission_allowed INTEGER DEFAULT 0').catch(() => {});
+
+    await runAsync('ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS badge_en TEXT').catch(() => {});
+    await runAsync('ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS badge_ky TEXT').catch(() => {});
+    await runAsync('ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS badge_ru TEXT').catch(() => {});
+    await runAsync('ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS title_en TEXT').catch(() => {});
+    await runAsync('ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS title_ky TEXT').catch(() => {});
+    await runAsync('ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS title_ru TEXT').catch(() => {});
+    await runAsync('ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS content_en TEXT').catch(() => {});
+    await runAsync('ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS content_ky TEXT').catch(() => {});
+    await runAsync('ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS content_ru TEXT').catch(() => {});
+
+  // Seed default homepage_blocks if empty
+  const blockCount = await getAsync('SELECT COUNT(*) as count FROM homepage_blocks').catch(() => null);
+  if (!blockCount || parseInt(blockCount.count, 10) === 0) {
+    const defaultBlocks = [
+      {
+        block_key: 'stage_1',
+        badge_en: 'Round 1',
+        badge_ky: 'Раунд 1',
+        badge_ru: 'Раунд 1',
+        title_en: 'Preliminary Round',
+        title_ky: 'Алгачкы раунд',
+        title_ru: 'Предварительный раунд',
+        content_en: 'Online test: multiple choice and short answer questions',
+        content_ky: 'Онлайн-тест: бир нече тандоо жана кыска жооп',
+        content_ru: 'Онлайн-тест: множественный выбор и короткий ответ'
+      },
+      {
+        block_key: 'stage_2',
+        badge_en: 'Round 2',
+        badge_ky: 'Раунд 2',
+        badge_ru: 'Раунд 2',
+        title_en: 'Semifinal',
+        title_ky: 'Жарым финал',
+        title_ru: 'Полуфинал',
+        content_en: 'Live blitz questions in real time',
+        content_ky: 'Реалдуу убакыт режиминде түз блиц-суроолор',
+        content_ru: 'Живые блиц-вопросы в режиме реального времени'
+      },
+      {
+        block_key: 'stage_3',
+        badge_en: 'Grand Final',
+        badge_ky: 'Гранд-Финал',
+        badge_ru: 'Гранд-Финал',
+        title_en: 'Final',
+        title_ky: 'Финал',
+        title_ru: 'Финал',
+        content_en: 'Final concluding round with top qualifying teams',
+        content_ky: 'Эң мыкты командалар менен финалдык раунд',
+        content_ru: 'Финальный раунд с лучшими командами'
+      },
+      {
+        block_key: 'team_composition',
+        badge_en: '01',
+        badge_ky: '01',
+        badge_ru: '01',
+        title_en: 'Team Roster',
+        title_ky: 'Команданын курамы',
+        title_ru: 'О составе команды',
+        content_en: '2–4 students from the same school',
+        content_ky: 'Бир мектептен 2–4 адам',
+        content_ru: '2–4 человека из одной школы'
+      },
+      {
+        block_key: 'categories_info',
+        badge_en: '02',
+        badge_ky: '02',
+        badge_ru: '02',
+        title_en: 'Categories',
+        title_ky: 'Категориялар',
+        title_ru: 'Категории',
+        content_en: 'Olympiad disciplines across subjects and academic tracks',
+        content_ky: 'Предметтер жана багыттар боюнча олимпиадалык сабактар',
+        content_ru: 'Дисциплины олимпиады по предметам и направлениям'
+      },
+      {
+        block_key: 'format_info',
+        badge_en: '03',
+        badge_ky: '03',
+        badge_ru: '03',
+        title_en: 'Tournament Format',
+        title_ky: 'Форматы',
+        title_ru: 'Формат',
+        content_en: 'Stages 1 and 2 are held online. Stage 3 (Final) is held offline at Akylman Presidential Lyceum.',
+        content_ky: '1 жана 2-этаптар онлайн форматта өткөрүлөт. Үчүнчү этап оффлайн форматта өтөт.',
+        content_ru: 'Этапы 1 и 2 проводятся в онлайн-формате. Третий этап проводится в оффлайн-формате.'
+      },
+      {
+        block_key: 'timeline_stage1',
+        badge_en: '🌐 Online Round',
+        badge_ky: '🌐 Онлайн-тур',
+        badge_ru: '🌐 Онлайн-тур',
+        title_en: 'Stage 1 - Preliminary Round',
+        title_ky: '1-этап - Тандоо туру',
+        title_ru: 'Этап 1 - Отборочный тур',
+        content_en: 'Teams take an online test in selected categories with multiple-choice and short-answer questions. Results determine teams advancing to the next round.',
+        content_ky: 'Бул этапта командалар тандалган категориялар боюнча онлайн тестирлөөдөн өтүшөт. Катышуучулар бир нече тандоо жана кыска жооптуу суроолорго жооп беришет. Бул этаптын жыйынтыгы боюнча кийинки раундга чыга турган командалар аныкталат.',
+        content_ru: 'На этом этапе команды проходят онлайн-тестирование по выбранным категориям. Участники отвечают на вопросы с множественным выбором и короткими ответами. По результатам этого этапа определяются команды, которые пройдут в следующий раунд.'
+      },
+      {
+        block_key: 'timeline_stage2',
+        badge_en: '⚡ Semifinal • Online',
+        badge_ky: '⚡ Жарым финал • Онлайн',
+        badge_ru: '⚡ Полуфинал • Онлайн',
+        title_en: 'Stage 2 - Semifinal',
+        title_ky: '2-этап - Жарым финал',
+        title_ru: 'Этап 2 - Полуфинал',
+        content_en: 'This stage highlights the best teams among successful qualifiers. Teams compete in real time with challenging blitz questions across various domains.',
+        content_ky: 'Бул этап ийгиликтүү командалардын арасынан эң мыктыларды аныктайт. Бул этапта татаалыраак суроолор камтылган онлайн тестирлөө өткөрүлөт. Командалар билимдин ар кандай категориялары боюнча блиц-суроолорго реалдуу убакытта жооп берип күч сынашышат.',
+        content_ru: 'Этап выявляет лучшие команды среди уже успешных. На этом этапе проводится онлайн-тестирование с более сложными вопросами. Команды соревнуются в режиме реального времени, отвечая на блиц-вопросы по различным категориям знаний.'
+      },
+      {
+        block_key: 'timeline_stage3',
+        badge_en: '🏆 Grand Final • Offline',
+        badge_ky: '🏆 Гранд-Финал • Оффлайн',
+        badge_ru: '🏆 Гранд-Финал • Оффлайн',
+        title_en: 'Stage 3 - Final',
+        title_ky: '3-этап - Финал',
+        title_ru: 'Этап 3 - Финал',
+        content_en: 'The Final is held offline at Akylman Presidential Lyceum (Cholpon-Ata). Concluding test among top teams from semifinals determines winners by total score.',
+        content_ky: 'Финал «Акылман» Президенттик лицейинде (Чолпон-Ата ш.) оффлайн форматта өткөрүлөт. Жарым финалдын жыйынтыгы боюнча эң мыкты командалардын ортосунда жыйынтыктоочу тест. Жеңүүчүлөр топтолгон жалпы упайлардын саны боюнча аныкталат.',
+        content_ru: 'Финал проводится в оффлайн формате в Президентском лицее «Акылман» (Чолпон-Ата). Итоговый тест между лучшими командами по результатам полуфинала. Победители определяются по общему количеству набранных баллов.'
+      },
+      {
+        block_key: 'hero_subtitle',
+        badge_en: '',
+        badge_ky: '',
+        badge_ru: '',
+        title_en: '',
+        title_ky: '',
+        title_ru: '',
+        content_en: 'For middle and high school students',
+        content_ky: 'Орто жана жогорку класстын окуучулары үчүн',
+        content_ru: 'Для учеников средней и старшей школы'
+      },
+      {
+        block_key: 'footer_desc',
+        badge_en: '',
+        badge_ky: '',
+        badge_ru: '',
+        title_en: '',
+        title_ky: '',
+        title_ru: '',
+        content_en: 'Join the intellectual tournament for school students and unlock new opportunities for your team.',
+        content_ky: 'Орто жана жогорку класстын окуучулары үчүн интеллектуалдык турнирге кошулуңуз жана командаңыз менен жаңы мүмкүнчүлүктөрдү ачкыла.',
+        content_ru: 'Присоединяйтесь к интеллектуальному турниру для школьников и откройте новые возможности для своей команды.'
+      }
+    ];
+
+    for (const b of defaultBlocks) {
+      await runAsync(
+        `INSERT INTO homepage_blocks (block_key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+         ON CONFLICT (block_key) DO NOTHING`,
+        [b.block_key, b.badge_en, b.badge_ky, b.badge_ru, b.title_en, b.title_ky, b.title_ru, b.content_en, b.content_ky, b.content_ru]
+      ).catch(() => {});
+    }
+  }
+
+  // Seed default categories if empty
+  const catCount = await getAsync('SELECT COUNT(*) as count FROM categories').catch(() => null);
+  if (!catCount || parseInt(catCount.count, 10) === 0) {
+    await runAsync(
+      `INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES
+       ('Общая категория', 'Жалпы категория', 'Вопросы общей тематики', 'Жалпы темалар боюнча суроолор', NOW()),
+       ('История и культура', 'Тарых жана маданият', 'Вопросы по истории и культуре', 'Тарых жана маданият боюнча суроолор', NOW()),
+       ('Наука и природа', 'Илим жана жаратылыш', 'Вопросы по науке и природе', 'Илим жана жаратылыш боюнча суроолор', NOW())`
+    ).catch(() => {});
   }
 
   // Seed settings if empty
   const sAny = await getAsync('SELECT id FROM settings WHERE id=1');
   if (!sAny) {
     await runAsync(
-      `INSERT INTO settings (id,badge1_ru,badge1_ky,badge2_ru,badge2_ky,badge3_ru,badge3_ky,day1_date,day2_date,day3_date,final_place_ru,final_place_ky,results_published,one_submission_allowed,updated_at)
-       VALUES (1,$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())`,
+      `INSERT INTO settings (id,day1_date,day2_date,day3_date,final_place_ru,final_place_ky,results_published,one_submission_allowed,updated_at)
+       VALUES (1,$1,$2,$3,$4,$5,$6,$7,NOW())`,
       [
-        DEFAULT_SETTINGS.badge1_ru, DEFAULT_SETTINGS.badge1_ky,
-        DEFAULT_SETTINGS.badge2_ru, DEFAULT_SETTINGS.badge2_ky,
-        DEFAULT_SETTINGS.badge3_ru, DEFAULT_SETTINGS.badge3_ky,
         DEFAULT_SETTINGS.day1_date, DEFAULT_SETTINGS.day2_date, DEFAULT_SETTINGS.day3_date,
         DEFAULT_SETTINGS.final_place_ru, DEFAULT_SETTINGS.final_place_ky,
         DEFAULT_SETTINGS.results_published, DEFAULT_SETTINGS.one_submission_allowed,
@@ -210,82 +474,10 @@ async function ensureSchema() {
     );
   }
 
-  // Seed sample tests if empty
-  const testCountRow = await getAsync('SELECT COUNT(*) AS cnt FROM tests');
-  const testCount = parseInt(testCountRow?.cnt || 0, 10) || 0;
-  if (testCount === 0) {
-    // 1. Информатика
-    const t1 = await runAsync(
-      'INSERT INTO tests (title, description, preview_text, lang, duration_minutes, window_start, window_end, status, category_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING id',
-      [
-        'Отборочный тест по Информатике',
-        'Проверка базовых знаний по алгоритмам, логике и программированию',
-        'Тест включает 5 вопросов с выбором ответа и кратким ответом.',
-        'ru',
-        45,
-        null,
-        null,
-        'published',
-        1,
-      ]
-    );
-    const t1Id = t1.rows?.[0]?.id || 1;
-
-    await runAsync(
-      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-      [t1Id, 1, 'Какая структура данных работает по принципу LIFO (Last In, First Out)?', JSON.stringify(['Очередь (Queue)', 'Стек (Stack)', 'Массив (Array)', 'Связный список (Linked List)']), '1', 1, 'ru', 1, 'mcq']
-    );
-    await runAsync(
-      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-      [t1Id, 2, 'Сколько бит содержится в 4 байтах?', JSON.stringify(['16', '32', '64', '128']), '1', 1, 'ru', 1, 'mcq']
-    );
-    await runAsync(
-      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-      [t1Id, 3, 'Какая временная сложность у бинарного поиска в отсортированном массиве?', JSON.stringify(['O(1)', 'O(n)', 'O(log n)', 'O(n^2)']), '2', 1, 'ru', 1, 'mcq']
-    );
-    await runAsync(
-      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-      [t1Id, 4, 'Как называется процесс нахождения и исправления ошибок в коде?', JSON.stringify(['Компиляция', 'Дебаггинг / Отладка', 'Рефакторинг', 'Профилирование']), '1', 1, 'ru', 1, 'mcq']
-    );
-
-    // 2. Математика
-    const t2 = await runAsync(
-      'INSERT INTO tests (title, description, preview_text, lang, duration_minutes, window_start, window_end, status, category_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING id',
-      [
-        'Отборочный тур по Математике',
-        'Интеллектуальные олимпиадные и логические задачи по математике',
-        'Тест содержит задания по алгебре, геометрии и логике.',
-        'ru',
-        60,
-        null,
-        null,
-        'published',
-        2,
-      ]
-    );
-    const t2Id = t2.rows?.[0]?.id || 2;
-
-    await runAsync(
-      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-      [t2Id, 1, 'Чему равна сумма углов треугольника на плоскости?', JSON.stringify(['90°', '180°', '270°', '360°']), '1', 1, 'ru', 2, 'mcq']
-    );
-    await runAsync(
-      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-      [t2Id, 2, 'Какое наименьшее простое число?', JSON.stringify(['0', '1', '2', '3']), '2', 1, 'ru', 2, 'mcq']
-    );
-    await runAsync(
-      'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-      [t2Id, 3, 'Чему равен 2 в 10 степени (2^10)?', JSON.stringify(['512', '1000', '1024', '2048']), '2', 1, 'ru', 2, 'mcq']
-    );
-
-    console.log('✓ Seeded sample tests and questions');
-  }
-
   console.log('Schema ready');
 }
 
 module.exports = {
   ensureSchema,
-  DEFAULT_CATEGORIES,
   DEFAULT_SETTINGS,
 };

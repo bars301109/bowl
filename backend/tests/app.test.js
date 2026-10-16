@@ -1,5 +1,5 @@
-/* Unit & Integration Tests using node:test and node:assert */
-const { describe, it } = require('node:test');
+/* Unit & Integration Tests compatible with both Jest and node:test */
+const { describe, it } = typeof global.describe === 'function' ? global : require('node:test');
 const assert = require('node:assert');
 const { escapeHtml, isValidEmail, isStrongPassword, safeEqual, generateCode } = require('../src/utils/sanitization');
 const { signTeamToken, signAdminToken } = require('../src/middleware/auth');
@@ -19,11 +19,9 @@ describe('Sanitization Utils', () => {
   });
 
   it('isStrongPassword checks password strength', () => {
-    assert.strictEqual(isStrongPassword('Short1A'), false);       // too short
-    assert.strictEqual(isStrongPassword('nouppercase1'), false); // no uppercase
-    assert.strictEqual(isStrongPassword('NOLOWERCASE1'), false); // no lowercase
-    assert.strictEqual(isStrongPassword('NoDigits!!'), false);   // no digit
-    assert.strictEqual(isStrongPassword('GoodPass1'), true);
+    assert.strictEqual(isStrongPassword('12345'), false);       // too short
+    assert.strictEqual(isStrongPassword('123456'), true);      // valid length
+    assert.strictEqual(isStrongPassword(''), false);
   });
 
   it('safeEqual compares strings safely', () => {
@@ -58,7 +56,7 @@ describe('Database in-memory adapter', () => {
 
   it('runs query and insert operations in in-memory mode', async () => {
     const res = await db.runAsync(
-      'INSERT INTO categories (name_ru, name_ky, slug) VALUES (?, ?, ?)',
+      'INSERT INTO categories (name_ru, name_ky, desc_ru) VALUES ($1, $2, $3)',
       ['История', 'Тарых', 'history']
     );
     assert.ok(res);
@@ -66,5 +64,7 @@ describe('Database in-memory adapter', () => {
     const rows = await db.allAsync('SELECT * FROM categories');
     assert.ok(Array.isArray(rows));
     assert.ok(rows.length > 0);
+    // Cleanup test category
+    await db.runAsync('DELETE FROM categories WHERE name_ru = $1', ['История']).catch(() => {});
   });
 });

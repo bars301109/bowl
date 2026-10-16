@@ -1,48 +1,55 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Akylman Quiz Bowl — интеллектуальный турнир по знаниям для школьников.">
-  <meta name="keywords" content="quiz, соревнование, знания, школьники, Кыргызстан">
+  <meta name="description" content="Akylman Quiz Bowl — intellectual knowledge tournament for school students.">
+  <meta property="og:title" content="Akylman Quiz Bowl">
+  <meta property="og:description" content="Akylman Quiz Bowl — intellectual knowledge tournament for school students.">
+  <meta name="keywords" content="quiz, tournament, knowledge, students, Kyrgyzstan">
   <title>Akylman Quiz Bowl</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Spectral:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="images/favicon.png" type="image/png">
-  <link rel="apple-touch-icon" href="images/favicon.png">
+  <link rel="icon" href="images/лого.png" type="image/png">
+  <link rel="apple-touch-icon" href="images/лого.png">
 </head>
 <body>
   <header class="header">
     <div class="container">
-      <a href="/" class="logo">
-        <img src="images/image.png" alt="Akylman" width="120" height="48" loading="eager" fetchpriority="high">
+      <a href="/" class="logo" aria-label="Akylman Quiz Bowl">
+        <img src="images/лого.png" alt="Akylman" width="120" height="48" loading="eager" fetchpriority="high">
       </a>
-      <nav class="nav">
-        <a href="/" data-i18n="nav.home">Главная</a>
-        <a href="/register" data-i18n="nav.register" id="nav-register">Регистрация</a>
-        <a href="/login" data-i18n="nav.login" id="nav-login">Вход</a>
-        <a href="/team" id="nav-profile" style="display:none;" data-i18n="nav.profile">Кабинет команды</a>
-        <a href="javascript:void(0)" id="nav-logout" style="display:none; cursor:pointer;" onclick="logout()" data-i18n="nav.logout">Выход</a>
-      </nav>
-      <div class="lang-switcher">
-        <button class="lang-btn" data-lang="ru">РУ</button>
-        <button class="lang-btn" data-lang="ky">КЫ</button>
+      <div class="header-right d-flex align-items-center gap-3">
+        <nav class="nav" aria-label="Header Navigation">
+          <a href="/" class="nav-link active" data-i18n="nav.home">Home</a>
+          <a href="/register" class="nav-btn-register" id="nav-register" data-i18n="nav.register">Register</a>
+          <a href="/login" class="nav-btn-login" id="nav-login" data-i18n="nav.login">Log In</a>
+          <a href="/team" id="nav-profile" class="nav-btn-profile" style="display:none;" data-i18n="nav.profile">Cabinet</a>
+          <a href="javascript:void(0)" id="nav-logout" class="nav-btn-logout" style="display:none; cursor:pointer;" onclick="logout()" data-i18n="nav.logout">Log Out</a>
+        </nav>
+        <div class="lang-switcher">
+          <button class="lang-btn" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="ky">КЫ</button>
+        </div>
       </div>
     </div>
   </header>
 
   <main>
-    <section class="hero">
+    <section class="hero" data-block-key="hero_subtitle">
       <div class="container">
         <div class="hero-content">
-          <div class="hero-welcome-text">Welcome to</div>
+          <div class="hero-tag">
+            <span class="hero-tag-icon" aria-hidden="true">🏛️</span>
+            <span data-i18n="hero.tag">Akylman Presidential School</span>
+          </div>
           <h1 data-i18n="hero.title1">Akylman Quiz Bowl</h1>
-          <p class="hero-subtitle" data-i18n="hero.subtitle">Для учеников средней и старшей школы</p>
-          <div class="hero-cta">
-            <a href="/register" class="btn btn-primary" data-i18n="hero.cta">Зарегистрироваться</a>
-            <a href="#cats" class="btn btn-outline" data-i18n="cats.title">Узнать больше</a>
+          <p class="hero-subtitle" data-block-field="content">For middle and high school students</p>
+          <div class="hero-divider" aria-hidden="true"></div>
+          <div class="hero-cta" style="margin-top: 24px; display: flex; justify-content: center;">
+            <a href="/team" class="btn btn-primary" id="hero-team-btn" style="display:none; background: linear-gradient(135deg, #059669 0%, #10b981 100%); box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);" data-i18n="nav.profile">🏆 Team Cabinet</a>
           </div>
         </div>
       </div>
@@ -50,22 +57,37 @@
 
     <section id="about" class="section">
       <div class="container">
-        <h2 class="section-title" data-i18n="about.title">О соревновании</h2>
+        <h2 class="section-title" data-i18n="about.title">About the Tournament</h2>
         <div class="cards-grid">
-          <div class="card">
-            <div class="card-icon">📝</div>
-            <h3 data-i18n="about.prelim">Предварительный раунд</h3>
-            <p data-i18n="about.prelim.desc">Онлайн-тест: множественный выбор и короткий ответ</p>
+          <div class="card card-stage-1" data-block-key="stage_1">
+            <div class="card-header-row">
+              <div class="card-icon-box">
+                <span class="card-emoji">📝</span>
+              </div>
+              <span class="card-step-kicker" data-block-field="badge">Round 1</span>
+            </div>
+            <h3 data-block-field="title">Preliminary Round</h3>
+            <p data-block-field="content">Online test: multiple choice and short answer questions</p>
           </div>
-          <div class="card">
-            <div class="card-icon">🎯</div>
-            <h3 data-i18n="about.semi">Полуфинал</h3>
-            <p data-i18n="about.semi.desc">Живые блиц-вопросы в режиме реального времени</p>
+          <div class="card card-stage-2" data-block-key="stage_2">
+            <div class="card-header-row">
+              <div class="card-icon-box">
+                <span class="card-emoji">🎯</span>
+              </div>
+              <span class="card-step-kicker" data-block-field="badge">Round 2</span>
+            </div>
+            <h3 data-block-field="title">Semifinal</h3>
+            <p data-block-field="content">Live blitz questions in real time</p>
           </div>
-          <div class="card">
-            <div class="card-icon">🏆</div>
-            <h3 data-i18n="about.final">Финал</h3>
-            <p data-i18n="about.final.desc">Финальный раунд с лучшими командами</p>
+          <div class="card card-stage-3" data-block-key="stage_3">
+            <div class="card-header-row">
+              <div class="card-icon-box">
+                <span class="card-emoji">🏆</span>
+              </div>
+              <span class="card-step-kicker kicker-final" data-block-field="badge">Grand Final</span>
+            </div>
+            <h3 data-block-field="title">Final</h3>
+            <p data-block-field="content">Final concluding round with top qualifying teams</p>
           </div>
         </div>
       </div>
@@ -73,51 +95,92 @@
 
     <section class="section section-alt">
       <div class="container">
-        <h2 class="section-title" data-i18n="how.title">Как это работает</h2>
+        <h2 class="section-title" data-i18n="how.title">How It Works</h2>
         <div class="features-grid">
           <div class="feature" data-block-key="team_composition">
-            <h3 data-i18n="how.team" data-block-field="title">О составе команды</h3>
-            <p data-i18n="how.team.desc" data-block-field="content">2–4 человека из одной школы</p>
+            <div class="feature-num-badge" data-block-field="badge">01</div>
+            <h3 data-block-field="title">Team Composition</h3>
+            <p data-block-field="content">2–4 members from the same school</p>
           </div>
-          <div class="feature">
-            <h3 data-i18n="how.cats">Категории</h3>
+          <div class="feature" data-block-key="categories_info">
+            <div class="feature-num-badge" data-block-field="badge">02</div>
+            <h3 data-block-field="title">Categories</h3>
             <div id="cats-list"></div>
           </div>
-          <div class="feature">
-            <h3 data-i18n="how.format">Формат</h3>
-            <p data-i18n="how.format.desc">Этапы 1 и 2 проводятся в онлайн-формате. Третий этап проводится в оффлайн-формате.</p>
+          <div class="feature" data-block-key="format_info">
+            <div class="feature-num-badge" data-block-field="badge">03</div>
+            <h3 data-block-field="title">Tournament Format</h3>
+            <p data-block-field="content">Stages 1 and 2 are held online. Stage 3 (Final) is held offline at Akylman Presidential Lyceum.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="section">
+    <section id="timeline" class="section">
       <div class="container">
-        <h2 class="section-title" data-i18n="timeline.title">Таймлайн</h2>
+        <h2 class="section-title" data-i18n="timeline.title">Timeline</h2>
         <div class="timeline">
-          <div class="timeline-item timeline-online">
-            <div class="timeline-marker"></div>
+          <div class="timeline-item timeline-online" data-block-key="timeline_stage1">
+            <div class="timeline-card-top">
+              <span class="timeline-badge" data-block-field="badge">🌐 Online Round</span>
+            </div>
             <div class="timeline-content">
-              <h3 class="timeline-title" data-i18n="timeline.stage1.title">Этап 1 - Отборочный тур</h3>
-              <p class="timeline-description" data-i18n="timeline.stage1.desc">На этом этапе команды проходят онлайн-тестирование по выбранным категориям. Участники отвечают на вопросы с множественным выбором и короткими ответами. По результатам этого этапа определяются команды, которые пройдут в следующий раунд.</p>
-              <div class="timeline-date" id="d1">15-декабрь, 2025-жыл</div>
+              <h3 class="timeline-title" data-block-field="title">Stage 1 - Preliminary Round</h3>
+              <p class="timeline-description" data-block-field="content">Teams take an online test in selected categories with multiple-choice and short-answer questions. Results determine teams advancing to the next round.</p>
+              <div class="timeline-date-box">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span id="d1">December 15, 2025</span>
+              </div>
             </div>
           </div>
-          <div class="timeline-item timeline-online">
-            <div class="timeline-marker"></div>
+          <div class="timeline-item timeline-online" data-block-key="timeline_stage2">
+            <div class="timeline-card-top">
+              <span class="timeline-badge" data-block-field="badge">⚡ Semifinal • Online</span>
+            </div>
             <div class="timeline-content">
-              <h3 class="timeline-title" data-i18n="timeline.stage2.title">Этап 2 - Полуфинал</h3>
-              <p class="timeline-description" data-i18n="timeline.stage2.desc">Этап выявляет лучшие команды среди уже успешных. На этом этапе проводится онлайн-тестирование с более сложными вопросами. Команды соревнуются в режиме реального времени, отвечая на блиц-вопросы по различным категориям знаний.</p>
-              <div class="timeline-date" id="d2">20-декабрь, 2025-жыл</div>
+              <h3 class="timeline-title" data-block-field="title">Stage 2 - Semifinal</h3>
+              <p class="timeline-description" data-block-field="content">This stage highlights the best teams among successful qualifiers. Teams compete in real time with challenging blitz questions across various domains.</p>
+              <div class="timeline-date-box">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span id="d2">December 20, 2025</span>
+              </div>
             </div>
           </div>
-          <div class="timeline-item timeline-final">
-            <div class="timeline-marker"></div>
+          <div class="timeline-item timeline-final" data-block-key="timeline_stage3">
+            <div class="timeline-card-top">
+              <span class="timeline-badge timeline-badge-final" data-block-field="badge">🏆 Grand Final • Offline</span>
+            </div>
             <div class="timeline-content">
-              <h3 class="timeline-title" data-i18n="timeline.stage3.title">Этап 3 - Финал</h3>
-              <p class="timeline-description" data-i18n="timeline.stage3.desc">Финал проводится в оффлайн формате в Президентском лицее «Акылман» (город Чолпон-Ата). Итоговый тест между лучшими командами по результатам полуфинала. Победители определяются по общему количеству набранных баллов.</p>
-              <p class="timeline-place" id="finalPlace">Оффлайн в "Акылман"</p>
-              <div class="timeline-date" id="d3">5-январь, 2026-жыл</div>
+              <h3 class="timeline-title" data-block-field="title">Stage 3 - Final</h3>
+              <p class="timeline-description" data-block-field="content">The Final is held offline at Akylman Presidential Lyceum (Cholpon-Ata). Concluding test among top teams from semifinals determines winners by total score.</p>
+              <div class="timeline-meta-row">
+                <div class="timeline-place-box">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <span id="finalPlace">Offline at Akylman</span>
+                </div>
+                <div class="timeline-date-box">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <span id="d3">January 5, 2026</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -126,7 +189,11 @@
 
     <section id="cats" class="section section-alt">
       <div class="container">
-        <h2 class="section-title" data-i18n="cats.title">Категории</h2>
+        <div class="section-header-centered">
+          <span class="section-badge" data-i18n="cats.kicker">Tournament Disciplines</span>
+          <h2 class="section-title" data-i18n="cats.title">Competition Categories</h2>
+          <p class="section-subtitle" data-i18n="cats.subtitle">Key disciplines and rounds of the intellectual tournament Akylman Quiz Bowl</p>
+        </div>
         <div class="categories-grid" id="catsGrid"></div>
       </div>
     </section>
@@ -135,363 +202,63 @@
 
   <footer class="footer">
     <div class="container footer-inner">
-      <div class="footer-bottom">
-        <div class="footer-meta">
-          <p class="footer-student-note" data-i18n="footer.student_project">
-            Этот проект — учебный проект, созданный учениками 10 класса Президентского лицея «Акылман».
+      <div class="footer-top">
+        <div class="footer-col footer-col-brand" data-block-key="footer_desc">
+          <div class="footer-brand-header">
+            <img src="images/favicon.png" alt="Akylman Lyceum" width="32" height="32" class="footer-logo">
+            <span class="footer-brand-title">Akylman Quiz Bowl</span>
+          </div>
+          <p class="footer-brand-desc" data-block-field="content">
+            Join the intellectual tournament for school students and unlock new opportunities for your team.
           </p>
-          <p class="footer-copy">
-            &copy; 2025 Akylman Presidential School. <span data-i18n="footer.rights">Все права защищены.</span>
+          <p class="footer-student-desc" style="font-size: 13px; color: #64748b; margin-top: 12px;">
+            This project is an educational project created by students of Akylman Presidential School.<br>
+            Бул долбоор — «Акылман» Президенттик лицейинин окуучулары тарабынан түзүлгөн окуу долбоору.
           </p>
         </div>
-        <div class="footer-right">
-          <div class="footer-cta-inline">
-            <span class="footer-cta-inline-title" data-i18n="footer.cta_title">Акылманга сапар алыңыз!</span>
-            <a href="/register" class="footer-cta-link" data-i18n="footer.cta_button">Зарегистрировать команду</a>
-          </div>
-          <div class="footer-social">
-            <a href="https://www.instagram.com/akylman.presidential_school/" target="_blank" rel="noopener noreferrer" aria-label="Akylman Presidential School Instagram">
-              <span class="sr-only">Instagram</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <linearGradient id="igGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#f58529"/>
-                  <stop offset="30%" stop-color="#dd2a7b"/>
-                  <stop offset="60%" stop-color="#8134af"/>
-                  <stop offset="100%" stop-color="#515bd4"/>
-                </linearGradient>
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="url(#igGradient)"></rect>
-                <circle cx="12" cy="12" r="4.5" fill="none" stroke="#fff" stroke-width="1.7"></circle>
-                <circle cx="17" cy="7" r="1.1" fill="#fff"></circle>
+
+        <div class="footer-col footer-col-links">
+          <h4 class="footer-col-title" data-i18n="about.title">About the Tournament</h4>
+          <ul class="footer-links-list">
+            <li><a href="#about" data-i18n="nav.about">About Tournament</a></li>
+            <li><a href="#timeline" data-i18n="timeline.title">Timeline</a></li>
+            <li><a href="#cats" data-i18n="cats.title">Categories</a></li>
+            <li><a href="/pages/rules.pdf" target="_blank" rel="noopener noreferrer" data-i18n="nav.rules">Competition Rules (PDF)</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col footer-col-action">
+          <h4 class="footer-col-title" data-i18n="footer.cta_title">Embark on the Akylman Journey!</h4>
+          <p class="footer-action-desc" data-block-key="hero_subtitle" data-block-field="content">For middle and high school students</p>
+          <div class="footer-action-row">
+            <a href="/register" class="footer-cta-link" data-i18n="footer.cta_button">Register Team</a>
+            <a href="https://www.instagram.com/akylman.presidential_school/" target="_blank" rel="noopener noreferrer" class="footer-social-pill" aria-label="Instagram">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
               </svg>
+              <span>Instagram</span>
             </a>
           </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p class="footer-copy">
+          &copy; 2025–2026 Akylman Presidential School. <span data-i18n="footer.rights">All rights reserved.</span>
+        </p>
+        <div class="footer-bottom-links">
+          <a href="/team" id="footer-profile" style="display:none; font-weight:600; color:#10b981;" data-i18n="nav.profile">Team Cabinet</a>
+          <a href="/login" id="footer-login" data-i18n="nav.login">Log In</a>
+          <span class="footer-sep">•</span>
+          <a href="/register" id="footer-register" data-i18n="nav.register">Register</a>
         </div>
       </div>
     </div>
   </footer>
 
-  <script src="js/i18n.js"></script>
-  <script>
-    function addOrnaments() {
-      const ornaments = ['orn-1.png', 'orn-2.png'];
-      const horizontalOpposite = {
-        'top-left': 'top-right',
-        'top-right': 'top-left',
-        'bottom-left': 'bottom-right',
-        'bottom-right': 'bottom-left'
-      };
-      
-      const sections = document.querySelectorAll('section:not(.hero)');
-      const corners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
-      let prevCorner = null;
-      
-      sections.forEach((section, index) => {
-        const ornament = ornaments[index % 2];
-        
-        let corner;
-        if (prevCorner) {
-          corner = horizontalOpposite[prevCorner];
-        } else {
-          corner = corners[Math.floor(Math.random() * corners.length)];
-        }
-        
-        prevCorner = corner;
-        
-        const ornDiv = document.createElement('div');
-        ornDiv.className = `ornament ${corner}`;
-        ornDiv.style.backgroundImage = `url('/images/${ornament}')`;
-        section.appendChild(ornDiv);
-      });
-    }
-    
-    addOrnaments();
-    
-    // Initialize language switcher when AkylI18n is ready
-    function initLanguageSwitcher() {
-      if (typeof AkylI18n !== 'undefined' && AkylI18n.initSwitcher) {
-        AkylI18n.initSwitcher();
-      } else {
-        setTimeout(initLanguageSwitcher, 50);
-      }
-    }
-    initLanguageSwitcher();
-    
-    function updateNavBar() {
-      // Check auth status via API since we use httpOnly cookies now
-      fetch('/api/me', { credentials: 'include' })
-        .then(res => {
-          if (res.ok) return res.json();
-          throw new Error('Not authenticated');
-        })
-        .then(() => {
-          document.getElementById('nav-register').style.display = 'none';
-          document.getElementById('nav-login').style.display = 'none';
-          document.getElementById('nav-profile').style.display = 'block';
-          document.getElementById('nav-logout').style.display = 'block';
-        })
-        .catch(() => {
-          document.getElementById('nav-register').style.display = 'block';
-          document.getElementById('nav-login').style.display = 'block';
-          document.getElementById('nav-profile').style.display = 'none';
-          document.getElementById('nav-logout').style.display = 'none';
-        });
-    }
-
-    function logout() {
-      if (confirm('Вы уверены, что хотите выйти?')) {
-        fetch('/api/logout', { method: 'POST', credentials: 'include' }).finally(() => {
-          window.location.href = '/';
-        });
-      }
-    }
-    
-    updateNavBar();
-    
-    function formatDate(dateStr, lang = 'ru') {
-      if (!dateStr) return dateStr;
-      
-      const monthsRu = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-      const monthsKy = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабрь'];
-      
-      let date;
-      if (dateStr.includes('-') && !dateStr.includes(',')) {
-        const [year, month, day] = dateStr.split('-');
-        date = new Date(year, parseInt(month) - 1, day);
-      } else {
-        date = new Date(dateStr);
-      }
-      
-      if (isNaN(date.getTime())) return dateStr;
-      
-      const d = date.getDate();
-      const m = date.getMonth();
-      const y = date.getFullYear();
-      
-      const months = lang === 'ky' ? monthsKy : monthsRu;
-      const yearSuffix = lang === 'ky' ? '-жыл' : 'г.';
-      
-      return `${d}-${months[m]}, ${y}${yearSuffix}`;
-    }
-    
-    async function renderSettings() {
-      try {
-        const s = await fetch('/api/settings').then(r => r.json());
-        const lang = AkylI18n.getLang();
-        if (s) {
-          if (s.day1_date) document.getElementById('d1').textContent = formatDate(s.day1_date, lang);
-          if (s.day2_date) document.getElementById('d2').textContent = formatDate(s.day2_date, lang);
-          if (s.day3_date) document.getElementById('d3').textContent = formatDate(s.day3_date, lang);
-          if (s.final_place_ru || s.final_place_ky) {
-            document.getElementById('finalPlace').textContent = lang === 'ky' ? (s.final_place_ky || '') : (s.final_place_ru || '');
-          }
-        }
-      } catch (e) { console.warn('settings load failed', e); }
-    }
-    
-    function getCategoryClass(title = '') {
-      const lower = title.toLowerCase();
-      if (lower.includes('кыргызстан') || lower.includes('тануу') || lower.includes('таануу')) {
-        return 'category-kyrgyzstan';
-      }
-      if (lower.includes('тарых') || lower.includes('история') || lower.includes('history')) {
-        return 'category-history';
-      }
-      if (lower.includes('илим') || lower.includes('наука') || lower.includes('технолог') || lower.includes('science')) {
-        return 'category-science';
-      }
-      if (lower.includes('тил') || lower.includes('язык') || lower.includes('адабият') || lower.includes('литерат') || lower.includes('language')) {
-        return 'category-language';
-      }
-      if (lower.includes('дүйнөлүк') || lower.includes('миров') || lower.includes('world')) {
-        return 'category-world';
-      }
-      return 'category-default';
-    }
-
-    let categoriesCache = null; // Cache categories to prevent disappearing
-    
-    async function renderCategories() {
-      // Wait for AkylI18n to be available
-      if (typeof AkylI18n === 'undefined') {
-        console.warn('AkylI18n not loaded yet, retrying...');
-        setTimeout(() => renderCategories(), 100);
-        return;
-      }
-      
-      const lang = AkylI18n.getLang();
-      const grid = document.getElementById('catsGrid');
-      const list = document.getElementById('cats-list');
-      
-      if (!grid) {
-        console.error('catsGrid element not found');
-        return;
-      }
-      
-      if (!list) {
-        console.warn('cats-list element not found (may be optional)');
-      }
-      
-      try {
-        console.log('Fetching categories from /api/categories...');
-        const response = await fetch('/api/categories');
-        if (!response.ok) {
-          console.error('Failed to fetch categories:', response.status, response.statusText);
-          // Use cached categories if available
-          if (categoriesCache && categoriesCache.length > 0) {
-            console.log('Using cached categories');
-            renderCategoriesFromData(categoriesCache, lang, grid, list);
-          } else {
-            grid.innerHTML = '<p style="text-align:center;color:#ef4444;">Ошибка загрузки категорий. Попробуйте обновить страницу.</p>';
-          }
-          return;
-        }
-        const cats = await response.json();
-        console.log('Categories received:', cats);
-        
-        if (!Array.isArray(cats)) {
-          console.error('Invalid response format, expected array, got:', typeof cats);
-          if (categoriesCache && categoriesCache.length > 0) {
-            renderCategoriesFromData(categoriesCache, lang, grid, list);
-          }
-          return;
-        }
-        
-        if (cats.length === 0) {
-          console.warn('No categories found in database');
-          grid.innerHTML = '<p style="text-align:center;color:#6b7280;">Категории пока не добавлены.</p>';
-          if (list) list.innerHTML = '<ul></ul>';
-          return;
-        }
-        
-        // Cache successful response
-        categoriesCache = cats;
-        renderCategoriesFromData(cats, lang, grid, list);
-        console.log('Categories rendered successfully');
-      } catch (e) { 
-        console.error('categories load failed', e);
-        // Use cached categories if available
-        if (categoriesCache && categoriesCache.length > 0) {
-          console.log('Using cached categories after error');
-          renderCategoriesFromData(categoriesCache, lang, grid, list);
-        } else {
-          grid.innerHTML = '<p style="text-align:center;color:#ef4444;">Ошибка загрузки категорий: ' + e.message + '</p>';
-          // Retry after a short delay
-          setTimeout(() => {
-            renderCategories();
-          }, 2000);
-        }
-      }
-    }
-    
-    function renderCategoriesFromData(cats, lang, grid, list) {
-      if (!cats || !Array.isArray(cats) || cats.length === 0) {
-        console.warn('renderCategoriesFromData: invalid or empty categories');
-        return;
-      }
-      
-      if (!grid) {
-        console.error('renderCategoriesFromData: grid element not found');
-        return;
-      }
-      
-      function escHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text ?? '';
-        return div.innerHTML;
-      }
-
-      try {
-        grid.innerHTML = cats.map((c, idx) => {
-          const title = lang === 'ky' ? (c.name_ky || c.name_ru || '') : (c.name_ru || '');
-          const desc = lang === 'ky' ? (c.desc_ky || c.desc_ru || '') : (c.desc_ru || '');
-          const safeTitle = escHtml(title);
-          const safeDesc = escHtml(desc);
-          const categoryClass = getCategoryClass(title);
-          let extraElements = '';
-          if (categoryClass === 'category-kyrgyzstan' || categoryClass === 'category-history' || categoryClass === 'category-science' || categoryClass === 'category-language' || categoryClass === 'category-world') {
-            extraElements = '<div class="category-border-ornament"></div>';
-          }
-          return `<div class="category-card ${categoryClass}" data-cat-index="${idx}">${extraElements}<h4>${safeTitle}</h4><p>${safeDesc}</p></div>`;
-        }).join('');
-        
-        if (list) {
-          list.innerHTML = '<ul>' + cats.map(c => {
-            const title = lang === 'ky' ? (c.name_ky || c.name_ru || '') : (c.name_ru || '');
-            return `<li>${escHtml(title)}</li>`;
-          }).join('') + '</ul>';
-        }
-      } catch (e) {
-        console.error('Error rendering categories:', e);
-        grid.innerHTML = '<p style="text-align:center;color:#ef4444;">Ошибка отображения категорий</p>';
-      }
-    }
-
-    async function loadHomepageBlocks() {
-      try {
-        const res = await fetch('/api/homepage-blocks');
-        if (!res.ok) return;
-        const blocks = await res.json();
-        if (!blocks || typeof blocks !== 'object') return;
-
-        const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'ru';
-        document.querySelectorAll('[data-block-key]').forEach(el => {
-          const key = el.getAttribute('data-block-key');
-          if (!key || !blocks[key]) return;
-          const block = blocks[key];
-          el.querySelectorAll('[data-block-field]').forEach(child => {
-            const field = child.getAttribute('data-block-field');
-            if (!field) return;
-            const value = lang === 'ky'
-              ? (block[`${field}_ky`] ?? block[`${field}_ru`] ?? '')
-              : (block[`${field}_ru`] ?? '');
-            if (value !== '') child.textContent = value;
-          });
-        });
-      } catch (e) {
-        console.warn('Failed to load homepage blocks:', e);
-      }
-    }
-    
-    // Wait for DOM and i18n to be ready
-    function initApp() {
-      if (typeof AkylI18n === 'undefined') {
-        setTimeout(initApp, 50);
-        return;
-      }
-      
-      // Ensure language switcher is initialized
-      if (AkylI18n.initSwitcher) {
-        try {
-          AkylI18n.initSwitcher();
-        } catch (e) {
-          console.warn('Failed to init language switcher:', e);
-        }
-      }
-      
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-          renderSettings();
-          renderCategories();
-          loadHomepageBlocks();
-        });
-      } else {
-        renderSettings();
-        renderCategories();
-        loadHomepageBlocks();
-      }
-    }
-    
-    initApp();
-    
-    window.addEventListener('akyl-langchange', () => {
-      if (typeof AkylI18n !== 'undefined') {
-        AkylI18n.applyI18n(AkylI18n.getLang());
-        renderSettings();
-        renderCategories();
-        loadHomepageBlocks();
-      }
-    });
-
-  </script>
+  <script src="/js/i18n.js"></script>
+  <script defer src="/js/home.js"></script>
 </body>
 </html>

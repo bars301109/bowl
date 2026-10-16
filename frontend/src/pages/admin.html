@@ -1,1248 +1,298 @@
 
-<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Admin Panel - Akylman Quiz</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous"><link rel="stylesheet" href="../css/style.css"/><link rel="icon" type="image/svg+xml" href="../images/favicon.svg"/></head><body class="admin-panel">
-<div class="container">
-  <div class="admin-header">
-    <a href="/"><img src="../images/image.png" class="logo-center img-fluid"/></a>
-    <h2>🎯 Админ-панель Akylman Quiz</h2>
-    <div class="small-muted">Управляйте тестами, вопросами, категориями и отслеживайте результаты команд</div>
-    
-    <div class="admin-nav" style="margin-top: 10px;">
-      <button class="admin-button" onclick="logoutAdmin()" style="background: linear-gradient(135deg, #f093fb, #f5576c);">🚪 Выход</button>
-    </div>
-    
-    <div class="admin-nav">
-      <button id="tabTests" class="admin-button">📝 Тесты</button>
-      <button id="tabQuestions" class="admin-button">❓ Вопросы</button>
-      <button id="tabCategories" class="admin-button">📂 Категории</button>
-      <button id="tabTeams" class="admin-button">👥 Команды</button>
-      <button id="tabResults" class="admin-button">📊 Результаты</button>
-      <button id="tabSettings" class="admin-button">⚙️ Настройки</button>
-      <button id="tabHomepage" class="admin-button">🏠 Главная страница</button>
-    </div>
-  </div>
-  
-  <div class="admin-content">
-    <div id="content"></div>
-  </div>
-</div>
-
-<!-- Модальное окно подтверждения удаления теста -->
-<div id="deleteTestModal" class="reset-modal" style="display: none;">
-  <div class="reset-modal-content">
-    <div class="reset-modal-header">
-      <h3>🗑️ Удаление теста</h3>
-      <button id="closeDeleteModal" class="admin-button secondary" style="padding: 4px 12px; font-size: 20px; line-height: 1;">&times;</button>
-    </div>
-    <div style="margin-bottom: 12px;">
-      <p style="font-size: 16px; line-height: 1.6; color: #374151;">Вы уверены, что хотите удалить этот тест?</p>
-      <p style="font-size: 14px; color: #6b7280; margin-top: 8px;">Это действие нельзя отменить. Все вопросы и результаты этого теста также будут удалены.</p>
-    </div>
-    <div style="display: flex; gap: 12px; justify-content: flex-end;">
-      <button id="cancelDeleteTest" class="admin-button secondary">Отмена</button>
-      <button id="confirmDeleteTest" class="admin-button danger">Удалить</button>
-    </div>
-  </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-<script>
-// Check admin auth via API (supports cookie and Bearer token)
-async function checkAdminAuth() {
-  try {
-    const adminToken = localStorage.getItem('adminToken');
-    const headers = {};
-    if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
-    const res = await fetch('/api/admin/check', { headers, credentials: 'include' });
-    if (!res.ok) {
-      localStorage.removeItem('adminToken');
-      window.location.href = '/admin-login';
-      return false;
-    }
-    return true;
-  } catch {
-    localStorage.removeItem('adminToken');
-    window.location.href = '/admin-login';
-    return false;
-  }
-}
-
-function logoutAdmin() {
-  if (confirm('Вы уверены, что хотите выйти?')) {
-    localStorage.removeItem('adminToken');
-    fetch('/api/admin/logout', { method: 'POST', credentials: 'include' }).finally(() => {
-      window.location.href = '/admin-login';
-    });
-  }
-}
-
-function aHeaders(){
-  const h = { 'Content-Type':'application/json' };
-  const adminToken = localStorage.getItem('adminToken');
-  if (adminToken) h['Authorization'] = `Bearer ${adminToken}`;
-  return h;
-}
-function aAuthHeaders(){
-  const h = {};
-  const adminToken = localStorage.getItem('adminToken');
-  if (adminToken) h['Authorization'] = `Bearer ${adminToken}`;
-  return h;
-}
-
-async function adminFetch(url, options = {}) {
-  let headers = options.headers || {};
-  const adminToken = localStorage.getItem('adminToken');
-  if (adminToken && !headers['Authorization']) {
-    headers['Authorization'] = `Bearer ${adminToken}`;
-  }
-  // Don't set Content-Type for FormData — browser sets it with boundary
-  if (!(options.body instanceof FormData)) {
-    headers = { ...headers, ...aHeaders() };
-  }
-  try {
-    const res = await fetch(url, { ...options, headers, credentials: 'include' });
-    if (res.status === 401 || res.status === 403) {
-      localStorage.removeItem('adminToken');
-      window.location.href = '/admin-login';
-      return { ok: false, status: res.status, json: async () => ({ error: 'Unauthorized' }), text: async () => 'Unauthorized' };
-    }
-    return res;
-  } catch (err) {
-    console.warn('adminFetch network error:', err);
-    return { ok: false, status: 0, json: async () => ({ error: err.message }), text: async () => err.message };
-  }
-}
-const content = document.getElementById('content');
-
-// Helper functions for better UI
-function showAlert(message, type = 'info') {
-  const alertDiv = document.createElement('div');
-  alertDiv.className = `admin-alert ${type}`;
-  alertDiv.textContent = message;
-  content.insertBefore(alertDiv, content.firstChild);
-  setTimeout(() => alertDiv.remove(), 3000);
-}
-
-async function showResponseError(res, fallback) {
-  try {
-    const text = await res.text();
-    if (!text) {
-      showAlert(fallback, 'error');
-      return;
-    }
-    try {
-      const json = JSON.parse(text);
-      showAlert(json.error ? `${fallback}: ${json.error}` : fallback, 'error');
-      return;
-    } catch {
-      showAlert(`${fallback}: ${text}`, 'error');
-      return;
-    }
-  } catch {
-    showAlert(fallback, 'error');
-  }
-}
-
-function showLoading(message = 'Загрузка...') {
-  content.innerHTML = `<div class="admin-loading">${message}</div>`;
-}
-
-function setActiveTab(activeButton) {
-  document.querySelectorAll('.admin-nav button').forEach(btn => btn.classList.remove('active'));
-  activeButton.classList.add('active');
-}
-
-function toDatetimeLocalValue(iso){
-  if(!iso) return '';
-  try{
-    const d = new Date(iso);
-    if(isNaN(d.getTime())) return '';
-    const pad = (n)=> String(n).padStart(2,'0');
-    const yyyy = d.getFullYear();
-    const mm = pad(d.getMonth()+1);
-    const dd = pad(d.getDate());
-    const hh = pad(d.getHours());
-    const mi = pad(d.getMinutes());
-    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
-  }catch{ return ''; }
-}
-
-function computeAutoStatus(t){
-  const now = new Date();
-  const ws = t.window_start ? new Date(t.window_start) : null;
-  const we = t.window_end ? new Date(t.window_end) : null;
-  if(t.status === 'published'){
-    if(ws && now < ws) return 'scheduled';
-    if(ws && we && now >= ws && now <= we) return 'active';
-    if(we && now > we) return 'closed';
-  }
-  return null;
-}
-
-function statusLabel(status, autoStatus){
-  if(autoStatus){
-    const labels = { scheduled: 'Запланирован', active: 'Активен', closed: 'Закрыт' };
-    return (labels[autoStatus] || autoStatus);
-  }
-  const labels = { draft: 'Черновик', published: 'Опубликован', archived: 'Архив' };
-  return labels[status] || status;
-}
-
-// Settings Tab
-async function renderSettings(){
-  setActiveTab(document.getElementById('tabSettings'));
-  showLoading('Загрузка настроек...');
-  const [sRes, testsRes] = await Promise.all([
-    fetch('/api/settings'),
-    adminFetch('/api/admin/tests', { headers: aHeaders() })
-  ]);
-  const s = await sRes.json();
-  const tests = testsRes.ok ? await testsRes.json() : [];
-  const oneSubmission = s?.one_submission_allowed || false;
-  const resultsPublished = s?.results_published || false;
-  content.innerHTML = `
-    <div class="admin-form">
-      <h3>⚙️ Основные настройки</h3>
-      <div class="form-row"><label>📅 День 1 (YYYY-MM-DD)<input id="d1" type="date" class="admin-input" value="${esc(s?.day1_date||'')}"/></label><label>📅 День 2<input id="d2" type="date" class="admin-input" value="${esc(s?.day2_date||'')}"/></label></div>
-      <div class="form-row"><label>📅 День 3<input id="d3" type="date" class="admin-input" value="${esc(s?.day3_date||'')}"/></label></div>
-      <h3 style="margin-top:10px">🏆 Финальное место</h3>
-      <div class="form-row"><label>Финал RU (место)<input id="fpru" class="admin-input" placeholder="например: Биллик Лицей" value="${esc(s?.final_place_ru||'')}"/></label><label>Финал KY (орду)<input id="fpky" class="admin-input" placeholder="например: Биллик Лицей" value="${esc(s?.final_place_ky||'')}"/></label></div>
-      <h3 style="margin-top:16px">🔧 Управление тестами</h3>
-      <div class="form-row">
-        <label class="toggle-label">
-          <input type="checkbox" id="one_submission" ${oneSubmission ? 'checked' : ''}/>
-          <span class="toggle-slider"></span>
-          <span class="toggle-text">Одна попытка на тест</span>
-        </label>
-      </div>
-      <div class="form-row">
-        <label class="toggle-label">
-          <input type="checkbox" id="results_published" ${resultsPublished ? 'checked' : ''}/>
-          <span class="toggle-slider"></span>
-          <span class="toggle-text">Опубликовать результаты</span>
-        </label>
-      </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
-        <button class="admin-button success" id="publishResults">✅ Опубликовать результаты</button>
-        <button class="admin-button secondary" id="hideResults">🙈 Скрыть результаты</button>
-        <button class="admin-button" id="updateStatuses">🔄 Обновить статусы тестов</button>
-      </div>
-      <div class="mt-2"><button class="admin-button success" id="save">💾 Сохранить</button></div>
-    </div>
-  `;
-  document.getElementById('save').onclick = async ()=>{
-    const body = { day1_date:val('d1'),day2_date:val('d2'),day3_date:val('d3'),final_place_ru:val('fpru'),final_place_ky:val('fpky'),
-      one_submission_allowed: document.getElementById('one_submission').checked,
-      results_published: document.getElementById('results_published').checked
-    };
-    const r = await adminFetch('/api/admin/settings',{ method:'PUT', headers:aHeaders(), body: JSON.stringify(body) });
-    if(!r.ok){ showAlert('Ошибка сохранения', 'error'); return; }
-    showAlert('Настройки сохранены!', 'success');
-  };
-  document.getElementById('publishResults').onclick = async ()=>{
-    const r = await adminFetch('/api/admin/settings/publish-results',{ method:'POST', headers:aHeaders(), body: JSON.stringify({ publish: true }) });
-    if(!r.ok){ showAlert('Ошибка публикации результатов', 'error'); return; }
-    showAlert('Результаты опубликованы!', 'success');
-    renderSettings();
-  };
-  document.getElementById('hideResults').onclick = async ()=>{
-    const r = await adminFetch('/api/admin/settings/publish-results',{ method:'POST', headers:aHeaders(), body: JSON.stringify({ publish: false }) });
-    if(!r.ok){ showAlert('Ошибка скрытия результатов', 'error'); return; }
-    showAlert('Результаты скрыты!', 'success');
-    renderSettings();
-  };
-  document.getElementById('updateStatuses').onclick = async ()=>{
-    const r = await adminFetch('/api/admin/tests/update-statuses',{ method:'POST', headers:aHeaders() });
-    if(!r.ok){ showAlert('Ошибка обновления статусов', 'error'); return; }
-    showAlert('Статусы тестов обновлены!', 'success');
-    renderSettings();
-  };
-}
-
-// Tests Tab
-async function renderTests(){
-  setActiveTab(document.getElementById('tabTests'));
-  showLoading('Загрузка тестов...');
-  const [testsRes, catsRes] = await Promise.all([
-    adminFetch('/api/admin/tests',{ headers: aHeaders() }),
-    adminFetch('/api/admin/categories',{ headers: aHeaders() })
-  ]);
-  if(!testsRes.ok){ await showResponseError(testsRes, 'Ошибка загрузки тестов'); return; }
-  if(!catsRes.ok){ await showResponseError(catsRes, 'Ошибка загрузки категорий'); return; }
-  const tests = await testsRes.json();
-  const cats = await catsRes.json();
-  content.innerHTML = `
-    <div class="admin-form">
-      <h3>📝 Управление тестами</h3>
-      <div class="form-row">
-        <label>📝 Название<input id="t_title" class="admin-input"/></label>
-        <label>📄 Описание<input id="t_desc" class="admin-input"/></label>
-      </div>
-      <div class="form-row">
-        <label>🌐 Язык<select id="t_lang" class="admin-input"><option value="ru">🇷🇺 RU</option><option value="ky">🇰🇬 KY</option></select></label>
-        <label>⏱️ Длительность (мин)<input id="t_dur" class="admin-input" type="number" value="60"/></label>
-      </div>
-      <div class="form-row">
-        <label>🕐 Начало окна<input id="t_start" class="admin-input" type="datetime-local"/></label>
-        <label>🕐 Конец окна<input id="t_end" class="admin-input" type="datetime-local"/></label>
-      </div>
-      <div class="form-row">
-        <label>📂 Категория
-          <select id="t_category" class="admin-input">
-            <option value="">Выберите категорию</option>
-            ${cats.map(c=>`<option value="${c.id}">${esc(c.name_ru || '')}</option>`).join('')}
-          </select>
-        </label>
-      </div>
-      <div class="form-row">
-        <label>📝 Превью/Описание<textarea id="t_preview" class="admin-input" rows="3" placeholder="Краткое описание теста для превью"></textarea></label>
-        <label>📌 Статус<select id="t_status" class="admin-input"><option value="draft" selected>Черновик</option><option value="published">Опубликован</option><option value="archived">Архив</option></select></label>
-      </div>
-      <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap;">
-        <button class="admin-button success" id="addTest">➕ Создать тест</button>
-        <button class="admin-button" id="importTestBtn">📥 Импорт теста из CSV</button>
-        <input type="file" id="testImportFile" accept=".csv" style="display:none"/>
-        <button class="admin-button danger" id="resetTests">🧹 Удалить все тесты</button>
-      </div>
-    </div>
-    <div class="admin-table-wrapper">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Название</th>
-            <th>Статус</th>
-            <th>Язык</th>
-            <th>Длит.</th>
-            <th>Окно</th>
-            <th>Категория</th>
-            <th>Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tests.length > 0 ? tests.map(t=>{
-            const autoStatus = computeAutoStatus(t);
-            return `<tr>
-            <td>${t.id}</td>
-            <td>${esc(t.title||'')}</td>
-            <td><span class="status-badge status-${esc(t.status||'draft')}">${statusLabel(t.status||'draft', autoStatus)}</span></td>
-            <td>${esc(t.lang||'ru')}</td>
-            <td>${t.duration_minutes||60} мин</td>
-            <td>${esc(t.window_start||'-')} → ${esc(t.window_end||'-')}</td>
-            <td>${esc(t.category_name_ru || '')}</td>
-            <td>
-              <div class="admin-table-actions">
-                <button data-id="${t.id}" class="admin-button secondary edit">✏️ Редакт.</button>
-                <button data-id="${t.id}" class="admin-button danger del">🗑️ Удалить</button>
-                <button data-id="${t.id}" class="admin-button qs">❓ Вопросы</button>
-              </div>
-            </td>
-          </tr>`;
-          }).join('') : '<tr><td colspan="7" style="text-align:center;padding:12px;color:#718096">Нет тестов</td></tr>'}
-        </tbody>
-      </table>
-    </div>
-  `;
-  document.getElementById('addTest').onclick = async ()=>{
-    const titleV = val('t_title');
-    if(!titleV){ showAlert('Введите название теста', 'error'); return; }
-    const catV = val('t_category');
-    if (!catV) {
-      showAlert('Выберите категорию для теста', 'error');
-      return;
-    }
-    const body = {
-      title: titleV,
-      description: val('t_desc'),
-      preview_text: val('t_preview'),
-      status: val('t_status'),
-      lang: val('t_lang'),
-      duration_minutes: num('t_dur'),
-      window_start: val('t_start') ? new Date(val('t_start')).toISOString() : null,
-      window_end: val('t_end') ? new Date(val('t_end')).toISOString() : null,
-      category_id: catV
-    };
-    const r = await adminFetch('/api/admin/tests',{ method:'POST', headers: aHeaders(), body: JSON.stringify(body) });
-    if(!r.ok){ let msg=''; try{ msg = await r.text(); }catch{} showAlert('Ошибка создания'+(msg?': '+msg:''), 'error'); return; }
-    showAlert('Тест создан!', 'success');
-    renderTests();
-  };
-  document.getElementById('importTestBtn').onclick = ()=>{
-    document.getElementById('testImportFile').click();
-  };
-  document.getElementById('testImportFile').onchange = async ()=>{
-    const f = document.getElementById('testImportFile').files[0];
-    if (!f) return;
-    const form = new FormData();
-    form.append('file', f);
-    const r = await adminFetch('/api/admin/tests/import-csv', { method:'POST', body: form });
-    if (!r.ok) {
-      let msg = 'Ошибка импорта';
-      try { const j = await r.json(); msg += ': ' + (j.error || ''); } catch {}
-      showAlert(msg, 'error');
-      return;
-    }
-    const j = await r.json();
-    showAlert(`Тест "${j.test_title || 'импортированный'}" создан! Вопросы: ${j.imported || 0}`, 'success');
-    renderTests();
-    document.getElementById('testImportFile').value = '';
-  };
-  document.getElementById('resetTests').onclick = async ()=>{
-    if(!confirm('🧹 Удалить ВСЕ тесты, вопросы и результаты? Это действие нельзя отменить!')) return;
-    try {
-      const r = await adminFetch('/api/admin/tests',{ method:'DELETE', headers: aHeaders() });
-      if(!r.ok){
-        const errorText = await r.text();
-        let errorMsg = 'Ошибка удаления всех тестов';
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMsg += ': ' + (errorJson.error || errorText);
-        } catch {
-          errorMsg += ': ' + errorText;
-        }
-        showAlert(errorMsg, 'error');
-        console.error('Delete all tests error:', errorText);
-        return;
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Админ-панель — Akylman Quiz Bowl</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Spectral:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/team-modern.css"/>
+  <link rel="stylesheet" href="/css/admin-modern.css"/>
+  <link rel="icon" type="image/png" href="/images/лого.png"/>
+  <script>
+    (function() {
+      const hasToken = localStorage.getItem('adminToken') || document.cookie.includes('admin_token=');
+      if (!hasToken) {
+        window.location.replace('/admin-login');
       }
-      showAlert('Все тесты и результаты удалены', 'success');
-      renderTests();
-    } catch (e) {
-      showAlert('Ошибка удаления всех тестов: ' + e.message, 'error');
-      console.error('Delete all tests exception:', e);
+    })();
+  </script>
+  <style>
+    body:not(.auth-checked) {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
     }
-  };
-  content.querySelectorAll('button.edit').forEach(b=> b.onclick = ()=> editTest(b.dataset.id));
-  content.querySelectorAll('button.del').forEach(b=> b.onclick = ()=> deleteTest(b.dataset.id));
-  content.querySelectorAll('button.qs').forEach(b=> b.onclick = ()=> renderQuestions(parseInt(b.dataset.id,10)));
-}
-async function editTest(id){
-  const [testsRes, catsRes] = await Promise.all([
-    adminFetch('/api/admin/tests',{ headers: aHeaders() }),
-    adminFetch('/api/admin/categories',{ headers: aHeaders() })
-  ]);
-  const tests = await testsRes.json();
-  const cats = catsRes.ok ? await catsRes.json() : [];
-  const t = tests.find(x=> x.id==id);
-  if(!t){ showAlert('Тест не найден', 'error'); return; }
-  content.innerHTML = `
-    <div class="admin-form">
-      <h3>✏️ Редактирование теста #${t.id}</h3>
-      <div class="form-row"><label>📝 Название<input id="t_title" class="admin-input" value="${esc(t.title)}"/></label><label>📄 Описание<input id="t_desc" class="admin-input" value="${esc(t.description||'')}"/></label></div>
-      <div class="form-row"><label>🌐 Язык<select id="t_lang" class="admin-input"><option value="ru" ${t.lang==='ru'?'selected':''}>🇷🇺 RU</option><option value="ky" ${t.lang==='ky'?'selected':''}>🇰🇬 KY</option></select></label><label>⏱️ Длительность<input id="t_dur" class="admin-input" type="number" value="${t.duration_minutes}"/></label></div>
-      <div class="form-row"><label>🕐 Начало окна<input id="t_start" class="admin-input" type="datetime-local" value="${toDatetimeLocalValue(t.window_start)}"/></label><label>🕐 Конец окна<input id="t_end" class="admin-input" type="datetime-local" value="${toDatetimeLocalValue(t.window_end)}"/></label></div>
-      <div class="form-row">
-        <label>📂 Категория
-          <select id="t_category" class="admin-input">
-            <option value="">Выберите категорию</option>
-            ${cats.map(c=>`<option value="${c.id}" ${t.category_id===c.id?'selected':''}>${esc(c.name_ru || '')}</option>`).join('')}
-          </select>
-        </label>
-      </div>
-      <div class="form-row">
-        <label>📝 Превью/Описание<textarea id="t_preview" class="admin-input" rows="3" placeholder="Краткое описание теста для превью">${esc(t.preview_text||'')}</textarea></label>
-        <label>📌 Статус<select id="t_status" class="admin-input"><option value="draft" ${t.status==='draft'?'selected':''}>Черновик</option><option value="published" ${t.status==='published'?'selected':''}>Опубликован</option><option value="archived" ${t.status==='archived'?'selected':''}>Архив</option></select></label>
-      </div>
-      <div style="margin-top:8px"><button class="admin-button success" id="save">💾 Сохранить</button> <button class="admin-button secondary" id="back">⬅️ Назад</button></div>
-    </div>
-  `;
-  document.getElementById('back').onclick = renderTests;
-  document.getElementById('save').onclick = async ()=>{
-    const titleV = val('t_title');
-    if(!titleV){ showAlert('Введите название теста', 'error'); return; }
-    const catV = val('t_category');
-    if (!catV) {
-      showAlert('Выберите категорию для теста', 'error');
-      return;
-    }
-    const body = {
-      title: titleV,
-      description: val('t_desc'),
-      preview_text: val('t_preview'),
-      status: val('t_status'),
-      lang: val('t_lang'),
-      duration_minutes: num('t_dur'),
-      window_start: val('t_start') ? new Date(val('t_start')).toISOString() : null,
-      window_end: val('t_end') ? new Date(val('t_end')).toISOString() : null,
-      category_id: catV
-    };
-    const r = await adminFetch('/api/admin/tests/'+id,{ method:'PUT', headers: aHeaders(), body: JSON.stringify(body) });
-    if(!r.ok){ let msg=''; try{ msg = await r.text(); }catch{} showAlert('Ошибка сохранения'+(msg?': '+msg:''), 'error'); return; }
-    showAlert('Тест обновлен!', 'success');
-    renderTests();
-  };
-}
-let pendingDeleteTestId = null;
-
-function showDeleteTestModal(id) {
-  pendingDeleteTestId = id;
-  const modal = document.getElementById('deleteTestModal');
-  modal.style.display = 'flex';
-}
-
-function hideDeleteTestModal() {
-  const modal = document.getElementById('deleteTestModal');
-  modal.style.display = 'none';
-  pendingDeleteTestId = null;
-}
-
-async function confirmDeleteTest() {
-  if (!pendingDeleteTestId) return;
-  const id = pendingDeleteTestId;
-  hideDeleteTestModal();
-  
-  try {
-    const r = await adminFetch('/api/admin/tests/' + id, { method: 'DELETE', headers: aHeaders() });
-    if (!r.ok) {
-      showAlert('Ошибка удаления', 'error');
-      return;
-    }
-    showAlert('Тест удален!', 'success');
-    renderTests();
-  } catch (e) {
-    showAlert('Ошибка удаления: ' + e.message, 'error');
-  }
-}
-
-// Инициализация обработчиков модального окна (выполняется сразу, так как модальное окно уже в DOM)
-(function initDeleteModal() {
-  const modal = document.getElementById('deleteTestModal');
-  const closeBtn = document.getElementById('closeDeleteModal');
-  const cancelBtn = document.getElementById('cancelDeleteTest');
-  const confirmBtn = document.getElementById('confirmDeleteTest');
-  
-  if (closeBtn) closeBtn.onclick = hideDeleteTestModal;
-  if (cancelBtn) cancelBtn.onclick = hideDeleteTestModal;
-  if (confirmBtn) confirmBtn.onclick = confirmDeleteTest;
-  
-  // Закрытие при клике вне модального окна
-  if (modal) {
-    modal.onclick = (e) => {
-      if (e.target === modal) hideDeleteTestModal();
-    };
-  }
-  
-  // Закрытие по Escape
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
-      hideDeleteTestModal();
-    }
-  });
-})();
-
-async function deleteTest(id) {
-  showDeleteTestModal(id);
-}
-
-// Categories Tab
-async function renderCategories(){
-  setActiveTab(document.getElementById('tabCategories'));
-  showLoading('Загрузка категорий...');
-  const res = await adminFetch('/api/admin/categories',{ headers: aHeaders() });
-  if(!res.ok){ showAlert('Нет доступа', 'error'); return; }
-  const cats = await res.json();
-  content.innerHTML = `
-    <div class="admin-form">
-      <h3>📂 Управление категориями</h3>
-      <div class="form-row"><label>🇷🇺 Название RU<input id="c_ru" class="admin-input"/></label><label>🇰🇬 Название KY<input id="c_ky" class="admin-input"/></label></div>
-      <div class="form-row"><label>🇷🇺 Описание RU<textarea id="c_dru" class="admin-input" rows="2"></textarea></label><label>🇰🇬 Описание KY<textarea id="c_dky" class="admin-input" rows="2"></textarea></label></div>
-      <div style="margin-top:8px"><button class="admin-button success" id="addCat">➕ Добавить</button></div>
-    </div>
-    <div class="admin-table-wrapper">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>🇷🇺 RU</th>
-            <th>🇰🇬 KY</th>
-            <th>Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${cats.length > 0 ? cats.map(c=>`<tr><td>${c.id}</td><td><div style="font-weight:600;margin-bottom:4px">${esc(c.name_ru||'')}</div><div class="small-muted" style="font-size:13px;line-height:1.4">${esc((c.desc_ru||'').slice(0,120))}</div></td><td><div style="font-weight:600;margin-bottom:4px">${esc(c.name_ky||'')}</div><div class="small-muted" style="font-size:13px;line-height:1.4">${esc((c.desc_ky||'').slice(0,120))}</div></td><td><div class="admin-table-actions"><button class="admin-button secondary cedit" data-id="${c.id}">✏️ Редакт.</button> <button class="admin-button danger cdel" data-id="${c.id}">🗑️ Удалить</button></div></td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center;padding:12px;color:#718096">Нет категорий</td></tr>'}
-        </tbody>
-      </table>
-    </div>
-  `;
-  document.getElementById('addCat').onclick = async ()=>{ 
-    const body={ name_ru: val('c_ru'), name_ky: val('c_ky'), desc_ru: document.getElementById('c_dru').value.trim(), desc_ky: document.getElementById('c_dky').value.trim() }; 
-    const r=await adminFetch('/api/admin/categories',{ method:'POST', headers:aHeaders(), body: JSON.stringify(body)}); 
-    if(!r.ok){ showAlert('Ошибка создания', 'error'); return; } 
-    showAlert('Категория добавлена!', 'success');
-    renderCategories(); 
-  };
-  content.querySelectorAll('.cedit').forEach(b=> b.onclick = ()=> editCategory(b.dataset.id));
-  content.querySelectorAll('.cdel').forEach(b=> b.onclick = ()=> deleteCategory(b.dataset.id));
-}
-async function editCategory(id){
-  const res = await adminFetch('/api/admin/categories',{ headers: aHeaders() });
-  const cats = await res.json();
-  const c = cats.find(x=> x.id==id);
-  content.innerHTML = `
-    <div class="admin-form">
-      <h3>✏️ Редактировать категорию #${c.id}</h3>
-      <div class="form-row"><label>🇷🇺 RU<input id="c_ru" class="admin-input" value="${esc(c.name_ru)}"/></label><label>🇰🇬 KY<input id="c_ky" class="admin-input" value="${esc(c.name_ky)}"/></label></div>
-      <div class="form-row"><label>🇷🇺 Описание RU<textarea id="c_dru" class="admin-input" rows="3">${esc(c.desc_ru||'')}</textarea></label><label>🇰🇬 Описание KY<textarea id="c_dky" class="admin-input" rows="3">${esc(c.desc_ky||'')}</textarea></label></div>
-      <div style="margin-top:8px"><button class="admin-button success" id="save">💾 Сохранить</button> <button class="admin-button secondary" id="back">⬅️ Назад</button></div>
-    </div>
-  `;
-  document.getElementById('back').onclick = renderCategories;
-  document.getElementById('save').onclick = async ()=>{ 
-    const body={ name_ru: val('c_ru'), name_ky: val('c_ky'), desc_ru: document.getElementById('c_dru').value.trim(), desc_ky: document.getElementById('c_dky').value.trim() }; 
-    const r=await adminFetch('/api/admin/categories/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify(body)}); 
-    if(!r.ok){ showAlert('Ошибка сохранения', 'error'); return; } 
-    showAlert('Категория обновлена!', 'success');
-    renderCategories(); 
-  };
-}
-async function deleteCategory(id){ 
-  if(!confirm('🗑️ Удалить категорию? Это действие нельзя отменить!')) return; 
-  const r=await adminFetch('/api/admin/categories/'+id,{ method:'DELETE', headers:aHeaders() }); 
-  if(!r.ok){ showAlert('Ошибка удаления', 'error'); return; } 
-  showAlert('Категория удалена!', 'success');
-  renderCategories(); 
-}
-
-// Questions Tab
-let currentTestId = null;
-async function renderQuestions(testId){
-  if(testId) currentTestId = testId;
-  if(!currentTestId){
-    // prompt to pick test
-    const tr = await adminFetch('/api/admin/tests',{ headers: aHeaders() });
-    if(!tr.ok){ content.innerHTML='Нет доступа'; return; }
-    const tests = await tr.json();
-    content.innerHTML = '<h3>Выберите тест</h3>' + tests.map(t=>`<button class="primary m-1" data-id="${t.id}">${esc(t.title || '')}</button>`).join('');
-    content.querySelectorAll('button').forEach(b=> b.onclick = ()=> renderQuestions(parseInt(b.dataset.id,10)));
-    return;
-  }
-  content.innerHTML = 'Загрузка вопросов...';
-  const res = await adminFetch('/api/admin/tests/'+currentTestId+'/questions',{ headers: aHeaders() });
-  const qs = res.ok ? await res.json() : [];
-  const cs = await (await adminFetch('/api/admin/categories',{ headers: aHeaders() })).json();
-  content.innerHTML = `
-    <h3>Вопросы — тест #${currentTestId}</h3>
-    <div class="admin-form">
-      <div class="form-row">
-        <button id="backTests" class="admin-button secondary">⬅️ К тестам</button>
-        <button id="exportCsv" class="admin-button">Экспорт CSV</button>
-        <label class="small-muted" style="margin-left:8px">Импорт CSV: <input id="csvFile" type="file" accept=".csv"/></label>
-        <button id="importCsv" class="admin-button">Импорт</button>
-        <button id="addBlank" class="admin-button success" style="margin-left:auto">➕ Добавить вопрос</button>
-      </div>
-    </div>
-    <div id="qList" class="q-list" style="display:flex;flex-direction:column;gap:6px;margin-top:6px"></div>
-    <div style="margin-top:10px; padding-top:10px; border-top:2px solid var(--border, #e2e8f0);">
-      <button id="saveAllQuestions" class="admin-button success" style="font-size:16px; padding:6px 24px">💾 Сохранить все вопросы</button>
-    </div>
-  `;
-  document.getElementById('backTests').onclick = renderTests;
-  document.getElementById('exportCsv').onclick = async ()=>{
-    try{
-      const res = await adminFetch('/api/admin/tests/'+currentTestId+'/questions/export-csv', { headers: aHeaders() });
-      if(!res.ok){ showAlert('Ошибка экспорта', 'error'); return; }
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `test_${currentTestId}_questions.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      showAlert('Экспорт завершен!', 'success');
-    }catch(e){
-      showAlert('Ошибка экспорта: ' + e.message, 'error');
-    }
-  };
-  document.getElementById('importCsv').onclick = async ()=>{
-    const f = document.getElementById('csvFile').files[0]; if(!f){ alert('Выберите файл'); return; }
-    const form = new FormData(); form.append('file', f);
-    const r = await adminFetch('/api/admin/tests/'+currentTestId+'/questions/import-csv',{ method:'POST', body: form });
-    if(!r.ok){ alert('Ошибка импорта'); return; }
-    renderQuestions(currentTestId);
-  };
-
-  const qList = document.getElementById('qList');
-
-  async function saveAllQuestions(){
-    const btn = document.getElementById('saveAllQuestions');
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = '💾 Сохранение...';
-    
-    const cards = Array.from(qList.querySelectorAll('.card'));
-    let errors = [];
-    let saved = 0;
-    
-    for(let i = 0; i < cards.length; i++){
-      const card = cards[i];
-      const qid = card.dataset.qid;
-      const typeSel = card.querySelector('.q-type');
-      const type = typeSel ? typeSel.value : 'mcq';
-      const text = (card.querySelector('.q-text')?.value || '').trim();
-      const points = parseInt(card.querySelector('.q-points')?.value || '1', 10) || 1;
-      const attachment = (card.querySelector('.q-attachment')?.value || '').trim();
-
-      let options = null;
-      let correct = '';
-
-      if(type === 'mcq'){
-        const optsWrap = card.querySelector('.opts');
-        if(optsWrap){
-          const res = collectOptionsFrom(optsWrap);
-          options = res.options;
-          correct = res.correct;
-        }
-      } else {
-        correct = (card.querySelector('.q-correct-text')?.value || '').trim();
+  </style>
+  <script>
+    var lastToggleTime = 0;
+    window.toggleAdminSidebar = function(e) {
+      var now = Date.now();
+      if (now - lastToggleTime < 250) return;
+      lastToggleTime = now;
+      if (e) {
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
       }
+      var sidebar = document.getElementById('appSidebar');
+      var backdrop = document.getElementById('sidebarBackdrop');
+      if (!sidebar) return;
 
-      if(!text){
-        continue; // Пропускаем пустые вопросы
-      }
+      var isMobileOrTablet = window.innerWidth <= 1024;
+      var isOpen = sidebar.classList.contains('open') || sidebar.classList.contains('mobile-open');
 
-      // Если options пустой массив, отправляем null
-      if(Array.isArray(options) && options.length === 0){
-        options = null;
-      }
-
-      const ordinal = i + 1;
-
-      try{
-        if(qid){
-          // Обновление существующего вопроса
-          const payload = { ordinal, text, options, correct, points, attachment_url: attachment || null };
-          const r = await adminFetch('/api/admin/questions/'+qid, { method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
-          if(!r.ok){
-            errors.push(`Вопрос #${ordinal}: ошибка сохранения`);
-            continue;
-          }
+      if (isMobileOrTablet) {
+        if (isOpen) {
+          sidebar.classList.remove('open', 'mobile-open');
+          if (backdrop) backdrop.classList.remove('visible');
         } else {
-          // Создание нового вопроса
-          const payload = { ordinal, text, options, correct, points };
-          const r = await adminFetch('/api/admin/tests/'+currentTestId+'/questions', { method:'POST', headers:aHeaders(), body: JSON.stringify(payload) });
-          if(!r.ok){
-            errors.push(`Вопрос #${ordinal}: ошибка создания`);
-            continue;
-          }
+          sidebar.classList.add('open', 'mobile-open');
+          if (backdrop) backdrop.classList.add('visible');
         }
-        saved++;
-      } catch(e){
-        errors.push(`Вопрос #${ordinal}: ${e.message}`);
-      }
-    }
-    
-    btn.disabled = false;
-    btn.textContent = originalText;
-    
-    if(errors.length > 0){
-      showAlert(`Сохранено: ${saved}, ошибок: ${errors.length}`, 'error');
-    } else {
-      showAlert(`Все вопросы сохранены (${saved})`, 'success');
-    }
-    
-    // Перерисовываем список для обновления ordinals и удаления пустых карточек
-    renderQuestions(currentTestId);
-  }
-  
-  document.getElementById('saveAllQuestions').onclick = saveAllQuestions;
-
-  function createOptionRow(initialValue='', groupName, isChecked=false){
-    const row = document.createElement('div');
-    row.className = 'form-row';
-    row.innerHTML = `
-      <div style="display:flex;align-items:center;gap:4px;width:100%">
-        <input type="radio" class="q-correct-radio" name="${groupName}" ${isChecked?'checked':''} title="Правильный" style="flex-shrink:0"/>
-        <input class="admin-input opt" placeholder="Вариант ответа" value="${esc(initialValue)}" style="flex:1; min-width:0; max-width:calc(100% - 100px)"/>
-        <button class="admin-button danger opt-del" title="Удалить вариант" style="padding:8px 12px; flex-shrink:0; white-space:nowrap">✖ Удалить</button>
-      </div>
-    `;
-    const input = row.querySelector('input.opt');
-    const delBtn = row.querySelector('.opt-del');
-    delBtn.onclick = (e)=>{ e.preventDefault(); row.remove(); };
-    input.addEventListener('keydown', (e)=>{
-      if(e.key==='Enter'){
-        e.preventDefault();
-        const parent = row.parentElement; // .opts
-        const newRow = createOptionRow('', groupName, false);
-        parent.insertBefore(newRow, row.nextSibling);
-        newRow.querySelector('input.opt').focus();
-      } else if(e.key==='Backspace' && input.value===''){
-        const parent = row.parentElement;
-        const siblings = Array.from(parent.querySelectorAll('.form-row'));
-        if(siblings.length>1){ // не оставляем пустой контейнер
-          e.preventDefault();
-          const prev = row.previousElementSibling || row.nextElementSibling;
-          row.remove();
-          if(prev) prev.querySelector('input.opt')?.focus();
-        }
-      }
-    });
-    return row;
-  }
-
-  function collectOptionsFrom(container){
-    const rows = Array.from(container.querySelectorAll('.form-row'));
-    const options = [];
-    let correctIdx = '';
-    for(const r of rows){
-      const val = (r.querySelector('input.opt')?.value||'').trim();
-      const checked = !!r.querySelector('input.q-correct-radio')?.checked;
-      if(val){
-        if(checked && correctIdx===''){ correctIdx = String(options.length); }
-        options.push(val);
-      }
-    }
-    return { options, correct: correctIdx };
-  }
-
-  async function saveNewQuestion(blank){
-    const type = blank.querySelector('.q-type').value;
-    const text = blank.querySelector('.q-text').value.trim();
-    const points = parseInt(blank.querySelector('.q-points').value||'1',10)||1;
-    const attachment = (blank.querySelector('.q-attachment')?.value || '').trim();
-    let options = null; let correct = '';
-    if(type==='mcq'){
-      const res = collectOptionsFrom(blank.querySelector('.opts'));
-      options = res.options;
-      correct = res.correct;
-      if(options.length===0){ showAlert('Добавьте хотя бы один вариант', 'error'); return; }
-    } else {
-      correct = (blank.querySelector('.q-correct-text').value||'').trim();
-      if(!text){ showAlert('Введите текст вопроса', 'error'); return; }
-    }
-    const payload = { ordinal: (qs.length+1), text, options, correct, points, type, attachment_url: attachment || null };
-    if(Array.isArray(payload.options) && payload.options.length===0){ payload.options = null; }
-    const r = await adminFetch('/api/admin/tests/'+currentTestId+'/questions',{ method:'POST', headers: aHeaders(), body: JSON.stringify(payload) });
-    if(!r.ok){ try{ const msg = await r.text(); }catch(e){} showAlert('Ошибка сохранения вопроса', 'error'); return; }
-    renderQuestions(currentTestId);
-  }
-
-  function renderCard(q){
-    const card = document.createElement('div');
-    card.className = 'card p-3';
-    card.draggable = true;
-    card.dataset.qid = q.id;
-    card.innerHTML = `
-      <div class="d-flex align-items-center" style="gap:4px">
-        <span class="drag-handle" title="Перетащить" style="cursor:grab">≡</span>
-        <span class="text-muted">#${q.ordinal}</span>
-        <select class="admin-input q-type" style="width:220px">
-          <option value="mcq" ${Array.isArray(q.options)?'selected':''}>Закрытый (варианты)</option>
-          <option value="text" ${Array.isArray(q.options)?'':'selected'}>Открытый</option>
-        </select>
-        <div style="margin-left:auto; display:flex; gap:6px">
-          <button class="admin-button secondary q-dup">Дублировать</button>
-          <button class="admin-button danger q-del">Удалить</button>
-        </div>
-      </div>
-      <div class="mt-2">
-        <textarea class="admin-input q-text" rows="2" placeholder="Вопрос">${esc(q.text||'')}</textarea>
-      </div>
-      <div class="mt-2">
-        <label>📎 Ссылка на файл/изображение<input class="admin-input q-attachment" placeholder="https://example.com/file.pdf" value="${esc(q.attachment_url||'')}"/></label>
-        ${q.attachment_url ? `<div class="small-muted mt-1"><a href="${esc(q.attachment_url)}" target="_blank" rel="noopener">📄 Открыть вложение</a></div>` : ''}
-      </div>
-      <div class="q-options mt-2" ${Array.isArray(q.options)?'':'style=\"display:none\"'}>
-        <div class="opts"></div>
-        <div class="d-flex align-items-center mt-1" style="gap:4px">
-          <button class="admin-button secondary add-opt">Добавить вариант</button>
-          <span class="small-muted">Отметьте кружком правильный вариант</span>
-        </div>
-      </div>
-      <div class="q-answer-text mt-2" ${Array.isArray(q.options)?'style="display:none"':''}>
-        <label>Правильный ответ (текст)<input class="admin-input q-correct-text" value="${!Array.isArray(q.options)?esc(q.correct||''):''}"/></label>
-      </div>
-      <div class="d-flex align-items-center mt-2" style="gap:6px">
-        <label>Баллы<input class="admin-input q-points" type="number" value="${q.points||1}" style="width:80px"/></label>
-      </div>
-    `;
-    const optsWrap = card.querySelector('.opts');
-    const groupName = 'g'+Math.random().toString(36).slice(2);
-    if(Array.isArray(q.options)){
-      const corrIdx = /^[0-9]+$/.test(String(q.correct||'')) ? parseInt(q.correct,10) : -1;
-      q.options.forEach((o,idx)=> optsWrap.appendChild(createOptionRow(o, groupName, idx===corrIdx)));
-      if(q.options.length===0){ optsWrap.appendChild(createOptionRow('', groupName, false)); }
-    }
-    const typeSel = card.querySelector('.q-type');
-    const optBlock = card.querySelector('.q-options');
-    const textBlock = card.querySelector('.q-answer-text');
-    typeSel.onchange = ()=>{
-      const isText = typeSel.value==='text';
-      optBlock.style.display = isText ? 'none' : '';
-      textBlock.style.display = isText ? '' : 'none';
-    };
-    card.querySelector('.add-opt').onclick = (e)=>{ e.preventDefault(); optsWrap.appendChild(createOptionRow('', groupName, false)); };
-    card.querySelector('.q-del').onclick = async ()=>{ const r=await adminFetch('/api/admin/questions/'+q.id,{ method:'DELETE', headers:aHeaders() }); if(!r.ok){ showAlert('Ошибка удаления', 'error'); return; } renderQuestions(currentTestId); };
-    card.querySelector('.q-dup').onclick = async ()=>{
-      const type = typeSel.value;
-      const text = card.querySelector('.q-text').value.trim();
-      const points = parseInt(card.querySelector('.q-points').value||'1',10)||1;
-      let options = null; let correct = '';
-      if(type==='mcq'){
-        const res = collectOptionsFrom(optsWrap);
-        options = res.options;
-        correct = res.correct;
       } else {
-        correct = (card.querySelector('.q-correct-text').value||'').trim();
+        // Desktop (>1024px): toggle collapsed mode and clear mobile classes
+        document.body.classList.toggle('sidebar-collapsed');
+        sidebar.classList.remove('open', 'mobile-open');
+        if (backdrop) backdrop.classList.remove('visible');
       }
-      const payload = { ordinal: qs.length+1, text, options, correct, points };
-      const r = await adminFetch('/api/admin/tests/'+currentTestId+'/questions',{ method:'POST', headers:aHeaders(), body: JSON.stringify(payload) });
-      if(!r.ok){ showAlert('Ошибка дублирования', 'error'); return; }
-      renderQuestions(currentTestId);
     };
-
-    // Drag & drop reorder
-    card.addEventListener('dragstart', (e)=>{ card.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
-    card.addEventListener('dragend', async ()=>{
-      card.classList.remove('dragging');
-      // recompute ordinals
-      const items = Array.from(qList.children);
-      for (let i=0;i<items.length;i++){
-        const id = items[i].dataset.qid;
-        const newOrd = i+1;
-        const qq = qs.find(x=> String(x.id)===String(id));
-        if(qq && qq.ordinal !== newOrd){
-          try{ await adminFetch('/api/admin/questions/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify({ ordinal:newOrd, text: qq.text, options: qq.options, correct: qq.correct, points: qq.points }) }); }catch{}
-        }
-      }
-      renderQuestions(currentTestId);
-    });
-    qList.addEventListener('dragover', (e)=>{
-      e.preventDefault();
-      const dragging = qList.querySelector('.dragging');
-      const siblings = Array.from(qList.querySelectorAll('.card:not(.dragging)'));
-      const nextSibling = siblings.find(sib=> e.clientY <= sib.getBoundingClientRect().top + sib.offsetHeight/2);
-      qList.insertBefore(dragging, nextSibling||null);
-    });
-
-    return card;
-  }
-
-  function renderBlankCard(){
-    const card = document.createElement('div');
-    card.className = 'card p-3';
-    card.innerHTML = `
-      <div class="d-flex align-items-center" style="gap:4px">
-        <span class="text-muted">Новый вопрос</span>
-        <select class="admin-input q-type" style="width:220px; margin-left:8px">
-          <option value="mcq" selected>Закрытый (варианты)</option>
-          <option value="text">Открытый</option>
-        </select>
+    window.closeMobileSidebar = function(e) {
+      if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+      var sidebar = document.getElementById('appSidebar');
+      var backdrop = document.getElementById('sidebarBackdrop');
+      if (sidebar) sidebar.classList.remove('open', 'mobile-open');
+      if (backdrop) backdrop.classList.remove('visible');
+    };
+  </script>
+</head>
+<body class="team-app-body admin-app-body admin-panel">
+  <div class="team-app-shell">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="team-app-sidebar" id="appSidebar" aria-label="Панель администратора">
+      <div class="sidebar-header" style="display: flex; align-items: center; justify-content: space-between;">
+        <a href="/" class="sidebar-logo-link" aria-label="На главную">
+          <img src="/images/лого.png" class="sidebar-logo" alt="Akylman Logo" width="40" height="38"/>
+          <div class="sidebar-brand-text">
+            <span class="sidebar-brand-name">Akylman Bowl</span>
+            <span class="sidebar-brand-tag">Админ-панель</span>
+          </div>
+        </a>
+        <button class="sidebar-close-btn" id="sidebarCloseBtn" type="button" aria-label="Закрыть меню" title="Закрыть меню" onclick="closeMobileSidebar(event)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
       </div>
-      <div class="mt-2">
-        <textarea class="admin-input q-text" rows="2" placeholder="Вопрос"></textarea>
-      </div>
-      <div class="mt-2">
-        <label>📎 Ссылка на файл/изображение<input class="admin-input q-attachment" placeholder="https://example.com/file.pdf"/></label>
-      </div>
-      <div class="q-options mt-2">
-        <div class="opts"></div>
-        <div class="d-flex align-items-center mt-1" style="gap:4px">
-          <button class="admin-button secondary add-opt">Добавить вариант</button>
-          <span class="small-muted">Отметьте кружком правильный вариант</span>
+
+      <!-- Admin Profile Card -->
+      <div class="sidebar-team-card">
+        <div class="team-avatar-pill">🛡️</div>
+        <div class="team-meta-info">
+          <div class="team-meta-name">Администратор</div>
+          <div class="team-meta-category">
+            <span class="status-dot"></span>
+            <span>Панель управления</span>
+          </div>
         </div>
       </div>
-      <div class="q-answer-text mt-2" style="display:none">
-        <label>Правильный ответ (текст)<input class="admin-input q-correct-text"/></label>
+
+      <!-- Sidebar Navigation Links -->
+      <nav class="sidebar-nav" role="tablist" aria-label="Разделы управления">
+        <div class="sidebar-nav-title">Разделы управления</div>
+        
+        <button id="tabTests" class="sidebar-tab-btn active tab-btn" role="tab" aria-selected="true" data-title="Управление тестами">
+          <span class="sidebar-tab-icon">📝</span>
+          <span>Тесты и вопросы</span>
+        </button>
+
+        <button id="tabCategories" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" data-title="Категории турнира">
+          <span class="sidebar-tab-icon">📂</span>
+          <span>Категории</span>
+        </button>
+
+        <button id="tabTeams" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" data-title="Зарегистрированные команды">
+          <span class="sidebar-tab-icon">👥</span>
+          <span>Команды</span>
+        </button>
+
+        <button id="tabResults" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" data-title="Результаты олимпиады">
+          <span class="sidebar-tab-icon">📊</span>
+          <span>Результаты</span>
+        </button>
+
+        <button id="tabAnnouncements" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" data-title="Объявления для команд">
+          <span class="sidebar-tab-icon">📢</span>
+          <span>Объявления</span>
+        </button>
+
+        <button id="tabSupport" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" data-title="Поддержка и обращения">
+          <span class="sidebar-tab-icon">💬</span>
+          <span>Поддержка</span>
+          <span class="sidebar-tab-badge" id="adminSupportBadge" style="display:none; margin-left:auto; background:var(--adm-primary); color:#fff; font-size:11px; font-weight:700; padding:2px 7px; border-radius:10px;">0</span>
+        </button>
+
+        <button id="tabSettings" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" data-title="Настройки турнира">
+          <span class="sidebar-tab-icon">⚙️</span>
+          <span>Настройки</span>
+        </button>
+
+        <button id="tabHomepage" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" data-title="Редактирование карточек главной страницы">
+          <span class="sidebar-tab-icon">🏠</span>
+          <span>Карточки главной</span>
+        </button>
+
+        <button id="tabBackup" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" data-title="База данных и резервные копии">
+          <span class="sidebar-tab-icon">💾</span>
+          <span>База данных</span>
+        </button>
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <a href="/" target="_blank" class="sidebar-footer-link" title="Открыть главную страницу сайта в новой вкладке">
+          <span>↗</span>
+          <span>Перейти на сайт</span>
+        </a>
+        <button class="sidebar-logout-btn" onclick="logoutAdmin()" type="button" aria-label="Выйти из админки">
+          <span>🚪</span>
+          <span>Выйти из админки</span>
+        </button>
       </div>
-      <div class="d-flex align-items-center mt-2" style="gap:6px">
-        <label>Баллы<input class="admin-input q-points" type="number" value="1" style="width:80px"/></label>
-      </div>
-      <div class="mt-2 d-flex" style="gap:4px">
-        <button class="admin-button success q-create">Добавить</button>
-        <button class="admin-button secondary q-cancel">Отмена</button>
-      </div>
-    `;
-    const typeSel = card.querySelector('.q-type');
-    const optBlock = card.querySelector('.q-options');
-    const textBlock = card.querySelector('.q-answer-text');
-    typeSel.onchange = ()=>{
-      const isText = typeSel.value==='text';
-      optBlock.style.display = isText ? 'none' : '';
-      textBlock.style.display = isText ? '' : 'none';
-    };
-    const optsWrap = card.querySelector('.opts');
-    const groupName = 'g'+Math.random().toString(36).slice(2);
-    const addOptBtn = card.querySelector('.add-opt');
-    addOptBtn.onclick = (e)=>{ e.preventDefault(); optsWrap.appendChild(createOptionRow('', groupName, false)); };
-    // initial two options
-    optsWrap.appendChild(createOptionRow('', groupName, false));
-    optsWrap.appendChild(createOptionRow('', groupName, false));
+    </aside>
 
-    card.querySelector('.q-create').onclick = ()=> saveNewQuestion(card);
-    card.querySelector('.q-cancel').onclick = ()=> card.remove();
-    return card;
-  }
+    <!-- Mobile/Tablet Sidebar Backdrop -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true" onclick="closeMobileSidebar(event)"></div>
 
-  // Render list
-  qs.sort((a,b)=> a.ordinal-b.ordinal).forEach(q=> qList.appendChild(renderCard(q)));
-
-  document.getElementById('addBlank').onclick = ()=>{
-    const blank = renderBlankCard();
-    qList.appendChild(blank);
-    blank.scrollIntoView({ behavior:'smooth', block:'center' });
-  };
-}
-function editQuestion(id, qs, cs){
-  const q = qs.find(x=> x.id==id);
-  content.innerHTML = `
-    <h3>Редактировать вопрос #${q.id}</h3>
-    <div class="form-row"><label>#<input id="q_ord" type="number" value="${q.ordinal}"/></label><label>Текст<textarea id="q_text" rows="2">${esc(q.text||'')}</textarea></label></div>
-    <div class="form-row"><label>Тип<select id="q_type" class="admin-input"><option value="mcq" ${q.type==='text'?'':'selected'}>Закрытый</option><option value="text" ${q.type==='text'?'selected':''}>Открытый</option></select></label></div>
-    <div class="form-row"><label>📎 Файл/Изображение<input id="q_attachment" class="admin-input" value="${esc(q.attachment_url||'')}" placeholder="https://example.com/file.pdf"/></label></div>
-    <div class="form-row" id="q_opts_row" ${q.type==='text'?'style="display:none"':''}><label>Опции<input id="q_opts" value="${esc(Array.isArray(q.options)?q.options.join(' | '):(q.options||''))}"/></label><label>Ответ<input id="q_correct" value="${esc(q.correct||'')}"/></label></div>
-    <div class="form-row" id="q_text_answer_row" ${q.type==='text'?'':'style="display:none"'}><label>Правильный ответ (текст)<input id="q_correct_text" value="${esc(q.correct||'')}"/></label></div>
-    <div class="form-row"><label>Баллы<input id="q_points" type="number" value="${q.points||1}"/></label></div>
-    <div style="margin-top:4px"><button class="primary" id="save">Сохранить</button> <button id="back">Назад</button></div>
-  `;
-  const typeSel = document.getElementById('q_type');
-  typeSel.onchange = ()=>{
-    document.getElementById('q_opts_row').style.display = typeSel.value==='mcq'?'':'none';
-    document.getElementById('q_text_answer_row').style.display = typeSel.value==='text'?'':'none';
-  };
-  document.getElementById('back').onclick = ()=> renderQuestions(currentTestId);
-  document.getElementById('save').onclick = async ()=>{
-    const payload = {
-      ordinal: num('q_ord'),
-      text: document.getElementById('q_text').value.trim(),
-      type: document.getElementById('q_type').value,
-      attachment_url: document.getElementById('q_attachment').value.trim() || null,
-      points: num('q_points')
-    };
-    if(payload.type === 'mcq'){
-      payload.options = val('q_opts') ? val('q_opts').split('|').map(s=>s.trim()).filter(Boolean) : null;
-      payload.correct = val('q_correct');
-    } else {
-      payload.options = null;
-      payload.correct = document.getElementById('q_correct_text')?.value || '';
-    }
-    const r = await adminFetch('/api/admin/questions/'+id,{ method:'PUT', headers:aHeaders(), body: JSON.stringify(payload) });
-    if(!r.ok){ alert('Ошибка'); return; }
-    renderQuestions(currentTestId);
-  };
-}
-
-// Teams Tab
-async function renderTeams(){
-  setActiveTab(document.getElementById('tabTeams'));
-  showLoading('Загрузка команд...');
-  const r = await adminFetch('/api/admin/teams',{ headers: aHeaders() });
-  if(!r.ok){ showAlert('Нет доступа', 'error'); return; }
-  const rows = await r.json();
-  content.innerHTML = `
-    <div class="admin-form">
-      <h3>👥 Зарегистрированные команды (${rows.length})</h3>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
-        <button id="exportTeams" class="admin-button success">📥 Экспорт CSV</button>
-        <button id="wipeTeams" class="admin-button danger">🗑️ Очистить команды и результаты</button>
-      </div>
-    </div>
-    <div class="admin-table-wrapper">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Команда</th>
-            <th>Капитан</th>
-            <th>Email</th>
-            <th>Школа</th>
-            <th>Город</th>
-            <th>Создан</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.length > 0 ? rows.map(t=>`<tr><td>${t.id}</td><td>${esc(t.team_name||'')}</td><td>${esc(t.captain_name||'')}</td><td>${esc(t.captain_email||'')}</td><td>${esc(t.school||'')}</td><td>${esc(t.city||'')}</td><td>${esc(t.created_at||'')}</td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;padding:12px;color:#718096">Нет зарегистрированных команд</td></tr>'}
-        </tbody>
-      </table>
-    </div>
-  `;
-  document.getElementById('exportTeams').onclick = async ()=>{
-    try{
-      const res = await adminFetch('/api/admin/teams/export-csv', { headers: aHeaders() });
-      if(!res.ok){ showAlert('Ошибка экспорта', 'error'); return; }
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'teams_export.csv';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      showAlert('Экспорт завершен!', 'success');
-    }catch(e){
-      showAlert('Ошибка экспорта: ' + e.message, 'error');
-    }
-  };
-  document.getElementById('wipeTeams').onclick = async ()=>{ if(!confirm('Удалить все команды и результаты?')) return; const res=await adminFetch('/api/admin/reset-teams',{ method:'POST', headers:aHeaders() }); if(!res.ok){ showAlert('Ошибка очистки', 'error'); return; } showAlert('Все команды и результаты удалены', 'success'); renderTeams(); };
-}
-
-// Results Tab
-async function renderResults(){
-  setActiveTab(document.getElementById('tabResults'));
-  showLoading('Загрузка результатов...');
-  const [rRes, teamsRes] = await Promise.all([
-    adminFetch('/api/admin/results',{ headers: aHeaders() }),
-    adminFetch('/api/admin/teams',{ headers: aHeaders() })
-  ]);
-  if(!rRes.ok){ showAlert('Нет доступа', 'error'); return; }
-  const rows = await rRes.json();
-  const teams = teamsRes.ok ? await teamsRes.json() : [];
-
-  // Group results by team for export buttons
-  const teamResults = {};
-  rows.forEach(r => {
-    if (!teamResults[r.team_name]) teamResults[r.team_name] = r.team_id || (teams.find(t => t.team_name === r.team_name)?.id);
-  });
-
-  content.innerHTML = `
-    <div class="admin-form">
-      <h3>📊 Результаты тестирования (${rows.length} записей)</h3>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
-        <button id="exportResults" class="admin-button success">📥 Экспорт всех CSV</button>
-      </div>
-    </div>
-    <div class="admin-table-wrapper">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>№</th>
-            <th>Имя команды</th>
-            <th>Баллы</th>
-            <th>Время прохождения</th>
-            <th>Затрачено</th>
-            <th>Категория теста</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.length > 0 ? rows.map(x=>{
-            const timeSec = x.time_taken_sec ? `${Math.floor(x.time_taken_sec/60)} мин ${x.time_taken_sec%60} сек` : '-';
-            return `<tr><td>${x.id}</td><td>${esc(x.team_name||'')}</td><td><strong>${x.score_display || '0'}</strong></td><td>${esc(x.taken_at_formatted||'')}</td><td>${timeSec}</td><td>${esc(x.category_name||'')}</td></tr>`;
-          }).join('') : '<tr><td colspan="6" style="text-align:center;padding:12px;color:#718096">Нет результатов тестирования</td></tr>'}
-        </tbody>
-      </table>
-    </div>
-  `;
-  document.getElementById('exportResults').onclick = async ()=>{
-    try{
-      const res = await adminFetch('/api/admin/results/export-csv', { headers: aHeaders() });
-      if(!res.ok){ showAlert('Ошибка экспорта', 'error'); return; }
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'results_export.csv';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      showAlert('Экспорт завершен!', 'success');
-    }catch(e){
-      showAlert('Ошибка экспорта: ' + e.message, 'error');
-    }
-  };
-}
-
-// Helpers
-function val(id){ return (document.getElementById(id).value||'').trim(); }
-function num(id){ return parseInt(val(id)||'0',10)||0; }
-function esc(s){ return String(s||'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
-
-// Homepage Blocks Tab
-async function renderHomepage(){
-  setActiveTab(document.getElementById('tabHomepage'));
-  showLoading('Загрузка блоков главной страницы...');
-  try {
-    const res = await adminFetch('/api/admin/homepage-blocks', { headers: aHeaders() });
-    if (!res.ok) { showAlert('Ошибка загрузки блоков', 'error'); return; }
-    const blocks = await res.json();
-    
-    // Default blocks if empty
-    const defaultBlocks = {
-      team_composition: { block_key: 'team_composition', title_ru: 'О составе команды', title_ky: 'Топтун курамы жөнүндө', content_ru: '2–4 человека из одной школы', content_ky: 'Бир мектептен 2–4 киши' }
-    };
-    
-    const allBlocks = {};
-    blocks.forEach(b => { allBlocks[b.block_key] = b; });
-    
-    // Merge with defaults
-    Object.keys(defaultBlocks).forEach(key => {
-      if (!allBlocks[key]) {
-        allBlocks[key] = defaultBlocks[key];
-      }
-    });
-    
-    content.innerHTML = `
-      <div class="admin-form">
-        <h3>🏠 Редактирование блоков главной страницы</h3>
-        ${Object.values(allBlocks).map(b => `
-          <div style="border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
-            <h4 style="margin-bottom: 12px;">Блок: ${esc(b.block_key)}</h4>
-            <div class="form-row">
-              <label>Заголовок (RU)<input id="block_${b.block_key}_title_ru" class="admin-input" value="${esc(b.title_ru || '')}"/></label>
-              <label>Заголовок (KY)<input id="block_${b.block_key}_title_ky" class="admin-input" value="${esc(b.title_ky || '')}"/></label>
-            </div>
-            <div class="form-row">
-              <label>Содержимое (RU)<textarea id="block_${b.block_key}_content_ru" class="admin-input" rows="3" style="resize:vertical;">${esc(b.content_ru || '')}</textarea></label>
-              <label>Содержимое (KY)<textarea id="block_${b.block_key}_content_ky" class="admin-input" rows="3" style="resize:vertical;">${esc(b.content_ky || '')}</textarea></label>
-            </div>
-            <button class="admin-button success" onclick="saveBlock('${b.block_key}')" style="margin-top: 8px;">💾 Сохранить блок</button>
+    <!-- Main Workspace -->
+    <div class="team-app-main">
+      
+      <!-- Topbar Header -->
+      <header class="team-app-topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-toggle" id="mobileMenuBtn" aria-label="Открыть меню" title="Переключить боковое меню" type="button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+          <h1 class="topbar-section-title" id="topbarSectionTitle">Управление тестами</h1>
+          <div class="topbar-status-chip" id="storageStatusBadge">
+            <span class="status-dot"></span>
+            <span id="storageStatusText">PostgreSQL активен</span>
           </div>
-        `).join('')}
+        </div>
+
+        <div class="topbar-right" style="display:flex; align-items:center; gap:10px;">
+          <a href="/" target="_blank" class="admin-topbar-link" title="Открыть сайт">
+            <span>↗</span> <span>Сайт</span>
+          </a>
+          <button class="admin-topbar-logout" onclick="logoutAdmin()" type="button" title="Выйти">
+            <span>🚪</span> <span>Выход</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Dynamic Viewport Area -->
+      <main class="team-app-content">
+        <div id="content" role="tabpanel" aria-live="polite"></div>
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Custom Admin In-App Confirm Modal (Never blocked by iframe sandbox) -->
+  <div id="adminConfirmModal" class="reset-modal" style="display: none;">
+    <div class="reset-modal-content" style="max-width: 480px;">
+      <div class="reset-modal-header">
+        <h3 id="adminConfirmModalTitle">Подтверждение действия</h3>
+        <button id="closeAdminConfirmModal" class="admin-button secondary" style="padding: 4px 12px; font-size: 20px; line-height: 1;">&times;</button>
       </div>
-    `;
-  } catch (e) {
-    showAlert('Ошибка: ' + e.message, 'error');
-  }
-}
+      <div style="margin-bottom: 16px;">
+        <p id="adminConfirmModalMessage" style="font-size: 15px; line-height: 1.6; color: #334155; margin: 0;"></p>
+        <p id="adminConfirmModalSub" style="font-size: 13px; color: #64748b; margin-top: 8px;"></p>
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button id="adminConfirmCancelBtn" class="admin-button secondary" type="button">Отмена</button>
+        <button id="adminConfirmOkBtn" class="admin-button danger" type="button">Подтвердить</button>
+      </div>
+    </div>
+  </div>
 
-async function saveBlock(key) {
-  try {
-    const title_ru = val(`block_${key}_title_ru`);
-    const title_ky = val(`block_${key}_title_ky`);
-    const content_ru = val(`block_${key}_content_ru`);
-    const content_ky = val(`block_${key}_content_ky`);
-    
-    const res = await adminFetch(`/api/admin/homepage-blocks/${key}`, {
-      method: 'PUT',
-      headers: aHeaders(),
-      body: JSON.stringify({ title_ru, title_ky, content_ru, content_ky })
-    });
-    
-    if (!res.ok) {
-      showAlert('Ошибка сохранения блока', 'error');
-      return;
-    }
-    
-    showAlert('Блок успешно сохранен!', 'success');
-  } catch (e) {
-    showAlert('Ошибка: ' + e.message, 'error');
-  }
-}
+  <!-- Модальное окно подтверждения удаления теста -->
+  <div id="deleteTestModal" class="reset-modal" style="display: none;">
+    <div class="reset-modal-content">
+      <div class="reset-modal-header">
+        <h3>🗑️ Удаление теста</h3>
+        <button id="closeDeleteModal" class="admin-button secondary" style="padding: 4px 12px; font-size: 20px; line-height: 1;">&times;</button>
+      </div>
+      <div style="margin-bottom: 12px;">
+        <p style="font-size: 16px; line-height: 1.6; color: #374151;">Вы уверены, что хотите удалить этот тест?</p>
+        <p style="font-size: 14px; color: #6b7280; margin-top: 8px;">Это действие нельзя отменить. Все вопросы и результаты этого теста также будут удалены.</p>
+      </div>
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button id="cancelDeleteTest" class="admin-button secondary">Отмена</button>
+        <button id="confirmDeleteTest" class="admin-button danger">Удалить</button>
+      </div>
+    </div>
+  </div>
 
-// Tab bindings
-const bTests = document.getElementById('tabTests');
-const bQuestions = document.getElementById('tabQuestions');
-const bCats = document.getElementById('tabCategories');
-const bTeams = document.getElementById('tabTeams');
-const bResults = document.getElementById('tabResults');
-const bSettings = document.getElementById('tabSettings');
-const bHomepage = document.getElementById('tabHomepage');
+  <!-- Модальное окно редактирования/создания категории -->
+  <div id="categoryModal" class="reset-modal" style="display: none;">
+    <div class="reset-modal-content" style="max-width: 540px;">
+      <div class="reset-modal-header">
+        <h3 id="categoryModalTitle">✏️ Редактирование категории</h3>
+        <button id="closeCategoryModal" class="admin-button secondary" style="padding: 4px 12px; font-size: 20px; line-height: 1;">&times;</button>
+      </div>
+      <form id="categoryModalForm" onsubmit="return false;">
+        <input type="hidden" id="cat_edit_id"/>
+        <div class="form-row" style="margin-bottom: 12px;">
+          <label style="flex:1;">
+            🇷🇺 Название (RU) <span style="color:#ef4444;">*</span>
+            <input id="modal_cat_ru" class="admin-input" placeholder="например: Информатика" required/>
+          </label>
+          <label style="flex:1;">
+            🇰🇬 Название (KY) <span style="color:#ef4444;">*</span>
+            <input id="modal_cat_ky" class="admin-input" placeholder="мисалы: Информатика" required/>
+          </label>
+        </div>
+        <div class="form-row" style="margin-bottom: 16px;">
+          <label style="flex:1;">
+            🇷🇺 Описание RU (опционально)
+            <textarea id="modal_cat_dru" class="admin-input" rows="2" placeholder="Краткое описание категории"></textarea>
+          </label>
+          <label style="flex:1;">
+            🇰🇬 Описание KY (опционально)
+            <textarea id="modal_cat_dky" class="admin-input" rows="2" placeholder="Категория жөнүндө кыскача маалымат"></textarea>
+          </label>
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button type="button" id="cancelCategoryBtn" class="admin-button secondary">Отмена</button>
+          <button type="button" id="saveCategoryBtn" class="admin-button success">💾 Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-bTests.onclick = renderTests;
-bQuestions.onclick = ()=> renderQuestions(null);
-bCats.onclick = renderCategories;
-bTeams.onclick = renderTeams;
-bResults.onclick = renderResults;
-bSettings.onclick = renderSettings;
-bHomepage.onclick = renderHomepage;
+  <!-- Модальное окно подтверждения удаления категории -->
+  <div id="deleteCategoryModal" class="reset-modal" style="display: none;">
+    <div class="reset-modal-content">
+      <div class="reset-modal-header">
+        <h3>🗑️ Удаление категории</h3>
+        <button id="closeDeleteCatModal" class="admin-button secondary" style="padding: 4px 12px; font-size: 20px; line-height: 1;">&times;</button>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <p id="deleteCatConfirmText" style="font-size: 16px; line-height: 1.6; color: #374151;">Вы уверены, что хотите удалить эту категорию?</p>
+        <p id="deleteCatWarningSub" style="font-size: 13.5px; color: #6b7280; margin-top: 6px;">Это действие необратимо. При необходимости привязанные тесты будут отвязаны.</p>
+      </div>
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button id="cancelDeleteCat" class="admin-button secondary">Отмена</button>
+        <button id="confirmDeleteCat" class="admin-button danger">Удалить</button>
+      </div>
+    </div>
+  </div>
 
-// Initial auth check and render
-async function initAdmin() {
-  const isAuth = await checkAdminAuth();
-  if (isAuth) {
-    renderTests();
-  }
-}
-initAdmin();
-</script>
-</body></html>
+  <script defer src="/js/admin.js"></script>
+</body>
+</html>

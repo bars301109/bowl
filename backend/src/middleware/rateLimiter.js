@@ -1,9 +1,22 @@
 /* Middleware: in-memory rate limiter */
 function rateLimit({ windowMs, max }) {
   const hits = new Map();
+  let lastSweep = Date.now();
+
   return (req, res, next) => {
     const ip = getClientIp(req);
     const now = Date.now();
+
+    // Periodic sweep every windowMs or when map grows large
+    if (now - lastSweep > windowMs || hits.size > 2000) {
+      for (const [key, value] of hits.entries()) {
+        if (now > value.resetAt) {
+          hits.delete(key);
+        }
+      }
+      lastSweep = now;
+    }
+
     const entry = hits.get(ip);
     if (!entry || now > entry.resetAt) {
       // Clean up expired entries to prevent memory leak

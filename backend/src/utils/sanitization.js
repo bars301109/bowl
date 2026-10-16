@@ -34,10 +34,10 @@ function isValidEmail(email) {
 }
 
 /**
- * Validate password strength: 8+ chars, uppercase, lowercase, digit
+ * Validate password strength: minimum 6 characters
  */
 function isStrongPassword(pw) {
-  return pw.length >= 8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /\d/.test(pw);
+  return typeof pw === 'string' && pw.trim().length >= 6;
 }
 
 /**

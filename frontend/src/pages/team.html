@@ -1,1381 +1,248 @@
-
 <!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <meta name="description" content="Кабинет команды - Akylman Quiz Bowl">
-  <title data-i18n="team.title">Кабинет команды</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
-  <link rel="stylesheet" href="../css/style.css"/>
-  <link rel="icon" type="image/svg+xml" href="../images/favicon.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="Team Cabinet — Akylman Quiz Bowl">
+  <title data-i18n="team.title">Team Cabinet — Akylman Quiz Bowl</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Spectral:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Новый единый стиль. style.css на этой странице больше не подключается. -->
+  <link rel="stylesheet" href="/css/team-modern.css"/>
+  <link rel="icon" type="image/png" href="/images/лого.png">
 </head>
-<body class="admin-panel">
-<div class="container">
-  <div class="lang-switch text-end" role="group" aria-label="Выбор языка">
-    <button data-lang="ru" aria-label="Русский язык" aria-pressed="true">РУ</button> 
-    <button data-lang="ky" aria-label="Кыргызский язык" aria-pressed="false">КЫ</button>
-  </div>
-  <a href="/" aria-label="Главная страница"><img src="../images/image.png" class="logo-center img-fluid" alt="Akylman Quiz Bowl" width="120" height="48"/></a>
-  <nav class="topbar d-flex justify-content-end gap-2 flex-wrap" aria-label="Основная навигация">
-    <a class="nav-btn" href="/" data-i18n="nav.home" aria-label="Перейти на главную страницу">Главная</a>
-    <button class="link-pill" id="logout" data-i18n="nav.logout" aria-label="Выйти из аккаунта" type="button">Выход</button>
-  </nav>
-  <main class="team-page-main" role="main">
-    <h1 data-i18n="team.title" class="sr-only">Кабинет команды</h1>
-    <h2 data-i18n="team.title" class="visually-hidden">Кабинет команды</h2>
-    <div class="team-layout">
-      <nav class="team-tabs" role="tablist" aria-label="Навигация по разделам">
-        <h2 id="teamNameHeader" class="team-name-header">Загрузка...</h2>
-        <button id="tabHome" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tabContent" data-section="main" data-i18n="team.tab.home" tabindex="0">Главная</button> 
-        <button id="tabTests" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="tests" data-i18n="team.tab.tests" tabindex="-1">Тесты</button>
-        <button id="tabResults" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="results" data-i18n="team.tab.results" tabindex="-1">Результаты</button>
-        <button id="tabLeaderboard" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="leaderboard" tabindex="-1">Рейтинг</button>
-        <button id="tabRules" class="tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="rules" data-i18n="team.tab.rules" tabindex="-1">Правила</button>
+<body class="team-app-body">
+  <div class="team-app-shell">
+
+    <!-- Боковая панель -->
+    <aside class="team-app-sidebar" id="appSidebar" aria-label="Sidebar">
+      <div class="sidebar-header">
+        <a href="/" class="sidebar-logo-link" aria-label="Home">
+          <img src="/images/лого.png" class="sidebar-logo" alt="Akylman Logo" width="40" height="38"/>
+          <div class="sidebar-brand-text">
+            <span class="sidebar-brand-name">Akylman Bowl</span>
+            <span class="sidebar-brand-tag" data-i18n="team.sidebar_tag">Team Cabinet</span>
+          </div>
+        </a>
+      </div>
+
+      <div class="sidebar-team-card">
+        <div class="team-avatar-pill" id="sidebarTeamAvatar">A</div>
+        <div class="team-meta-info">
+          <div class="team-meta-name" id="teamNameHeader">Loading...</div>
+          <div class="team-meta-category">
+            <span class="status-dot"></span>
+            <span id="sidebarCategoryLabel" data-i18n="team.tournament_participant">Tournament Participant</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav" role="tablist" aria-label="Cabinet Navigation">
+        <div class="sidebar-nav-title" data-i18n="team.sidebar_nav">Navigation</div>
+
+        <button id="tabHome" class="sidebar-tab-btn active tab-btn" role="tab" aria-selected="true" aria-controls="tabContent" data-section="main" tabindex="0">
+          <span class="sidebar-tab-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>
+          </span>
+          <span data-i18n="team.tab.home">Home</span>
+        </button>
+
+        <button id="tabTests" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="tests" tabindex="-1">
+          <span class="sidebar-tab-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h7M9 17h5"/></svg>
+          </span>
+          <span data-i18n="team.tab.tests">Tests</span>
+          <span class="sidebar-tab-badge" id="sidebarTestsBadge" style="display:none;">0</span>
+        </button>
+
+        <button id="tabResults" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="results" tabindex="-1">
+          <span class="sidebar-tab-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M7 20v-7M12 20V5M17 20v-10"/></svg>
+          </span>
+          <span data-i18n="team.tab.results">Results</span>
+        </button>
+
+        <button id="tabLeaderboard" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="leaderboard" tabindex="-1">
+          <span class="sidebar-tab-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4v1a3 3 0 0 0 4 2.8M16 6h4v1a3 3 0 0 1-4 2.8"/><path d="M12 13v4M8.5 20h7M10 17h4"/></svg>
+          </span>
+          <span data-i18n="team.tab.leaderboard">Leaderboard</span>
+        </button>
+
+        <button id="tabAnnouncements" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="announcements" tabindex="-1">
+          <span class="sidebar-tab-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          </span>
+          <span data-i18n="team.tab.announcements">Announcements</span>
+          <span class="sidebar-tab-badge" id="sidebarAnnouncementsBadge" style="display:none;">0</span>
+        </button>
+
+        <button id="tabSupport" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="support" tabindex="-1">
+          <span class="sidebar-tab-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </span>
+          <span data-i18n="team.tab.support">Support</span>
+          <span class="sidebar-tab-badge" id="sidebarSupportBadge" style="display:none;">0</span>
+        </button>
+
+        <button id="tabSettings" class="sidebar-tab-btn tab-btn" role="tab" aria-selected="false" aria-controls="tabContent" data-section="settings" tabindex="-1">
+          <span class="sidebar-tab-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+          </span>
+          <span data-i18n="team.tab.settings">Settings</span>
+        </button>
       </nav>
-      <div id="tabContent" class="team-main" role="tabpanel" aria-labelledby="tabHome" aria-live="polite"></div>
-    </div>
-  </main>
-</div>
 
-<!-- Password Change Modal -->
-<div id="passwordChangeModal" class="reset-modal" style="display: none;">
-  <div class="reset-modal-content">
-    <div class="reset-modal-header">
-      <h3>Изменение пароля</h3>
-      <button class="reset-close-btn" onclick="closePasswordChangeModal(event)" aria-label="Закрыть">×</button>
+      <div class="sidebar-footer">
+        <a href="/" class="sidebar-footer-link" title="Return to Main Page">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+          <span data-i18n="nav.home">Return to Site</span>
+        </a>
+        <button class="sidebar-logout-btn" id="logout" type="button" aria-label="Log Out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5v16h5"/><path d="M15 8l4 4-4 4M19 12H9"/></svg>
+          <span data-i18n="nav.logout">Log Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Рабочая область -->
+    <div class="team-app-main">
+
+      <header class="team-app-topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-toggle" id="mobileMenuBtn" aria-label="Toggle Menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+              <path d="M4 7h16M4 12h16M4 17h16"/>
+            </svg>
+          </button>
+          <h1 class="topbar-section-title" id="topbarSectionTitle" data-i18n="team.overview">Cabinet Overview</h1>
+          <div class="topbar-status-chip">
+            <span class="status-dot"></span>
+            <span data-i18n="team.status_active">Tournament Active</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="app-lang-pill" role="group" aria-label="Language selection">
+            <button class="app-lang-btn active" data-lang="en" type="button" aria-label="English" aria-pressed="true">EN</button>
+            <button class="app-lang-btn" data-lang="ky" type="button" aria-label="Кыргыз тили" aria-pressed="false">КЫ</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="team-app-content">
+        <div id="tabContent" role="tabpanel" aria-labelledby="tabHome" aria-live="polite">
+          <!-- Заполняется динамически через team.js -->
+        </div>
+      </main>
+
     </div>
-    
-    <div id="passwordStep1" class="reset-step">
-      <p class="reset-description">Введите текущий пароль:</p>
-      <div class="form-row">
-        <label>
-          <span>Текущий пароль</span>
-          <input type="password" id="passwordOldPassword" placeholder="Введите текущий пароль" required autocomplete="current-password"/>
+  </div>
+
+  <!-- Изменение пароля -->
+  <div id="passwordChangeModal" class="reset-modal" style="display: none;">
+    <div class="reset-modal-content">
+      <div class="reset-modal-header">
+        <h3 data-i18n="team.change_password">Change Password</h3>
+        <button class="reset-close-btn" onclick="closePasswordChangeModal(event)" aria-label="${isKy ? 'Жабуу' : 'Close'}">✕</button>
+      </div>
+
+      <div id="passwordStep1" class="reset-step">
+        <p class="reset-description">Enter current password to verify identity:</p>
+        <label class="field">
+          <span class="field-label">Current Password</span>
+          <input type="password" class="field-input" id="passwordOldPassword" placeholder="Enter current password" required autocomplete="current-password"/>
         </label>
+        <div id="passwordStep1Message" class="reset-message" style="display: none;"></div>
+        <div class="reset-actions">
+          <button class="nav-btn" onclick="closePasswordChangeModal(event)" data-i18n="team.cancel">Cancel</button>
+          <button class="primary" onclick="verifyOldPassword()" id="verifyOldPasswordBtn">Verify</button>
+        </div>
       </div>
-      <div id="passwordStep1Message" class="reset-message" style="display: none;"></div>
-      <div class="reset-actions">
-        <button class="primary" onclick="verifyOldPassword()" id="verifyOldPasswordBtn">Проверить</button>
-        <button class="nav-btn" onclick="closePasswordChangeModal(event)">Отмена</button>
-      </div>
-    </div>
-    
-    <div id="passwordStep2" class="reset-step" style="display: none;">
-      <p class="reset-description">Введите новый пароль:</p>
-      <div class="form-row">
-        <label>
-          <span>Новый пароль</span>
-          <input type="password" id="passwordNewPassword" placeholder="Введите новый пароль" required autocomplete="new-password"/>
+
+      <div id="passwordStep2" class="reset-step" style="display: none;">
+        <p class="reset-description">Create a secure new password:</p>
+        <label class="field">
+          <span class="field-label">New Password</span>
+          <input type="password" class="field-input" id="passwordNewPassword" placeholder="Enter new password" required autocomplete="new-password"/>
         </label>
-      </div>
-      <div class="form-row">
-        <label>
-          <span>Повторите новый пароль</span>
-          <input type="password" id="passwordConfirmPassword" placeholder="Повторите новый пароль" required autocomplete="new-password"/>
+        <label class="field">
+          <span class="field-label">Repeat New Password</span>
+          <input type="password" class="field-input" id="passwordConfirmPassword" placeholder="Repeat new password" required autocomplete="new-password"/>
         </label>
-      </div>
-      <div class="password-requirements" id="passwordChangeReqs" style="margin-top: 12px;">
-        <div class="requirement" id="pwd-req-length"><span>8 символов</span></div>
-        <div class="requirement" id="pwd-req-upper"><span>Заглавная буква</span></div>
-        <div class="requirement" id="pwd-req-lower"><span>Строчная буква</span></div>
-        <div class="requirement" id="pwd-req-number"><span>Цифра</span></div>
-      </div>
-      <div id="passwordStep2Message" class="reset-message" style="display: none;"></div>
-      <div class="reset-actions">
-        <button class="primary" onclick="changePassword()" id="changePasswordBtn" data-i18n="team.change_password">Изменить пароль</button>
-        <button class="nav-btn" onclick="goBackToPasswordStep1()">Назад</button>
+        <div class="password-requirements" id="passwordChangeReqs">
+          <div class="requirement" id="pwd-req-length"><span data-i18n="register.password.length">✓ 8 characters</span></div>
+          <div class="requirement" id="pwd-req-upper"><span data-i18n="register.password.uppercase">✓ Uppercase letter</span></div>
+          <div class="requirement" id="pwd-req-lower"><span data-i18n="register.password.lowercase">✓ Lowercase letter</span></div>
+          <div class="requirement" id="pwd-req-number"><span data-i18n="register.password.number">✓ Number</span></div>
+        </div>
+        <div id="passwordStep2Message" class="reset-message" style="display: none;"></div>
+        <div class="reset-actions">
+          <button class="nav-btn" onclick="goBackToPasswordStep1()">Back</button>
+          <button class="primary" onclick="changePassword()" id="changePasswordBtn" data-i18n="team.change_password">Change Password</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- Field Edit Modal -->
-<div id="fieldEditModal" class="reset-modal" style="display: none;">
-  <div class="reset-modal-content" style="max-width: 500px;">
-    <div class="reset-modal-header">
-      <h3 id="fieldEditTitle">Редактирование</h3>
-      <button class="reset-close-btn" onclick="closeFieldEditModal(event)" aria-label="Закрыть">×</button>
-    </div>
-    
-    <div class="reset-step">
-      <p class="reset-description" id="fieldEditDescription">Введите новое значение:</p>
-      <div class="form-row">
-        <label>
-          <span id="fieldEditLabel">Значение</span>
-          <input type="text" id="fieldEditInput" placeholder="" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 15px;"/>
+  <!-- Редактирование поля -->
+  <div id="fieldEditModal" class="reset-modal" style="display: none;">
+    <div class="reset-modal-content">
+      <div class="reset-modal-header">
+        <h3 id="fieldEditTitle" data-i18n="team.edit">Edit</h3>
+        <button class="reset-close-btn" onclick="closeFieldEditModal(event)" aria-label="${isKy ? 'Жабуу' : 'Close'}">✕</button>
+      </div>
+
+      <div class="reset-step">
+        <p class="reset-description" id="fieldEditDescription">Enter new value:</p>
+        <label class="field">
+          <span class="field-label" id="fieldEditLabel">Value</span>
+          <input type="text" class="field-input" id="fieldEditInput" placeholder=""/>
         </label>
-      </div>
-      <div id="fieldEditMessage" class="reset-message" style="display: none;"></div>
-      <div class="reset-actions">
-        <button class="primary" onclick="saveFieldEdit()" id="saveFieldBtn" data-i18n="team.save">Сохранить</button>
-        <button class="nav-btn" onclick="closeFieldEditModal(event)" data-i18n="team.cancel">Отмена</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Members Edit Modal -->
-<div id="membersEditModal" class="reset-modal" style="display: none;">
-  <div class="reset-modal-content" style="max-width: 600px;">
-    <div class="reset-modal-header">
-      <h3 data-i18n="team.edit_members">Редактирование участников</h3>
-      <button class="reset-close-btn" onclick="closeMembersEditModal(event)" aria-label="Закрыть">×</button>
-    </div>
-    
-    <div class="reset-step">
-      <p class="reset-description" data-i18n="team.edit_members_description">Добавьте или измените участников команды:</p>
-      <div id="membersEditList" style="margin-bottom: 16px;">
-        <!-- Список участников будет добавлен динамически -->
-      </div>
-      <button type="button" class="nav-btn" onclick="addMemberRow()" style="margin-bottom: 16px;" data-i18n="team.add_member">+ Добавить участника</button>
-      <div id="membersEditMessage" class="reset-message" style="display: none;"></div>
-      <div class="reset-actions">
-        <button class="primary" onclick="saveMembers()" id="saveMembersBtn" data-i18n="team.save">Сохранить</button>
-        <button class="nav-btn" onclick="closeMembersEditModal(event)" data-i18n="team.cancel">Отмена</button>
+        <div id="fieldEditMessage" class="reset-message" style="display: none;"></div>
+        <div class="reset-actions">
+          <button class="nav-btn" onclick="closeFieldEditModal(event)" data-i18n="team.cancel">Cancel</button>
+          <button class="primary" onclick="saveFieldEdit()" id="saveFieldBtn" data-i18n="team.save">Save</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-<script src="../js/i18n.js"></script>
-<script src="../js/app-utils.js"></script>
-<script src="../js/quiz-engine.js"></script>
-<script>AkylI18n.initSwitcher();</script>
-<script>
-// Token is now handled via httpOnly cookies or Authorization header
-let teamData = null;
-
-// Функция для получения переводов
-function t(key) {
-  if (typeof AkylI18n !== 'undefined' && AkylI18n.t) {
-    return AkylI18n.t(key);
-  }
-  return key;
-}
-
-function updateTeamNameHeader() {
-  const teamNameHeader = document.getElementById('teamNameHeader');
-  if (teamNameHeader && teamData) {
-    teamNameHeader.textContent = teamData.team_name || 'Команда';
-  }
-}
-
-async function load() {
-  try {
-    const data = await apiFetch('/api/me');
-    if (!data || !data.ok || !data.team) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('team');
-      location.href = '/login';
-      return;
-    }
-    teamData = data.team;
-    localStorage.setItem('team', JSON.stringify(teamData));
-    if (teamData.id) localStorage.setItem('team_id', String(teamData.id));
-    updateTeamNameHeader();
-    renderHomeSection(document.getElementById('tabHome'));
-  } catch (e) {
-    console.warn('Session check warning:', e);
-    // If unauthorized / token error, clear and redirect to login
-    if (e.status === 401 || e.status === 403 || !localStorage.getItem('token')) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('team');
-      location.href = '/login';
-      return;
-    }
-    // Otherwise try cached profile
-    const cached = localStorage.getItem('team');
-    if (cached) {
-      try {
-        teamData = JSON.parse(cached);
-        updateTeamNameHeader();
-        renderHomeSection(document.getElementById('tabHome'));
-      } catch (err) {}
-    }
-  }
-}
-
-load();
-
-document.getElementById('logout').onclick = async () => {
-  const confirmed = await showConfirmDialog({
-    title: 'Выход из аккаунта',
-    message: 'Вы действительно хотите выйти из кабинета команды?',
-    confirmText: 'Выйти',
-    cancelText: 'Отмена',
-    isDestructive: true,
-  });
-  if (confirmed) {
-    try {
-      await apiFetch('/api/logout', { method: 'POST' });
-    } catch {}
-    localStorage.removeItem('token');
-    localStorage.removeItem('team');
-    localStorage.removeItem('team_id');
-    location.href = '/';
-  }
-};
-
-function setActiveTab(btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => {
-    b.classList.remove('active');
-    b.setAttribute('aria-selected', 'false');
-    b.setAttribute('tabindex', '-1');
-  });
-  btn.classList.add('active');
-  btn.setAttribute('aria-selected', 'true');
-  btn.setAttribute('tabindex', '0');
-  document.getElementById('tabContent').setAttribute('aria-labelledby', btn.id);
-}
-
-async function renderHomeSection(btn) {
-  if (btn) setActiveTab(btn);
-  const out = document.getElementById('tabContent');
-  out.setAttribute('aria-busy', 'true');
-  out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка...</span></div><p data-i18n="team.loading">Загрузка...</p>';
-  AkylI18n.applyI18n(AkylI18n.getLang(), out);
-  
-  // Если данные еще не загружены, загружаем их
-  if (!teamData) {
-    try {
-      const j = await apiFetch('/api/me');
-      if (j.ok && j.team) {
-        teamData = j.team;
-        updateTeamNameHeader();
-      }
-    } catch (err) {
-      console.error(err);
-      out.setAttribute('aria-busy', 'false');
-      out.innerHTML = '<div class="error-message" role="alert"><p style="color: var(--danger);">Ошибка загрузки данных. Пожалуйста, обновите страницу.</p></div>';
-      return;
-    }
-  }
-  
-  out.setAttribute('aria-busy', 'false');
-  
-  if (teamData) {
-    const lang = AkylI18n.getLang();
-    let categoryLabel = '';
-    if (teamData.category_name_ru || teamData.category_name_ky) {
-      categoryLabel = lang === 'ky'
-        ? (teamData.category_name_ky || teamData.category_name_ru || '')
-        : (teamData.category_name_ru || teamData.category_name_ky || '');
-    } else if (teamData.category_id) {
-      categoryLabel = 'ID: ' + teamData.category_id;
-    }
-    
-    // Получаем участников команды
-    let membersHtml = '';
-    if (teamData.members && teamData.members.length > 0) {
-      membersHtml = teamData.members.map((m) => {
-        const name = escapeHtml(m?.name || 'Участник');
-        const cls = m?.class ? ` <span class="member-class">— ${escapeHtml(m.class)}</span>` : '';
-        return `<li><span class="member-name">${name}</span>${cls}</li>`;
-      }).join('');
-    } else {
-      membersHtml = '<li class="empty-state">Участники не указаны</li>';
-    }
-    
-    out.innerHTML = `
-      <section aria-labelledby="welcome-heading">
-        <h3 id="welcome-heading" data-i18n="team.welcome">Кабинет команды</h3>
-        <div class="team-info" role="region" aria-label="Информация о команде">
-          <dl class="info-list">
-            <div class="info-item editable" data-field="team_name">
-              <dt data-i18n="team.team_name">Название команды:</dt>
-              <dd>
-                <span class="info-value">${escapeHtml(teamData.team_name || '')}</span>
-                <button type="button" class="inline-edit-btn" data-field="team_name" data-i18n="team.edit">Изменить</button>
-              </dd>
-            </div>
-            <div class="info-item">
-              <dt data-i18n="team.category">Категория:</dt>
-              <dd>
-                <span class="info-value">${categoryLabel ? escapeHtml(categoryLabel) : 'Не выбрана'}</span>
-              </dd>
-            </div>
-            <div class="info-item editable" data-field="captain_name">
-              <dt data-i18n="team.captain">Капитан:</dt>
-              <dd>
-                <span class="info-value">${escapeHtml(teamData.captain_name || '')}</span>
-                <button type="button" class="inline-edit-btn" data-field="captain_name" data-i18n="team.edit">Изменить</button>
-              </dd>
-            </div>
-            ${teamData.captain_phone ? `
-            <div class="info-item editable" data-field="captain_phone">
-              <dt data-i18n="team.phone">Телефон:</dt>
-              <dd>
-                <span class="info-value"><a href="tel:${escapeHtml(teamData.captain_phone)}" aria-label="Позвонить капитану">${escapeHtml(teamData.captain_phone)}</a></span>
-                <button type="button" class="inline-edit-btn" data-field="captain_phone" data-i18n="team.edit">Изменить</button>
-              </dd>
-            </div>
-            ` : `
-            <div class="info-item editable" data-field="captain_phone">
-              <dt data-i18n="team.phone">Телефон:</dt>
-              <dd>
-                <span class="info-value small-muted">Не указан</span>
-                <button type="button" class="inline-edit-btn" data-field="captain_phone" data-i18n="team.edit">Изменить</button>
-              </dd>
-            </div>
-            `}
-            ${teamData.school ? `
-            <div class="info-item editable" data-field="school">
-              <dt data-i18n="team.school">Школа:</dt>
-              <dd>
-                <span class="info-value">${escapeHtml(teamData.school)}</span>
-                <button type="button" class="inline-edit-btn" data-field="school" data-i18n="team.edit">Изменить</button>
-              </dd>
-            </div>
-            ` : `
-            <div class="info-item editable" data-field="school">
-              <dt data-i18n="team.school">Школа:</dt>
-              <dd>
-                <span class="info-value small-muted">Не указана</span>
-                <button type="button" class="inline-edit-btn" data-field="school" data-i18n="team.edit">Изменить</button>
-              </dd>
-            </div>
-            `}
-            ${teamData.city ? `
-            <div class="info-item editable" data-field="city">
-              <dt data-i18n="team.city">Город:</dt>
-              <dd>
-                <span class="info-value">${escapeHtml(teamData.city)}</span>
-                <button type="button" class="inline-edit-btn" data-field="city" data-i18n="team.edit">Изменить</button>
-              </dd>
-            </div>
-            ` : `
-            <div class="info-item editable" data-field="city">
-              <dt data-i18n="team.city">Город:</dt>
-              <dd>
-                <span class="info-value small-muted">Не указан</span>
-                <button type="button" class="inline-edit-btn" data-field="city" data-i18n="team.edit">Изменить</button>
-              </dd>
-            </div>
-            `}
-          </dl>
-
-          <section aria-labelledby="members-heading">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-              <h4 id="members-heading" data-i18n="team.members" style="margin: 0;">Участники команды:</h4>
-              <button type="button" class="inline-edit-btn" onclick="handleMembersEdit(event)" data-i18n="team.edit">Изменить</button>
-            </div>
-            <ul class="members-list" role="list">
-              ${membersHtml}
-            </ul>
-          </section>
-
-          <section class="account-section" aria-labelledby="account-heading">
-            <h4 id="account-heading">Аккаунт</h4>
-            <dl class="info-list">
-              ${teamData.captain_email ? `
-              <div class="info-item">
-                <dt data-i18n="team.email">Email капитана:</dt>
-                <dd><a href="mailto:${escapeHtml(teamData.captain_email)}" aria-label="Отправить email капитану">${escapeHtml(teamData.captain_email)}</a></dd>
-              </div>
-              ` : ''}
-              <div class="info-item">
-                <dt>Пароль:</dt>
-                <dd>
-                  <span class="info-value">••••••••</span>
-                  <button type="button" class="inline-edit-btn" data-field="password" data-i18n="team.edit">Изменить</button>
-                </dd>
-              </div>
-            </dl>
-          </section>
-        </div>
-      </section>
-    `;
-
-    // Навесить обработчики на кнопки "Изменить"
-    out.querySelectorAll('.inline-edit-btn').forEach(btn => {
-      // Пропускаем кнопки, которые уже имеют onclick (например, для участников)
-      if (btn.hasAttribute('onclick')) {
-        return;
-      }
-      const field = btn.getAttribute('data-field');
-      if (field === 'password') {
-        btn.addEventListener('click', handlePasswordChange);
-      } else if (field) {
-        btn.addEventListener('click', () => handleInlineEdit(field));
-      }
-    });
-  } else {
-    out.innerHTML = '<div class="empty-state" role="status"><p data-i18n="team.loading">Загрузка...</p></div>';
-  }
-  
-  AkylI18n.applyI18n(AkylI18n.getLang(), out);
-}
-
-// Функция для экранирования HTML
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function renderRulesSection(btn) {
-  if (btn) setActiveTab(btn);
-  const out = document.getElementById('tabContent');
-  out.innerHTML = `
-    <section aria-labelledby="rules-heading">
-      <h3 id="rules-heading" data-i18n="team.tab.rules">Правила</h3>
-      <p data-i18n="team.rules.hidden_note">Правила доступны здесь.</p>
-      <div class="iframe-wrapper">
-        <iframe 
-          src="../pages/rules.pdf" 
-          title="Правила соревнования"
-          aria-label="Документ с правилами соревнования"
-          style="width:100%;height:480px;border:1px solid #eef4fb;border-radius:10px">
-        </iframe>
+  <!-- Состав команды -->
+  <div id="membersEditModal" class="reset-modal" style="display: none;">
+    <div class="reset-modal-content wide">
+      <div class="reset-modal-header">
+        <h3 data-i18n="team.edit_members">Team Roster</h3>
+        <button class="reset-close-btn" onclick="closeMembersEditModal(event)" aria-label="${isKy ? 'Жабуу' : 'Close'}">✕</button>
       </div>
-    </section>
-  `;
-  AkylI18n.applyI18n(AkylI18n.getLang(), out);
-}
 
-async function renderLeaderboardSection(btn) {
-  if (btn) setActiveTab(btn);
-  const out = document.getElementById('tabContent');
-  out.setAttribute('aria-busy', 'true');
-  out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка рейтинга...</span></div><p>Загрузка рейтинга...</p>';
-  AkylI18n.applyI18n(AkylI18n.getLang(), out);
+      <div class="reset-step">
+        <p class="reset-description" data-i18n="team.edit_members_description">Specify full name and grade for each team member:</p>
 
-  try {
-    const data = await apiFetch(`/api/leaderboard${teamData && teamData.category_id ? `?category_id=${encodeURIComponent(teamData.category_id)}` : ''}`);
-    out.setAttribute('aria-busy', 'false');
-
-    if (!data.published) {
-      out.innerHTML = `
-        <div class="empty-state" role="status" aria-live="polite">
-          <div class="empty-icon">🔒</div>
-          <p class="empty-message">Рейтинг ещё не опубликован</p>
+        <div id="membersEditList">
+          <!-- Строки добавляются динамически -->
         </div>
-      `;
-      AkylI18n.applyI18n(AkylI18n.getLang(), out);
-      return;
-    }
 
-    const leaderboard = data.leaderboard || [];
-    if (!leaderboard.length) {
-      out.innerHTML = `
-        <div class="empty-state" role="status" aria-live="polite">
-          <div class="empty-icon">🏆</div>
-          <p class="empty-message">Рейтинг пуст</p>
-          <p class="empty-hint">Результаты появятся здесь после прохождения тестов.</p>
+        <button type="button" class="btn-add-member" onclick="addMemberRow()" data-i18n="team.add_member">
+          <span>+</span> Add Member
+        </button>
+
+        <div id="membersEditMessage" class="reset-message" style="display: none;"></div>
+
+        <div class="reset-actions">
+          <button class="nav-btn" onclick="closeMembersEditModal(event)" data-i18n="team.cancel">Cancel</button>
+          <button class="primary" onclick="saveMembers()" id="saveMembersBtn" data-i18n="team.save">Save Changes</button>
         </div>
-      `;
-      AkylI18n.applyI18n(AkylI18n.getLang(), out);
-      return;
-    }
-
-    function renderMedal(rank) {
-      if (rank === 1) return '&#x1F947; ';
-      if (rank === 2) return '&#x1F948; ';
-      if (rank === 3) return '&#x1F949; ';
-      return '';
-    }
-
-    out.innerHTML = `
-      <section aria-labelledby="leaderboard-heading">
-        <h3 id="leaderboard-heading" class="sr-only">Рейтинг</h3>
-        <div class="table-wrapper" role="region" aria-label="Таблица рейтинга">
-          <table class="results-table" role="table" aria-label="Рейтинг команд">
-            <thead>
-              <tr>
-                <th scope="col">#</th>
-                <th scope="col">Команда</th>
-                <th scope="col">Школа</th>
-                <th scope="col">Общий балл</th>
-                <th scope="col">Пройдено тестов</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${leaderboard.map((item) => `
-                <tr role="row" class="${item.rank <= 3 ? 'leaderboard-top3' : ''}">
-                  <td role="cell" class="rank-cell">${renderMedal(item.rank)}${item.rank}</td>
-                  <td role="cell">${escapeHtml(item.team_name || '—')}</td>
-                  <td role="cell">${escapeHtml(item.school || '—')}</td>
-                  <td role="cell" class="score"><strong>${item.total_score || 0}</strong></td>
-                  <td role="cell">${item.tests_taken || 0}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    `;
-
-    AkylI18n.applyI18n(AkylI18n.getLang(), out);
-  } catch (err) {
-    console.error(err);
-    out.setAttribute('aria-busy', 'false');
-    out.innerHTML = `
-      <div class="error-message" role="alert" aria-live="assertive">
-        <div class="error-icon">&#x26A0;&#xFE0F;</div>
-        <p class="error-text">Ошибка загрузки рейтинга</p>
-        <p class="error-hint">Пожалуйста, проверьте подключение к интернету и попробуйте снова.</p>
-        <button class="primary" onclick="location.reload()" type="button">Обновить страницу</button>
       </div>
-    `;
-  }
-}
-
-async function renderTestsSection(btn) {
-  if (btn) setActiveTab(btn);
-  const out = document.getElementById('tabContent');
-  out.setAttribute('aria-busy', 'true');
-  out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка тестов...</span></div><p data-i18n="team.loading">Загрузка...</p>';
-  AkylI18n.applyI18n(AkylI18n.getLang(), out);
-  
-  try {
-    let url = '/api/tests';
-    if (teamData && teamData.category_id) {
-      url += `?category_id=${encodeURIComponent(teamData.category_id)}`;
-    }
-    const tests = await apiFetch(url);
-    out.setAttribute('aria-busy', 'false');
-    
-    if (!tests.length) {
-      out.innerHTML = `
-        <div class="empty-state" role="status" aria-live="polite">
-          <div class="empty-icon">📝</div>
-          <p data-i18n="team.no_tests" class="empty-message">Нет тестов</p>
-          <p class="empty-hint">Тесты появятся здесь, когда они будут доступны.</p>
-        </div>
-      `;
-      AkylI18n.applyI18n(AkylI18n.getLang(), out);
-      return;
-    }
-    
-    function renderWindow(t) {
-      if (t.window_start && t.window_end) {
-        return `<span class="test-window" aria-label="Период доступности теста">(${t.window_start} → ${t.window_end})</span>`;
-      }
-      return '';
-    }
-
-    function renderStatusBadge(t) {
-      const status = t.auto_status || 'active';
-      const labels = {
-        scheduled: 'Запланирован',
-        active: 'Доступен',
-        closed: 'Закрыт'
-      };
-      return `<span class="status-badge status-${status}" aria-label="Статус: ${labels[status] || status}">${labels[status] || status}</span>`;
-    }
-
-    function renderCountdown(t) {
-      if (t.countdown_sec && t.countdown_sec > 0) {
-        const mins = Math.floor(t.countdown_sec / 60);
-        const secs = t.countdown_sec % 60;
-        return `<div class="test-countdown" aria-label="Тест начнётся через ${mins} мин ${secs} сек">Тест начнётся через ${mins} мин ${secs} сек</div>`;
-      }
-      return '';
-    }
-
-    function renderPreviewText(t) {
-      if (t.preview_text) {
-        return `<p class="test-preview">${escapeHtml(t.preview_text)}</p>`;
-      }
-      return '';
-    }
-
-    function isButtonDisabled(t) {
-      const status = t.auto_status || 'active';
-      return (status === 'scheduled' || status === 'closed') ? 'disabled aria-disabled="true"' : '';
-    }
-
-    out.innerHTML = `
-      <section aria-labelledby="tests-heading">
-        <h3 id="tests-heading" class="sr-only" data-i18n="team.tab.tests">Тесты</h3>
-        <ul class="test-list" role="list" aria-label="Список доступных тестов">
-          ${tests.map((t, idx) => `
-            <li role="listitem" class="test-card">
-              <div class="test-card-header">
-                <h4 class="test-title">${escapeHtml(t.title || 'Без названия')}</h4>
-                ${renderWindow(t)}
-                ${renderStatusBadge(t)}
-              </div>
-              ${t.description ? `<p class="test-description">${escapeHtml(t.description)}</p>` : ''}
-              ${renderPreviewText(t)}
-              ${renderCountdown(t)}
-              <button
-                data-id="${t.id}"
-                class="take primary"
-                data-i18n="team.take_test"
-                aria-label="Начать тест: ${escapeHtml(t.title || 'Без названия')}"
-                type="button"
-                ${isButtonDisabled(t)}>
-                Пройти
-              </button>
-            </li>
-          `).join('')}
-        </ul>
-      </section>
-    `;
-    
-    AkylI18n.applyI18n(AkylI18n.getLang(), out);
-    
-    document.querySelectorAll('.take').forEach(b => {
-      b.onclick = () => startTest(b.dataset.id);
-      b.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          b.click();
-        }
-      });
-    });
-  } catch (err) {
-    console.error(err);
-    out.setAttribute('aria-busy', 'false');
-    out.innerHTML = `
-      <div class="error-message" role="alert" aria-live="assertive">
-        <div class="error-icon">⚠️</div>
-        <p class="error-text">Ошибка загрузки тестов</p>
-        <p class="error-hint">Пожалуйста, проверьте подключение к интернету и попробуйте снова.</p>
-        <button class="primary" onclick="location.reload()" type="button">Обновить страницу</button>
-      </div>
-    `;
-  }
-}
-
-async function renderResultsSection(btn) {
-  if (btn) setActiveTab(btn);
-  const out = document.getElementById('tabContent');
-  out.setAttribute('aria-busy', 'true');
-  out.innerHTML = '<div class="loading-spinner" role="status" aria-live="polite"><span class="sr-only">Загрузка результатов...</span></div><p data-i18n="team.loading_results">Загрузка результатов...</p>';
-  AkylI18n.applyI18n(AkylI18n.getLang(), out);
-
-  try {
-    // First fetch settings to check if results are published
-    const settings = await apiFetch('/api/settings');
-    if (!settings || !settings.results_published) {
-      out.setAttribute('aria-busy', 'false');
-      out.innerHTML = `
-        <div class="empty-state" role="status" aria-live="polite">
-          <div class="empty-icon">🔒</div>
-          <p class="empty-message">Результаты ещё не опубликованы</p>
-        </div>
-      `;
-      AkylI18n.applyI18n(AkylI18n.getLang(), out);
-      return;
-    }
-
-    const rows = await apiFetch('/api/me/results');
-    out.setAttribute('aria-busy', 'false');
-
-    if (!rows.length) {
-      out.innerHTML = `
-        <div class="empty-state" role="status" aria-live="polite">
-          <div class="empty-icon">📊</div>
-          <p data-i18n="team.no_results" class="empty-message">Результатов нет</p>
-          <p class="empty-hint">Ваши результаты тестирования появятся здесь после прохождения тестов.</p>
-        </div>
-      `;
-      AkylI18n.applyI18n(AkylI18n.getLang(), out);
-      return;
-    }
-
-    function formatTimeTaken(sec) {
-      if (!sec && sec !== 0) return '—';
-      const m = Math.floor(sec / 60);
-      const s = sec % 60;
-      return `${m} мин ${s} сек`;
-    }
-
-    out.innerHTML = `
-      <section aria-labelledby="results-heading">
-        <h3 id="results-heading" class="sr-only" data-i18n="team.tab.results">Результаты</h3>
-        <div class="table-wrapper" role="region" aria-label="Таблица результатов">
-          <table class="results-table" role="table" aria-label="Результаты тестирования">
-            <thead>
-              <tr>
-                <th scope="col">№</th>
-                <th scope="col" data-i18n="team.team_name">Имя команды</th>
-                <th scope="col" data-i18n="team.score">Баллы</th>
-                <th scope="col" data-i18n="team.date">Время прохождения</th>
-                <th scope="col" data-i18n="team.time_taken">Затраченное время</th>
-                <th scope="col" data-i18n="team.category">Категория теста</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows.map((r, idx) => `
-                <tr role="row">
-                  <td role="cell">${idx + 1}</td>
-                  <td role="cell">${escapeHtml(r.team_name || 'Без названия')}</td>
-                  <td role="cell" class="score" aria-label="Набрано баллов: ${r.score_display}">
-                    <strong>${r.score_display || '0'}</strong>
-                  </td>
-                  <td role="cell" class="date">${escapeHtml(r.taken_at_formatted || 'Не указана')}</td>
-                  <td role="cell" class="time-taken">${formatTimeTaken(r.time_taken_sec)}</td>
-                  <td role="cell">${escapeHtml(r.category_name || 'Не указана')}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-        <div class="results-summary" role="region" aria-label="Сводка результатов">
-          <p class="summary-text">
-            Всего пройдено тестов: <strong>${rows.length}</strong>
-          </p>
-        </div>
-      </section>
-    `;
-
-    AkylI18n.applyI18n(AkylI18n.getLang(), out);
-  } catch (err) {
-    console.error(err);
-    out.setAttribute('aria-busy', 'false');
-    out.innerHTML = `
-      <div class="error-message" role="alert" aria-live="assertive">
-        <div class="error-icon">⚠️</div>
-        <p class="error-text">Ошибка загрузки результатов</p>
-        <p class="error-hint">Пожалуйста, проверьте подключение к интернету и попробуйте снова.</p>
-        <button class="primary" onclick="location.reload()" type="button">Обновить страницу</button>
-      </div>
-    `;
-  }
-};
-
-async function startTest(id) {
-  const out = document.getElementById('tabContent');
-  const runner = new QuizRunner({
-    testId: id,
-    container: out,
-    onFinish: () => {
-      renderResultsSection(document.getElementById('tabResults'));
-    },
-    onCancel: () => {
-      renderTestsSection(document.getElementById('tabTests'));
-    },
-  });
-  await runner.start();
-}
-
-// Редактирование полей профиля (кроме email)
-let currentEditField = null;
-
-function handleInlineEdit(field) {
-  if (!teamData) return;
-  
-  currentEditField = field;
-  
-  const fieldNames = {
-    team_name: { label: t('team.team_name') || 'Название команды', title: t('team.edit_field') || 'Редактирование' },
-    captain_name: { label: t('team.captain') || 'Капитан', title: t('team.edit_field') || 'Редактирование' },
-    captain_phone: { label: t('team.phone') || 'Телефон', title: t('team.edit_field') || 'Редактирование' },
-    school: { label: t('team.school') || 'Школа', title: t('team.edit_field') || 'Редактирование' },
-    city: { label: t('team.city') || 'Город', title: t('team.edit_field') || 'Редактирование' }
-  };
-  
-  const fieldInfo = fieldNames[field] || { label: field, title: t('team.edit_field') || 'Редактирование' };
-  const current = (teamData[field] || '').toString();
-  
-  const modal = document.getElementById('fieldEditModal');
-  if (!modal) return;
-  
-  document.getElementById('fieldEditTitle').textContent = fieldInfo.title;
-  document.getElementById('fieldEditLabel').textContent = fieldInfo.label;
-  document.getElementById('fieldEditInput').value = current;
-  document.getElementById('fieldEditInput').placeholder = t('team.enter_value') || 'Введите значение';
-  document.getElementById('fieldEditMessage').style.display = 'none';
-  document.getElementById('fieldEditMessage').textContent = '';
-  
-  modal.style.display = 'flex';
-  document.getElementById('fieldEditInput').focus();
-  document.getElementById('fieldEditInput').select();
-  
-  AkylI18n.applyI18n(AkylI18n.getLang(), modal);
-}
-
-function closeFieldEditModal(event) {
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  const modal = document.getElementById('fieldEditModal');
-  if (modal) {
-    modal.style.display = 'none';
-    currentEditField = null;
-  }
-}
-
-async function saveFieldEdit() {
-  if (!currentEditField || !teamData) return;
-  
-  const input = document.getElementById('fieldEditInput');
-  const newValue = (input?.value || '').trim();
-  const messageEl = document.getElementById('fieldEditMessage');
-  const btn = document.getElementById('saveFieldBtn');
-  
-  btn.disabled = true;
-  btn.textContent = t('team.saving') || 'Сохранение...';
-  
-  try {
-    const body = {};
-    body[currentEditField] = newValue;
-    
-    const j = await apiFetch('/api/me', {
-      method: 'PUT',
-      body: JSON.stringify(body)
-    });
-    
-    if (!j.ok) {
-      const msg = j && j.error ? j.error : (t('team.save_error') || 'Не удалось сохранить изменения');
-      messageEl.textContent = msg;
-      messageEl.className = 'reset-message error';
-      messageEl.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = t('team.save') || 'Сохранить';
-      return;
-    }
-    
-    teamData = j.team || teamData;
-    updateTeamNameHeader();
-    
-    // Обновляем локальное хранилище team, если оно есть
-    try {
-      const currentStored = JSON.parse(localStorage.getItem('team') || 'null');
-      if (currentStored && Number(currentStored.id) === Number(teamData.id)) {
-        localStorage.setItem('team', JSON.stringify({ ...currentStored, ...teamData }));
-      }
-    } catch {}
-    
-    // Успешно
-    messageEl.textContent = t('team.save_success') || 'Изменения успешно сохранены';
-    messageEl.className = 'reset-message success';
-    messageEl.style.display = 'block';
-    
-    setTimeout(() => {
-      closeFieldEditModal();
-      // Перерисовываем главную секцию
-      renderHomeSection(document.getElementById('tabHome'));
-    }, 1000);
-    
-  } catch (err) {
-    console.error(err);
-    messageEl.textContent = t('team.save_error') || 'Произошла ошибка при сохранении. Попробуйте ещё раз.';
-    messageEl.className = 'reset-message error';
-    messageEl.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = t('team.save') || 'Сохранить';
-  }
-}
-
-// Смена пароля - открыть модальное окно
-function handlePasswordChange() {
-  const modal = document.getElementById('passwordChangeModal');
-  if (modal) {
-    modal.style.display = 'flex';
-    document.getElementById('passwordStep1').style.display = 'block';
-    document.getElementById('passwordStep2').style.display = 'none';
-    document.getElementById('passwordOldPassword').value = '';
-    document.getElementById('passwordNewPassword').value = '';
-    document.getElementById('passwordConfirmPassword').value = '';
-    document.getElementById('passwordStep1Message').style.display = 'none';
-    document.getElementById('passwordStep2Message').style.display = 'none';
-    document.getElementById('passwordOldPassword').focus();
-  }
-}
-
-// Закрыть модальное окно смены пароля
-function closePasswordChangeModal(event) {
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  const modal = document.getElementById('passwordChangeModal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
-}
-
-// Вернуться к шагу 1 (ввод старого пароля)
-function goBackToPasswordStep1() {
-  document.getElementById('passwordStep1').style.display = 'block';
-  document.getElementById('passwordStep2').style.display = 'none';
-  document.getElementById('passwordOldPassword').value = '';
-  document.getElementById('passwordStep1Message').style.display = 'none';
-  document.getElementById('passwordOldPassword').focus();
-}
-
-// Проверка старого пароля
-async function verifyOldPassword() {
-  const oldPassword = document.getElementById('passwordOldPassword').value;
-  const messageEl = document.getElementById('passwordStep1Message');
-  
-  if (!oldPassword) {
-    messageEl.textContent = 'Введите текущий пароль';
-    messageEl.className = 'reset-message error';
-    messageEl.style.display = 'block';
-    return;
-  }
-
-  const btn = document.getElementById('verifyOldPasswordBtn');
-  btn.disabled = true;
-  btn.textContent = 'Проверка...';
-
-  try {
-    const j = await apiFetch('/api/me/verify-password', {
-      method: 'POST',
-      body: JSON.stringify({ password: oldPassword })
-    });
-    
-    if (!j.ok) {
-      messageEl.textContent = j && j.error ? j.error : 'Неверный пароль';
-      messageEl.className = 'reset-message error';
-      messageEl.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = 'Проверить';
-      return;
-    }
-
-    // Пароль верный, переходим к шагу 2
-    document.getElementById('passwordStep1').style.display = 'none';
-    document.getElementById('passwordStep2').style.display = 'block';
-    document.getElementById('passwordNewPassword').focus();
-    
-    // Навешиваем обработчики для проверки требований к паролю
-    const newPwdInput = document.getElementById('passwordNewPassword');
-    const confirmPwdInput = document.getElementById('passwordConfirmPassword');
-    
-    newPwdInput.addEventListener('input', checkPasswordRequirements);
-    confirmPwdInput.addEventListener('input', checkPasswordMatch);
-    
-  } catch (err) {
-    console.error(err);
-    messageEl.textContent = 'Произошла ошибка. Попробуйте ещё раз.';
-    messageEl.className = 'reset-message error';
-    messageEl.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = 'Проверить';
-  }
-}
-
-// Проверка требований к паролю
-function checkPasswordRequirements() {
-  const password = document.getElementById('passwordNewPassword').value;
-  const reqs = {
-    length: password.length >= 8,
-    upper: /[A-ZА-ЯЁ]/.test(password),
-    lower: /[a-zа-яё]/.test(password),
-    number: /[0-9]/.test(password)
-  };
-  
-  document.getElementById('pwd-req-length').classList.toggle('met', reqs.length);
-  document.getElementById('pwd-req-upper').classList.toggle('met', reqs.upper);
-  document.getElementById('pwd-req-lower').classList.toggle('met', reqs.lower);
-  document.getElementById('pwd-req-number').classList.toggle('met', reqs.number);
-  
-  checkPasswordMatch();
-}
-
-// Проверка совпадения паролей
-function checkPasswordMatch() {
-  const newPwd = document.getElementById('passwordNewPassword').value;
-  const confirmPwd = document.getElementById('passwordConfirmPassword').value;
-  const messageEl = document.getElementById('passwordStep2Message');
-  
-  if (confirmPwd && newPwd !== confirmPwd) {
-    messageEl.textContent = 'Пароли не совпадают';
-    messageEl.className = 'reset-message error';
-    messageEl.style.display = 'block';
-  } else {
-    messageEl.style.display = 'none';
-  }
-}
-
-// Изменение пароля
-async function changePassword() {
-  const oldPassword = document.getElementById('passwordOldPassword').value;
-  const newPassword = document.getElementById('passwordNewPassword').value;
-  const confirmPassword = document.getElementById('passwordConfirmPassword').value;
-  const messageEl = document.getElementById('passwordStep2Message');
-  
-  // Проверка требований
-  const reqs = {
-    length: newPassword.length >= 8,
-    upper: /[A-ZА-ЯЁ]/.test(newPassword),
-    lower: /[a-zа-яё]/.test(newPassword),
-    number: /[0-9]/.test(newPassword)
-  };
-  
-  if (!reqs.length || !reqs.upper || !reqs.lower || !reqs.number) {
-    messageEl.textContent = 'Пароль не соответствует требованиям';
-    messageEl.className = 'reset-message error';
-    messageEl.style.display = 'block';
-    return;
-  }
-  
-  if (newPassword !== confirmPassword) {
-    messageEl.textContent = 'Пароли не совпадают';
-    messageEl.className = 'reset-message error';
-    messageEl.style.display = 'block';
-    return;
-  }
-
-  const btn = document.getElementById('changePasswordBtn');
-  btn.disabled = true;
-  btn.textContent = 'Изменение...';
-
-  try {
-    const j = await apiFetch('/api/me/change-password', {
-      method: 'POST',
-      body: JSON.stringify({ oldPassword, newPassword })
-    });
-    
-    if (!j.ok) {
-      const msg = j && j.error ? j.error : 'Не удалось изменить пароль';
-      messageEl.textContent = msg;
-      messageEl.className = 'reset-message error';
-      messageEl.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = t('team.change_password');
-      return;
-    }
-    
-    // Успешно
-    messageEl.textContent = 'Пароль успешно изменён';
-    messageEl.className = 'reset-message success';
-    messageEl.style.display = 'block';
-    
-    setTimeout(() => {
-      closePasswordChangeModal();
-    }, 1500);
-    
-  } catch (err) {
-    console.error(err);
-    messageEl.textContent = 'Произошла ошибка при изменении пароля. Попробуйте ещё раз.';
-    messageEl.className = 'reset-message error';
-    messageEl.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = 'Изменить пароль';
-  }
-}
-
-// Редактирование участников команды
-function handleMembersEdit(event) {
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  
-  const modal = document.getElementById('membersEditModal');
-  if (!modal || !teamData) {
-    console.error('Modal or teamData not found');
-    return;
-  }
-  
-  modal.style.display = 'flex';
-  const listContainer = document.getElementById('membersEditList');
-  if (!listContainer) {
-    console.error('membersEditList not found');
-    return;
-  }
-
-  // Сбрасываем состояние сообщений и кнопки сохранения
-  const messageEl = document.getElementById('membersEditMessage');
-  const btn = document.getElementById('saveMembersBtn');
-  if (messageEl) {
-    messageEl.style.display = 'none';
-    messageEl.textContent = '';
-  }
-  if (btn) {
-    btn.disabled = false;
-    btn.textContent = t('team.save') || 'Сохранить';
-  }
-  
-  listContainer.innerHTML = '';
-  
-  // Загружаем текущих участников
-  const members = teamData.members || [];
-  if (Array.isArray(members)) {
-    members.forEach((member, index) => {
-      addMemberRow(member.name || '', member.class || '', index);
-    });
-  }
-  
-  // Если участников нет, добавляем одну пустую строку
-  if (members.length === 0) {
-    addMemberRow('', '', 0);
-  }
-  
-  if (typeof AkylI18n !== 'undefined' && AkylI18n.applyI18n) {
-    AkylI18n.applyI18n(AkylI18n.getLang(), modal);
-  }
-}
-
-function addMemberRow(name = '', className = '', index = null) {
-  const listContainer = document.getElementById('membersEditList');
-  if (!listContainer) return;
-  
-  const rowIndex = index !== null ? index : listContainer.children.length;
-  const row = document.createElement('div');
-  row.className = 'member-edit-row';
-  row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-start;';
-  row.innerHTML = `
-    <div style="flex: 1;">
-      <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600;" data-i18n="team.member_name">Имя участника</label>
-      <input type="text" class="member-name-input" placeholder="${t('team.member_name') || 'Имя участника'}" value="${escapeHtml(name)}" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px;"/>
     </div>
-    <div style="flex: 1;">
-      <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600;" data-i18n="team.member_class">Класс</label>
-      <input type="text" class="member-class-input" placeholder="${t('team.member_class') || 'Класс'}" value="${escapeHtml(className)}" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px;"/>
-    </div>
-    <button type="button" onclick="removeMemberRow(this)" style="margin-top: 24px; padding: 8px 12px; background: var(--danger); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; min-width: 40px;" aria-label="Удалить участника" title="Удалить">×</button>
-  `;
-  listContainer.appendChild(row);
-  
-  // Применяем переводы к новой строке
-  if (typeof AkylI18n !== 'undefined' && AkylI18n.applyI18n) {
-    AkylI18n.applyI18n(AkylI18n.getLang(), row);
-  }
-}
+  </div>
 
-function removeMemberRow(btn) {
-  const row = btn.closest('.member-edit-row');
-  if (row) {
-    row.remove();
-  }
-}
-
-function closeMembersEditModal(event) {
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  const modal = document.getElementById('membersEditModal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
-}
-
-async function saveMembers() {
-  const listContainer = document.getElementById('membersEditList');
-  if (!listContainer) return;
-  
-  const rows = listContainer.querySelectorAll('.member-edit-row');
-  const members = [];
-  
-  rows.forEach(row => {
-    const nameInput = row.querySelector('.member-name-input');
-    const classInput = row.querySelector('.member-class-input');
-    const name = (nameInput?.value || '').trim();
-    const className = (classInput?.value || '').trim();
-    
-    // Добавляем только участников с указанным именем
-    if (name) {
-      members.push({
-        name: name,
-        class: className || null
-      });
-    }
-  });
-  
-  const messageEl = document.getElementById('membersEditMessage');
-  const btn = document.getElementById('saveMembersBtn');
-  
-  btn.disabled = true;
-  btn.textContent = t('team.saving') || 'Сохранение...';
-  
-  try {
-    const j = await apiFetch('/api/me', {
-      method: 'PUT',
-      body: JSON.stringify({ members: members })
-    });
-    
-    if (!j.ok) {
-      const msg = j && j.error ? j.error : 'Не удалось сохранить изменения';
-      messageEl.textContent = msg;
-      messageEl.className = 'reset-message error';
-      messageEl.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = t('team.save') || 'Сохранить';
-      return;
-    }
-    
-    // Обновляем данные команды
-    teamData = j.team || teamData;
-    if (teamData.members && typeof teamData.members === 'string') {
-      try {
-        teamData.members = JSON.parse(teamData.members);
-      } catch {
-        teamData.members = [];
-      }
-    }
-    
-    // Успешно
-    messageEl.textContent = 'Участники успешно обновлены';
-    messageEl.className = 'reset-message success';
-    messageEl.style.display = 'block';
-    
-    setTimeout(() => {
-      closeMembersEditModal();
-      // Перерисовываем главную секцию
-      renderHomeSection(document.getElementById('tabHome'));
-    }, 1000);
-    
-  } catch (err) {
-    console.error(err);
-    messageEl.textContent = 'Произошла ошибка при сохранении. Попробуйте ещё раз.';
-    messageEl.className = 'reset-message error';
-    messageEl.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = t('team.save') || 'Сохранить';
-  }
-}
-
-// Клавиатурная навигация для вкладок
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('keydown', (e) => {
-    const tabs = Array.from(document.querySelectorAll('.tab-btn'));
-    const currentIndex = tabs.indexOf(btn);
-    
-    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-      e.preventDefault();
-      let nextIndex;
-      if (e.key === 'ArrowRight') {
-        nextIndex = (currentIndex + 1) % tabs.length;
-      } else {
-        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-      }
-      tabs[nextIndex].focus();
-      tabs[nextIndex].click();
-    } else if (e.key === 'Home') {
-      e.preventDefault();
-      tabs[0].focus();
-      tabs[0].click();
-    } else if (e.key === 'End') {
-      e.preventDefault();
-      tabs[tabs.length - 1].focus();
-      tabs[tabs.length - 1].click();
-    }
-  });
-});
-
-// Обработчики вкладок + обновление URL (/team/<section>)
-function attachTabHandlers() {
-  const map = {
-    tabHome: { section: 'main', render: renderHomeSection },
-    tabTests: { section: 'tests', render: renderTestsSection },
-    tabResults: { section: 'results', render: renderResultsSection },
-    tabLeaderboard: { section: 'leaderboard', render: renderLeaderboardSection },
-    tabRules: { section: 'rules', render: renderRulesSection }
-  };
-
-  Object.keys(map).forEach(id => {
-    const btn = document.getElementById(id);
-    if (!btn) return;
-    const { section, render } = map[id];
-    btn.onclick = (e) => {
-      const targetBtn = e.currentTarget;
-      // Меняем URL, не перезагружая страницу
-      const newPath = section === 'main' ? '/team/main' : `/team/${section}`;
-      if (window.location.pathname !== newPath && window.history && window.history.pushState) {
-        window.history.pushState({ section }, '', newPath);
-      }
-      render(targetBtn);
-    };
-  });
-}
-
-// Router для подстраниц: /team, /team/main, /team/tests, /team/results, /team/leaderboard, /team/rules
-function initTeamSectionFromUrl() {
-  const path = window.location.pathname || '';
-  const match = path.match(/^\/team\/([^/]+)/);
-  const section = match ? match[1] : 'main';
-  const map = {
-    main: 'tabHome',
-    tests: 'tabTests',
-    results: 'tabResults',
-    leaderboard: 'tabLeaderboard',
-    rules: 'tabRules'
-  };
-  const btnId = map[section] || 'tabHome';
-  const btn = document.getElementById(btnId);
-  if (btn) {
-    btn.click();
-  } else {
-    document.getElementById('tabHome').click();
-  }
-}
-
-attachTabHandlers();
-initTeamSectionFromUrl();
-
-// Обработчики для закрытия модальных окон при клике вне их
-document.addEventListener('click', (e) => {
-  const fieldModal = document.getElementById('fieldEditModal');
-  const membersModal = document.getElementById('membersEditModal');
-  const passwordModal = document.getElementById('passwordChangeModal');
-  
-  // Закрываем только если клик был на самом модальном окне (фон), а не на содержимом
-  if (fieldModal && fieldModal.style.display === 'flex' && e.target === fieldModal) {
-    closeFieldEditModal();
-  }
-  if (membersModal && membersModal.style.display === 'flex' && e.target === membersModal) {
-    closeMembersEditModal();
-  }
-  if (passwordModal && passwordModal.style.display === 'flex' && e.target === passwordModal) {
-    closePasswordChangeModal();
-  }
-});
-
-// Предотвращаем закрытие при клике на содержимое модального окна
-// Выполняем после загрузки DOM
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.reset-modal-content').forEach(content => {
-      content.addEventListener('click', (e) => {
-        e.stopPropagation();
-      });
-    });
-  });
-} else {
-  document.querySelectorAll('.reset-modal-content').forEach(content => {
-    content.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
-  });
-}
-
-// Обработчик Enter для сохранения в модальном окне редактирования поля
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && currentEditField) {
-    const modal = document.getElementById('fieldEditModal');
-    if (modal && modal.style.display === 'flex') {
-      e.preventDefault();
-      saveFieldEdit();
-    }
-  }
-  if (e.key === 'Escape') {
-    const fieldModal = document.getElementById('fieldEditModal');
-    const membersModal = document.getElementById('membersEditModal');
-    const passwordModal = document.getElementById('passwordChangeModal');
-    
-    if (fieldModal && fieldModal.style.display === 'flex') {
-      closeFieldEditModal();
-    } else if (membersModal && membersModal.style.display === 'flex') {
-      closeMembersEditModal();
-    } else if (passwordModal && passwordModal.style.display === 'flex') {
-      closePasswordChangeModal();
-    }
-  }
-});
-
-// Обработчик изменения языка
-window.addEventListener('akyl-langchange', () => {
-  if (typeof AkylI18n !== 'undefined') {
-    AkylI18n.applyI18n(AkylI18n.getLang());
-    // Перезагружаем текущую вкладку
-    const activeTab = document.querySelector('.tab-btn.active');
-    if (activeTab) {
-      activeTab.click();
-    }
-  }
-});
-</script>
+  <script src="/js/i18n.js"></script>
+  <script src="/js/app-utils.js"></script>
+  <script src="/js/quiz-engine.js"></script>
+  <script defer src="/js/team.js"></script>
 </body>
 </html>

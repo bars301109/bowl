@@ -4,142 +4,1114 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title data-i18n="register.title">Регистрация</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
-  <link rel="stylesheet" href="../css/style.css"/>
-  <link rel="icon" type="image/svg+xml" href="../images/favicon.svg">
+  <title data-i18n="register.title">Team Registration — Akylman Quiz Bowl</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Spectral:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css"/>
+  <link rel="icon" type="image/png" href="/images/лого.png">
   <style>
-    .password-requirements {
-      margin-top: 10px;
+    /* Registration Page Paper & Ink Theme */
+    body, body.admin-panel {
+      background: var(--paper) !important;
+      min-height: 100vh;
+      color: var(--ink) !important;
+      font-family: var(--font-body), 'Onest', sans-serif !important;
+    }
+
+    .register-container {
+      max-width: 920px;
+      margin: 28px auto 60px;
+      padding: 0 20px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .reg-top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .reg-brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .reg-brand-logo img {
+      height: 44px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .reg-card {
+      background: var(--surface) !important;
+      border-radius: var(--r-lg) !important;
+      border: 1px solid var(--line) !important;
+      box-shadow: none !important;
+      padding: 40px 42px;
+      position: relative;
+      transition: border-color 0.15s ease;
+    }
+
+    .reg-card:hover {
+      border-color: var(--ink) !important;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    @media (max-width: 768px) {
+      .reg-card {
+        padding: 26px 18px;
+      }
+      .register-container {
+        padding: 0 14px;
+        margin: 16px auto 40px;
+      }
+    }
+
+    .reg-header {
+      margin-bottom: 30px;
+      text-align: left;
+    }
+
+    .reg-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 99px;
+      background: var(--accent-wash);
+      border: 1px solid var(--accent);
+      color: var(--accent-ink);
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .reg-title {
+      font-family: var(--font-display), 'Spectral', Georgia, serif !important;
+      font-size: 32px;
+      font-weight: 600;
+      color: var(--ink);
+      letter-spacing: -0.015em;
+      line-height: 1.25;
+      margin-bottom: 8px;
+    }
+
+    .reg-subtitle {
+      color: var(--ink-3);
+      font-size: 15px;
+      line-height: 1.6;
+      margin: 0;
+      max-width: 680px;
+    }
+
+    /* Section Cards */
+    .reg-section {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      padding: 26px 26px 22px;
+      margin-bottom: 24px;
+      box-shadow: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .reg-section:focus-within {
+      border-color: var(--ink);
+      box-shadow: none;
+    }
+
+    .reg-section-icon {
+      background: var(--surface-2) !important;
+      border: 1px solid var(--line) !important;
+      color: var(--accent) !important;
+      border-radius: var(--r-sm) !important;
+    }
+
+    .reg-input, .reg-select {
+      background: #ffffff !important;
+      border: 1px solid var(--line) !important;
+      border-radius: var(--r-sm) !important;
+      color: var(--ink) !important;
+      font-family: var(--font-body), sans-serif !important;
+    }
+
+    .reg-input:focus, .reg-select:focus {
+      border-color: var(--ink) !important;
+      box-shadow: 0 0 0 3px rgba(29, 27, 24, 0.08) !important;
+    }
+
+    .reg-submit-btn {
+      background: var(--ink) !important;
+      border: 1px solid var(--ink) !important;
+      color: var(--paper) !important;
+      border-radius: var(--r-sm) !important;
+      box-shadow: none !important;
+      font-family: inherit !important;
+    }
+
+    .reg-submit-btn:hover:not(:disabled) {
+      background: var(--accent) !important;
+      border-color: var(--accent) !important;
+      color: var(--paper) !important;
+      transform: none !important;
+    }
+
+    @media (max-width: 768px) {
+      .reg-section {
+        padding: 20px 16px 18px;
+        margin-bottom: 18px;
+      }
+    }
+
+    .reg-section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .reg-section-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--r-sm);
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .reg-section-icon svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .reg-section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ink);
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+
+    /* Input Grid System - Extra Width & Length */
+    .reg-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      font-size: 12px;
-      font-weight: 400;
-      padding: 12px;
-      background: rgba(0, 0, 0, 0.02);
-      border-radius: 8px;
-      border: 1px solid var(--border);
+      gap: 20px 24px;
     }
+
+    .reg-grid.single {
+      grid-template-columns: 1fr;
+    }
+
+    @media (max-width: 768px) {
+      .reg-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+    }
+
+    .reg-field {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 0;
+      position: relative;
+    }
+
+    .reg-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 8px;
+    }
+
+    .reg-label .req {
+      color: #ef4444;
+      font-weight: 700;
+      margin-left: 2px;
+    }
+
+    .reg-input-wrapper {
+      position: relative;
+      width: 100%;
+      display: flex;
+      align-items: center;
+    }
+
+    /* High Comfort Inputs — Paper & Ink Theme */
+    .reg-input,
+    .reg-select {
+      width: 100%;
+      min-height: 46px;
+      padding: 11px 14px;
+      font-size: 14.5px;
+      line-height: 1.5;
+      color: var(--ink);
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      box-sizing: border-box;
+      outline: none;
+      font-family: var(--font-body), sans-serif;
+    }
+
+    .reg-input::placeholder {
+      color: var(--ink-3);
+      font-size: 14px;
+    }
+
+    .reg-input:hover,
+    .reg-select:hover {
+      border-color: #c4bdae;
+    }
+
+    .reg-input:focus,
+    .reg-select:focus {
+      border-color: var(--ink);
+      box-shadow: 0 0 0 3px rgba(29, 27, 24, 0.08);
+      background: #ffffff;
+    }
+
+    .reg-input.error,
+    .reg-select.select-error {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12) !important;
+    }
+
+    .reg-select {
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 18px center;
+      padding-right: 48px;
+    }
+
+    /* Password Toggle Icon */
+    .reg-pw-toggle {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: #64748b;
+      padding: 8px;
+      cursor: pointer;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .reg-pw-toggle:hover {
+      color: #1e293b;
+      background: #f1f5f9;
+    }
+
+    .reg-pw-toggle svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Password Match Status */
+    .pw-match-status {
+      font-size: 12.5px;
+      font-weight: 500;
+      margin-top: 6px;
+      display: none;
+    }
+    .pw-match-status.matched {
+      display: block;
+      color: #16a34a;
+    }
+    .pw-match-status.mismatched {
+      display: block;
+      color: #dc2626;
+    }
+
+    /* Password Requirements Pill Grid */
+    .password-requirements {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px 12px;
+      padding: 12px 14px;
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+    }
+
+    @media (max-width: 520px) {
+      .password-requirements {
+        grid-template-columns: 1fr;
+      }
+    }
+
     #passwordReqs .requirement {
-      color: #ef4444 !important;
-      transition: all 0.3s ease;
-      font-weight: 400 !important;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500 !important;
+      color: #64748b !important;
+      transition: all 0.25s ease;
       margin: 0;
-      padding: 4px 0;
+      padding: 2px 0;
+    }
+
+    #passwordReqs .requirement::before {
+      content: '';
+      display: inline-flex;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.25s ease;
+      line-height: 1;
+    }
+
+    #passwordReqs .requirement:not(.met)::before {
+      content: '–';
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    #passwordReqs .requirement.met {
+      color: #15803d !important;
+      font-weight: 600 !important;
+    }
+
+    #passwordReqs .requirement.met::before {
+      content: '✓';
+      background: #dcfce7;
+      color: #16a34a;
+    }
+
+    #passwordReqs .requirement span {
+      font-weight: inherit !important;
+      color: inherit !important;
+    }
+
+    /* Members Segment Switcher */
+    .members-count-selector {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 6px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .count-btn {
+      min-height: 52px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 12px;
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 12px;
+      color: #334155;
+      font-size: 14.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+
+    .count-btn .count-num {
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .count-btn .count-label {
+      font-size: 13.5px;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    .count-btn:hover {
+      border-color: var(--ink);
+      background: var(--paper);
+    }
+
+    .count-btn.active {
+      background: var(--accent-wash);
+      border-color: var(--accent);
+      color: var(--accent-ink);
+      box-shadow: 0 0 0 2px var(--accent-wash);
+    }
+
+    /* Branch Selector */
+    .branch-selector {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .branch-btn {
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      color: var(--ink);
+      font-size: 14.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .branch-btn:hover {
+      border-color: var(--ink);
+      background: var(--paper);
+    }
+
+    .branch-btn.active {
+      background: var(--accent-wash);
+      border-color: var(--accent);
+      color: var(--accent-ink);
+      box-shadow: 0 0 0 2px var(--accent-wash);
+    }
+
+    @media (max-width: 640px) {
+      .branch-selector {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .members-count-selector {
+        gap: 8px;
+      }
+
+      .count-btn {
+        flex-direction: column;
+        gap: 3px;
+        padding: 8px 4px;
+        min-height: 56px;
+        text-align: center;
+      }
+
+      .count-btn .count-num {
+        font-size: 18px;
+        font-weight: 800;
+      }
+
+      .count-btn .count-label {
+        font-size: 11.5px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+      }
+
+      .member-item-card {
+        padding: 14px 14px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .members-count-selector {
+        gap: 5px;
+      }
+
+      .count-btn {
+        padding: 6px 2px;
+        min-height: 52px;
+      }
+
+      .count-btn .count-num {
+        font-size: 16px;
+      }
+
+      .count-btn .count-label {
+        font-size: 10.5px;
+      }
+    }
+
+    /* Dynamic Member Card */
+    .member-item-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-top: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .member-item-card:hover {
+      border-color: #cbd5e1;
+      background: #ffffff;
+    }
+
+    .member-item-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .member-num-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: var(--r-sm);
+      background: var(--ink);
+      color: var(--paper);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .member-title-text {
+      font-size: 14.5px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .member-inputs-grid {
+      display: grid;
+      grid-template-columns: 2.3fr 1fr;
+      gap: 14px 18px;
+    }
+
+    @media (max-width: 640px) {
+      .member-inputs-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+    }
+
+    /* Submit Actions & Button */
+    .reg-actions {
+      margin-top: 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .reg-submit-btn {
+      width: 100%;
+      min-height: 48px;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--paper) !important;
+      background: var(--ink) !important;
+      border: 1px solid var(--ink) !important;
+      border-radius: var(--r-sm) !important;
+      cursor: pointer;
+      box-shadow: none !important;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      letter-spacing: 0.01em;
+    }
+
+    .reg-submit-btn:hover:not(:disabled) {
+      background: var(--accent) !important;
+      border-color: var(--accent) !important;
+      transform: none !important;
+    }
+
+    .reg-submit-btn:active:not(:disabled) {
+      transform: none !important;
+    }
+
+    .reg-submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .reg-submit-btn svg {
+      width: 18px;
+      height: 18px;
+      transition: transform 0.15s ease;
+    }
+
+    .reg-submit-btn:hover:not(:disabled) svg {
+      transform: translateX(3px);
+    }
+
+    .reg-footer-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line-soft);
+      margin-top: 4px;
+    }
+
+    .reg-login-hint {
+      color: var(--ink-3);
+      font-size: 14px;
       display: flex;
       align-items: center;
       gap: 6px;
     }
-    
-    #passwordReqs .requirement::before {
-      content: '✗';
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: rgba(239, 68, 68, 0.1);
-      color: #ef4444;
-      font-size: 10px;
-      line-height: 16px;
-      text-align: center;
-      flex-shrink: 0;
+
+    .reg-login-link {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+      transition: color 0.15s ease;
     }
-    #passwordReqs .requirement.met {
-      color: #16a34a !important;
+
+    .reg-login-link:hover {
+      color: var(--accent-ink);
+      text-decoration: underline;
     }
-    #passwordReqs .requirement.met::before {
-      content: '✓';
-      background: rgba(22, 163, 74, 0.1);
-      color: #16a34a;
+
+    .reg-home-link {
+      color: var(--ink-3);
+      font-size: 13.5px;
+      font-weight: 500;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface-2);
+      transition: all 0.15s ease;
     }
-    #passwordReqs .requirement.met,
-    #passwordReqs .requirement.met span {
-      color: #16a34a !important;
+
+    .reg-home-link:hover {
+      color: var(--ink);
+      border-color: var(--ink);
+      background: var(--paper);
     }
-    #passwordReqs .requirement:not(.met),
-    #passwordReqs .requirement:not(.met) span {
-      color: #ef4444 !important;
+      border-radius: 8px;
+      transition: all 0.15s ease;
     }
-    #passwordReqs .requirement span {
-      font-weight: 400 !important;
-      color: inherit;
-      display: inline;
+
+    .reg-home-link:hover {
+      color: #0f172a;
+      background: #f1f5f9;
     }
-    .requirement-icon {
-      display: none !important;
+
+    /* Message Alert Box */
+    #msg {
+      margin-top: 20px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-size: 14.5px;
+      line-height: 1.5;
+      display: none;
+      animation: fadeIn 0.25s ease-out;
     }
-    .select-error {
-      border-color: #ef4444 !important;
-      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+
+    #msg.show {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #msg.error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+    }
+
+    #msg.success {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #15803d;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body class="admin-panel">
-<div class="container">
-  <div class="lang-switch text-end"><button data-lang="ru">РУ</button> <button data-lang="ky">КЫ</button></div>
-  <div class="logo-center logo-small"><a href="/"><img src="../images/image.png" class="img-fluid" alt="Akylman Quiz Bowl"/></a></div>
-  <div class="topbar d-flex justify-content-end gap-2 flex-wrap">
-    <a class="nav-btn" href="/" data-i18n="nav.home">Главная</a>
-    <a class="link-pill" href="/login" data-i18n="nav.login">Войти</a>
-  </div>
-  <div class="form-card">
-    <div>
-      <h2 data-i18n="register.title" class="grad-text">Регистрация команды</h2>
-      <form id="regForm">
-        <div class="form-row">
-          <label><span data-i18n="register.team_name">Название команды</span><input name="team_name" placeholder="Например: Шумкарлар" data-i18n-ph="register.team_name.placeholder" required/></label>
-          <label>
-            <span data-i18n="register.category">Категория</span>
-            <select id="team_category" name="category_id" class="admin-input" required>
-              <option value="">Выберите категорию</option>
-            </select>
-          </label>
-        </div>
-        <div class="form-row">
-          <label>
-            <span data-i18n="register.password">Пароль</span>
-            <input type="password" name="password" id="passwordInput" placeholder="Введите пароль" data-i18n-ph="register.password.placeholder" required/>
-            <div class="password-requirements" id="passwordReqs">
-              <div class="requirement" id="req-length"><span data-i18n="register.password.length">8 символов</span></div>
-              <div class="requirement" id="req-number"><span data-i18n="register.password.number">Цифра</span></div>
-              <div class="requirement" id="req-lowercase"><span data-i18n="register.password.lowercase">Строчная буква</span></div>
-              <div class="requirement" id="req-uppercase"><span data-i18n="register.password.uppercase">Заглавная буква</span></div>
-            </div>
-          </label>
-          <label><span data-i18n="register.password2">Повтор пароля</span><input type="password" name="password2" placeholder="Повторите пароль" data-i18n-ph="register.password2.placeholder" required/></label>
-        </div>
-        <div class="form-row">
-          <label><span data-i18n="register.captain_name">ФИО капитана</span><input name="captain_name" placeholder="Иванов Иван Иванович" data-i18n-ph="register.captain_name.placeholder" required/></label>
-          <label><span data-i18n="register.captain_email">Email капитана</span><input type="email" name="captain_email" placeholder="example@email.com" data-i18n-ph="register.captain_email.placeholder"/></label>
-        </div>
-        <div class="form-row">
-          <label><span data-i18n="register.captain_phone">Телефон капитана</span><input name="captain_phone" type="tel" placeholder="+996 555 123456" data-i18n-ph="register.captain_phone.placeholder"/></label>
-          <label><span data-i18n="register.city">Город</span><input name="city" placeholder="Город" data-i18n-ph="register.city.placeholder"/></label>
-        </div>
-        <div class="form-row">
-          <label><span data-i18n="register.school">Школа</span><input name="school" placeholder="Название школы" data-i18n-ph="register.school.placeholder"/></label>
-          <label><span data-i18n="register.members_count">Количество участников</span><select id="members_count" name="members_count"><option>2</option><option>3</option><option>4</option></select></label>
-        </div>
-        <div id="members_fields"></div>
-        <div class="mt-2">
-          <button class="primary" type="submit" data-i18n="register.submit">Зарегистрироваться</button>
-          <a class="nav-btn" href="/" data-i18n="nav.home">Главная</a>
-        </div>
-      </form>
-      <div id="msg" class="small-muted"></div>
+<div class="register-container">
+
+  <!-- Top Navigation & Language Switcher -->
+  <div class="reg-top-bar">
+    <div class="reg-top-left">
+      <a href="/" class="reg-brand-logo">
+        <img src="/images/лого.png" alt="Akylman Quiz Bowl Logo"/>
+      </a>
+      <a href="/" class="reg-back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span data-i18n="nav.home">Home</span>
+      </a>
     </div>
+    <div class="lang-switch">
+      <button data-lang="en">EN</button>
+      <button data-lang="ky">КЫ</button>
+    </div>
+  </div>
+
+  <!-- Registration Main Card -->
+  <div class="reg-card">
+    <!-- Convenient Auth Switcher -->
+    <div class="auth-segmented-switch">
+      <a href="/register" class="auth-switch-btn active" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="8.5" cy="7" r="4"></circle>
+          <line x1="20" y1="8" x2="20" y2="14"></line>
+          <line x1="23" y1="11" x2="17" y2="11"></line>
+        </svg>
+        <span data-i18n="nav.register">Register</span>
+      </a>
+      <a href="/login" class="auth-switch-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <span data-i18n="nav.login">Log In</span>
+      </a>
+      <a href="/team" class="auth-switch-btn" id="topAuthCabinetLink" style="display:none; color:#059669; font-weight:600;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+          <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+          <path d="M4 22h16"></path>
+          <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+        </svg>
+        <span id="topAuthCabinetText">Cabinet</span>
+      </a>
+    </div>
+
+    <!-- Already Logged In Banner -->
+    <div id="alreadyLoggedInBanner" style="display:none; margin-bottom: 24px; padding: 14px 18px; background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 14px; color: #065f46;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 22px;">🏆</span>
+          <span style="font-size: 14.5px; font-weight: 500;">You are already logged in as team <strong id="loggedInTeamName" style="color: #047857;"></strong></span>
+        </div>
+        <a href="/team" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; background: #059669; color: #fff; border-radius: 9999px; font-size: 13.5px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);">
+          <span>Go to Team Cabinet</span>
+          <span>→</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="reg-header">
+      <div class="reg-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+        </svg>
+        <span>Akylman Quiz Bowl</span>
+      </div>
+      <h1 class="reg-title" data-i18n="register.title">Team Registration</h1>
+      <p class="reg-subtitle" data-i18n="register.subtitle">Fill in your team details to join Akylman Quiz Bowl tournament</p>
+    </div>
+
+    <form id="regForm" novalidate>
+
+      <!-- Section 1: Team & Category -->
+      <div class="reg-section">
+        <div class="reg-section-header">
+          <div class="reg-section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+              <path d="M4 22h16"></path>
+              <path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1h10c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-2c-.55 0-1-.45-1-1v-2.34"></path>
+              <path d="M18 4H6v7a6 6 0 0 0 12 0V4z"></path>
+            </svg>
+          </div>
+          <h2 class="reg-section-title" data-i18n="register.section.team">Team Information</h2>
+        </div>
+
+        <div class="reg-grid">
+          <div class="reg-field">
+            <label class="reg-label" for="reg_team_name">
+              <span><span data-i18n="register.team_name">Team Name</span><span class="req">*</span></span>
+            </label>
+            <div class="reg-input-wrapper">
+              <input class="reg-input" id="reg_team_name" name="team_name" placeholder="e.g. Shumkarlar" data-i18n-ph="register.team_name.placeholder" required autocomplete="off"/>
+            </div>
+          </div>
+
+          <div class="reg-field">
+            <label class="reg-label" for="team_category">
+              <span><span data-i18n="register.category">Category</span><span class="req">*</span></span>
+            </label>
+            <div class="reg-input-wrapper">
+              <select id="team_category" name="category_id" class="reg-select admin-input" required>
+                <option value="" data-i18n="register.category.placeholder">Select category</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Password & Security -->
+      <div class="reg-section">
+        <div class="reg-section-header">
+          <div class="reg-section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h2 class="reg-section-title" data-i18n="register.section.security">Password & Security</h2>
+        </div>
+
+        <div class="reg-grid">
+          <div class="reg-field">
+            <label class="reg-label" for="passwordInput">
+              <span><span data-i18n="register.password">Password</span><span class="req">*</span></span>
+            </label>
+            <div class="reg-input-wrapper">
+              <input type="password" class="reg-input" name="password" id="passwordInput" placeholder="Enter password" data-i18n-ph="register.password.placeholder" required autocomplete="new-password"/>
+              <button type="button" class="reg-pw-toggle" id="togglePw1" aria-label="Show password">
+                <svg id="eyeIcon1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Modern Password Requirements Checklist -->
+            <div class="password-requirements" id="passwordReqs">
+              <div class="requirement" id="req-length"><span data-i18n="register.password.length">8 characters</span></div>
+              <div class="requirement" id="req-number"><span data-i18n="register.password.number">Number</span></div>
+              <div class="requirement" id="req-lowercase"><span data-i18n="register.password.lowercase">Lowercase letter</span></div>
+              <div class="requirement" id="req-uppercase"><span data-i18n="register.password.uppercase">Uppercase letter</span></div>
+            </div>
+          </div>
+
+          <div class="reg-field">
+            <label class="reg-label" for="passwordInput2">
+              <span><span data-i18n="register.password2">Repeat Password</span><span class="req">*</span></span>
+            </label>
+            <div class="reg-input-wrapper">
+              <input type="password" class="reg-input" name="password2" id="passwordInput2" placeholder="Repeat password" data-i18n-ph="register.password2.placeholder" required autocomplete="new-password"/>
+              <button type="button" class="reg-pw-toggle" id="togglePw2" aria-label="Show repeat password">
+                <svg id="eyeIcon2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <div id="pwMatchHint" class="pw-match-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Team Email -->
+      <div class="reg-section">
+        <div class="reg-section-header">
+          <div class="reg-section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+          </div>
+          <h2 class="reg-section-title" data-i18n="register.section.contact">Team Contacts</h2>
+        </div>
+
+        <div class="reg-grid single">
+          <div class="reg-field">
+            <label class="reg-label" for="team_email_input">
+              <span><span data-i18n="register.contact_email">Contact Email (for login and communication)</span><span class="req">*</span></span>
+            </label>
+            <div class="reg-input-wrapper">
+              <input type="email" class="reg-input" id="team_email_input" name="email" placeholder="example@email.com" data-i18n-ph="register.contact_email.placeholder" required autocomplete="email"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 4: Branch -->
+      <div class="reg-section">
+        <div class="reg-section-header">
+          <div class="reg-section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+              <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+            </svg>
+          </div>
+          <h2 class="reg-section-title" data-i18n="register.section.school">Branch</h2>
+        </div>
+
+        <div class="reg-grid single">
+          <div class="reg-field">
+            <label class="reg-label" for="branch_select">
+              <span><span data-i18n="register.branch">Branch</span><span class="req">*</span></span>
+            </label>
+            <div class="reg-input-wrapper">
+              <select id="branch_select" name="branch" class="reg-select admin-input" required>
+                <option value="" data-i18n="register.branch.placeholder">Select branch</option>
+                <option value="Манас">Манас</option>
+                <option value="Талас">Талас</option>
+                <option value="Чолпон-Ата">Чолпон-Ата</option>
+              </select>
+            </div>
+
+            <!-- Branch Quick Choice Buttons -->
+            <div class="branch-selector" id="branchButtons">
+              <button type="button" class="branch-btn" data-branch="Манас">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>Манас</span>
+              </button>
+              <button type="button" class="branch-btn" data-branch="Талас">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>Талас</span>
+              </button>
+              <button type="button" class="branch-btn" data-branch="Чолпон-Ата">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>Чолпон-Ата</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 5: Team Members -->
+      <div class="reg-section">
+        <div class="reg-section-header">
+          <div class="reg-section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <h2 class="reg-section-title" data-i18n="register.section.members">Team Members</h2>
+        </div>
+
+        <div class="reg-field" style="margin-bottom: 20px;">
+          <label class="reg-label" for="members_count">
+            <span data-i18n="register.members_count">Number of Members</span>
+          </label>
+
+          <!-- Interactive Member Count Buttons -->
+          <div class="members-count-selector" id="memberCountButtons">
+            <button type="button" class="count-btn active" data-count="2">
+              <span class="count-num">2</span>
+              <span class="count-label">members</span>
+            </button>
+            <button type="button" class="count-btn" data-count="3">
+              <span class="count-num">3</span>
+              <span class="count-label">members</span>
+            </button>
+            <button type="button" class="count-btn" data-count="4">
+              <span class="count-num">4</span>
+              <span class="count-label">members</span>
+            </button>
+          </div>
+
+          <!-- Native Select (Hidden but fully synced for compatibility) -->
+          <select id="members_count" name="members_count" style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px;">
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+
+        <!-- Dynamic Member Inputs Container -->
+        <div id="members_fields"></div>
+      </div>
+
+      <!-- Submit & Actions -->
+      <div class="reg-actions">
+        <button class="reg-submit-btn" type="submit" id="submitBtn">
+          <span data-i18n="register.submit">Register Team</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+
+        <div id="msg"></div>
+
+        <div class="reg-footer-nav">
+          <div class="reg-login-hint">
+            <span data-i18n="register.already_registered">Already registered?</span>
+            <a class="reg-login-link" href="/login" data-i18n="nav.login">Log In</a>
+          </div>
+          <a class="reg-home-link" href="/" data-i18n="nav.home">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Home
+          </a>
+        </div>
+      </div>
+
+    </form>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-<script src="../js/i18n.js"></script>
+<script src="/js/i18n.js"></script>
 <script>AkylI18n.initSwitcher();</script>
 <script>
 const membersDiv = document.getElementById('members_fields');
 const passwordInput = document.getElementById('passwordInput');
+const passwordInput2 = document.getElementById('passwordInput2');
 const categorySelect = document.getElementById('team_category');
+const branchSelect = document.getElementById('branch_select');
+const branchButtons = document.querySelectorAll('#branchButtons .branch-btn');
+const membersCountSelect = document.getElementById('members_count');
+const countButtons = document.querySelectorAll('#memberCountButtons .count-btn');
+const pwMatchHint = document.getElementById('pwMatchHint');
 
+// Password requirements rules
 const requirements = {
   length: /^.{8,}$/,
   number: /\d/,
@@ -166,7 +1138,29 @@ function updatePasswordRequirements(pw) {
     }
   }
 
+  checkPasswordMatch();
   return checks;
+}
+
+function checkPasswordMatch() {
+  if (!passwordInput || !passwordInput2 || !pwMatchHint) return;
+  const p1 = passwordInput.value;
+  const p2 = passwordInput2.value;
+  const lang = AkylI18n.getLang();
+
+  if (!p2) {
+    pwMatchHint.className = 'pw-match-status';
+    pwMatchHint.textContent = '';
+    return;
+  }
+
+  if (p1 === p2) {
+    pwMatchHint.className = 'pw-match-status matched';
+    pwMatchHint.textContent = lang === 'ky' ? '✓ Сырсөздөр дал келди' : '✓ Passwords match';
+  } else {
+    pwMatchHint.className = 'pw-match-status mismatched';
+    pwMatchHint.textContent = lang === 'ky' ? '✕ Сырсөздөр дал келген жок' : '✕ Passwords do not match';
+  }
 }
 
 function isValidPassword(pw) {
@@ -178,31 +1172,128 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || '');
 }
 
+// Password visibility toggle helpers
+function setupPwToggle(btnId, inputId, iconId) {
+  const btn = document.getElementById(btnId);
+  const input = document.getElementById(inputId);
+  if (!btn || !input) return;
+
+  btn.addEventListener('click', () => {
+    const isPw = input.type === 'password';
+    input.type = isPw ? 'text' : 'password';
+    btn.innerHTML = isPw
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+          <line x1="1" y1="1" x2="23" y2="23"></line>
+        </svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>`;
+  });
+}
+
+setupPwToggle('togglePw1', 'passwordInput', 'eyeIcon1');
+setupPwToggle('togglePw2', 'passwordInput2', 'eyeIcon2');
+
+// Render Members with generous spacious fields (All equal participants)
 function renderMembers(n) {
   membersDiv.innerHTML = '';
   const lang = AkylI18n.getLang();
-  for (let i = 2; i <= n; i++) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'form-row';
+  
+  for (let i = 1; i <= n; i++) {
+    const card = document.createElement('div');
+    card.className = 'member-item-card';
+
     let memberLabel, classLabel;
     if (lang === 'ky') {
-      memberLabel = `${i}-${AkylI18n.t('register.member_name')}`;
-      classLabel = AkylI18n.t('register.member_class');
+      memberLabel = `${i}-${AkylI18n.t('register.member_name') || 'катышуучунун аты-жөнү'}`;
+      classLabel = AkylI18n.t('register.member_class') || 'Классы';
     } else {
-      const ordinals = ['', '', 'второго', 'третьего', 'четвертого', 'пятого', 'шестого'];
-      memberLabel = `ФИО ${ordinals[i] || i + '-го'} участника`;
-      classLabel = AkylI18n.t('register.member_class');
+      memberLabel = `Member #${i} Full Name`;
+      classLabel = AkylI18n.t('register.member_class') || 'Grade';
     }
-    const memberPh = AkylI18n.t('register.member_name.placeholder');
-    const classPh = AkylI18n.t('register.member_class.placeholder');
-    wrapper.innerHTML = `<label><span>${memberLabel}</span><input name="member_${i}_name" placeholder="${memberPh}" required/></label><label><span>${classLabel}</span><input name="member_${i}_info" placeholder="${classPh}"/></label>`;
-    membersDiv.appendChild(wrapper);
+    const memberPh = AkylI18n.t('register.member_name.placeholder') || (lang === 'ky' ? 'Катышуучунун аты-жөнү' : 'Member Full Name');
+    const classPlaceholder = lang === 'ky' ? 'Классты тандаңыз' : 'Select grade';
+
+    card.innerHTML = `
+      <div class="member-item-header">
+        <span class="member-num-pill">${i}</span>
+        <span class="member-title-text">${memberLabel}</span>
+      </div>
+      <div class="member-inputs-grid">
+        <div class="reg-field">
+          <label class="reg-field-label" style="display:block; font-size:12.5px; font-weight:600; color:#475569; margin-bottom:5px;">
+            ${lang === 'ky' ? 'Аты-жөнү' : 'Member Full Name'} <span style="color:#ef4444;">*</span>
+          </label>
+          <div class="reg-input-wrapper">
+            <input class="reg-input" name="member_${i}_name" placeholder="${memberPh}" required autocomplete="name"/>
+          </div>
+        </div>
+        <div class="reg-field">
+          <label class="reg-field-label" style="display:block; font-size:12.5px; font-weight:600; color:#475569; margin-bottom:5px;">
+            ${classLabel} <span style="color:#ef4444;">*</span>
+          </label>
+          <div class="reg-input-wrapper">
+            <select class="reg-select" name="member_${i}_info" required>
+              <option value="">-- ${classPlaceholder} * --</option>
+              <option value="7-A">7-A</option>
+              <option value="7-B">7-B</option>
+              <option value="7-C">7-C</option>
+              <option value="8-A">8-A</option>
+              <option value="8-B">8-B</option>
+              <option value="8-C">8-C</option>
+              <option value="9-A">9-A</option>
+              <option value="9-B">9-B</option>
+              <option value="9-C">9-C</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    `;
+    const selEl = card.querySelector(`[name="member_${i}_info"]`);
+    if (selEl) {
+      selEl.addEventListener('change', () => selEl.classList.remove('select-error'));
+    }
+    membersDiv.appendChild(card);
   }
 }
 
-renderMembers(2);
+// Update segment button labels based on language
+function updateCountButtonLabels() {
+  const lang = AkylI18n.getLang();
+  countButtons.forEach(btn => {
+    const count = btn.dataset.count;
+    const numEl = btn.querySelector('.count-num');
+    const labelEl = btn.querySelector('.count-label');
+    const labelText = lang === 'ky' ? 'катышуучу' : 'members';
+    if (numEl) numEl.textContent = count;
+    if (labelEl) labelEl.textContent = labelText;
+    else btn.textContent = `${count} ${labelText}`;
+  });
+}
 
-// Загрузка категорий для выбора команды
+// Sync Segment Buttons with hidden select
+countButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    countButtons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const val = parseInt(btn.dataset.count);
+    membersCountSelect.value = val;
+    renderMembers(val);
+  });
+});
+
+membersCountSelect.addEventListener('change', e => {
+  const val = parseInt(e.target.value);
+  countButtons.forEach(b => {
+    if (parseInt(b.dataset.count) === val) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+  renderMembers(val);
+});
+
+// Load Categories
 async function loadCategoriesForTeams() {
   if (!categorySelect) return;
   try {
@@ -210,150 +1301,255 @@ async function loadCategoriesForTeams() {
     if (!res.ok) return;
     const cats = await res.json();
     const lang = AkylI18n.getLang();
-    const placeholder = lang === 'ky' ? 'Категорияны тандаңыз' : 'Выберите категорию';
+    const placeholder = lang === 'ky' ? 'Категорияны тандаңыз' : 'Select category';
     categorySelect.innerHTML = `<option value="">${placeholder}</option>` +
-      cats.map(c => `<option value="${c.id}">${lang==='ky' ? escHtml(c.name_ky) : escHtml(c.name_ru)}</option>`).join('');
+      cats.map(c => `<option value="${c.id}">${lang === 'ky' ? escHtml(c.name_ky) : escHtml(c.name_ru)}</option>`).join('');
   } catch (e) {
     console.error('Failed to load categories', e);
   }
 }
 
-function escHtml(s){
+function escHtml(s) {
   const div = document.createElement('div');
   div.textContent = s || '';
   return div.innerHTML;
 }
 
+// Initial renders
+renderMembers(2);
+updateCountButtonLabels();
+updateBranchPlaceholder();
 loadCategoriesForTeams();
 
-document.getElementById('members_count').addEventListener('change', e => renderMembers(parseInt(e.target.value)));
-
-// Clear category error on selection
+// Clear errors on selection
 if (categorySelect) {
   categorySelect.addEventListener('change', () => {
     categorySelect.classList.remove('select-error');
   });
 }
 
-window.addEventListener('akyl-langchange', () => {
-  renderMembers(parseInt(document.getElementById('members_count').value));
-  // Update password requirements text
-  AkylI18n.applyI18n(AkylI18n.getLang());
-  // Перерисовать список категорий с учётом языка
-  loadCategoriesForTeams();
+// Sync Branch buttons with branch select
+branchButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const val = btn.dataset.branch;
+    if (branchSelect) {
+      branchSelect.value = val;
+      branchSelect.classList.remove('select-error');
+    }
+    branchButtons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
 });
 
-// Update password requirements on input
-if (passwordInput) {
-  passwordInput.addEventListener('input', e => {
-    updatePasswordRequirements(e.target.value);
-  });
-
-  // Initialize password requirements on focus
-  passwordInput.addEventListener('focus', e => {
-    updatePasswordRequirements(e.target.value);
-  });
-
-  // Also check on paste
-  passwordInput.addEventListener('paste', e => {
-    setTimeout(() => {
-      updatePasswordRequirements(e.target.value);
-    }, 10);
-  });
-
-  // Also check on keyup for better responsiveness
-  passwordInput.addEventListener('keyup', e => {
-    updatePasswordRequirements(e.target.value);
+if (branchSelect) {
+  branchSelect.addEventListener('change', e => {
+    const val = e.target.value;
+    branchButtons.forEach(b => {
+      if (b.dataset.branch === val) b.classList.add('active');
+      else b.classList.remove('active');
+    });
+    branchSelect.classList.remove('select-error');
   });
 }
 
+function updateBranchPlaceholder() {
+  if (!branchSelect) return;
+  const lang = AkylI18n.getLang();
+  const firstOpt = branchSelect.querySelector('option[value=""]');
+  if (firstOpt) {
+    firstOpt.textContent = lang === 'ky' ? 'Филиалды тандаңыз' : 'Select branch';
+  }
+}
+
+// Language change handler
+window.addEventListener('akyl-langchange', () => {
+  renderMembers(parseInt(membersCountSelect.value));
+  updateCountButtonLabels();
+  updateBranchPlaceholder();
+  AkylI18n.applyI18n(AkylI18n.getLang());
+  loadCategoriesForTeams();
+  checkPasswordMatch();
+});
+
+// Password event listeners
+if (passwordInput) {
+  passwordInput.addEventListener('input', e => updatePasswordRequirements(e.target.value));
+  passwordInput.addEventListener('focus', e => updatePasswordRequirements(e.target.value));
+  passwordInput.addEventListener('keyup', e => updatePasswordRequirements(e.target.value));
+  passwordInput.addEventListener('paste', () => setTimeout(() => updatePasswordRequirements(passwordInput.value), 10));
+}
+
+if (passwordInput2) {
+  passwordInput2.addEventListener('input', checkPasswordMatch);
+  passwordInput2.addEventListener('keyup', checkPasswordMatch);
+  passwordInput2.addEventListener('paste', () => setTimeout(checkPasswordMatch, 10));
+}
+
+// Form Submission
 document.getElementById('regForm').addEventListener('submit', async e => {
   e.preventDefault();
   const msg = document.getElementById('msg');
-  msg.textContent = 'Отправка...';
-  msg.className = 'small-muted';
-  msg.style.color = '';
+  const submitBtn = document.getElementById('submitBtn');
+  const lang = AkylI18n.getLang();
 
-  // Clear previous error state on category select
+  function showMessage(text, isError) {
+    msg.textContent = text;
+    msg.className = isError ? 'error show' : 'success show';
+  }
+
+  // Clear previous error state on category and branch select
   if (categorySelect) categorySelect.classList.remove('select-error');
+  if (branchSelect) branchSelect.classList.remove('select-error');
 
   const data = Object.fromEntries(new FormData(e.target).entries());
 
   if (!data.category_id) {
-    msg.textContent = 'Пожалуйста, выберите категорию';
-    msg.style.color = '#b00020';
-    msg.className = 'small-muted error';
-    if (categorySelect) categorySelect.classList.add('select-error');
+    showMessage(lang === 'ky' ? 'Категорияны тандаңыз' : 'Please select a category', true);
+    if (categorySelect) {
+      categorySelect.classList.add('select-error');
+      categorySelect.focus();
+    }
     return;
   }
 
-  if (!isValidEmail(data.captain_email || '')) {
-    msg.textContent = 'Некорректный email';
-    msg.style.color = '#b00020';
-    msg.className = 'small-muted error';
+  if (!data.branch) {
+    showMessage(lang === 'ky' ? 'Филиалды тандаңыз' : 'Please select a branch', true);
+    if (branchSelect) {
+      branchSelect.classList.add('select-error');
+      branchSelect.focus();
+    }
+    return;
+  }
+
+  const teamEmailVal = (data.team_email || data.email || '').trim();
+  if (!isValidEmail(teamEmailVal)) {
+    showMessage(lang === 'ky' ? 'Туура эмес электрондук почта' : 'Invalid team email address', true);
+    document.getElementById('team_email_input')?.focus();
     return;
   }
 
   if (data.password !== data.password2) {
-    msg.textContent = 'Пароли не совпадают';
-    msg.style.color = '#b00020';
-    msg.className = 'small-muted error';
+    showMessage(lang === 'ky' ? 'Сырсөздөр дал келген жок' : 'Passwords do not match', true);
+    passwordInput2?.focus();
     return;
   }
 
   if (!isValidPassword(data.password)) {
-    msg.textContent = 'Пароль не соответствует требованиям';
-    msg.style.color = '#b00020';
-    msg.className = 'small-muted error';
+    showMessage(lang === 'ky' ? 'Сырсөз бардык талаптарга жооп бериши керек' : 'Password does not meet security requirements', true);
+    passwordInput?.focus();
     return;
   }
 
+  const ALLOWED_CLASSES = [
+    '7-A', '7-B', '7-C',
+    '8-A', '8-B', '8-C',
+    '9-A', '9-B', '9-C'
+  ];
   const members = [];
-  const cnt = parseInt(data.members_count || 2);
-  for (let i = 2; i <= cnt; i++) {
-    const name = document.querySelector(`[name="member_${i}_name"]`)?.value || '';
-    const classInfo = document.querySelector(`[name="member_${i}_info"]`)?.value || '';
-    if (name || classInfo) {
-      members.push({ name, class: classInfo });
+  const cnt = parseInt(data.members_count || 2, 10);
+  for (let i = 1; i <= cnt; i++) {
+    const nameEl = document.querySelector(`[name="member_${i}_name"]`);
+    const classEl = document.querySelector(`[name="member_${i}_info"]`);
+    const name = (nameEl?.value || '').trim();
+    const classInfo = (classEl?.value || '').trim();
+
+    if (!name) {
+      showMessage(lang === 'ky' ? `${i}-катышуучунун аты-жөнүн жазыңыз` : `Please enter full name for member #${i}`, true);
+      nameEl?.focus();
+      return;
     }
+    if (!classInfo || !ALLOWED_CLASSES.includes(classInfo)) {
+      showMessage(lang === 'ky' ? `${i}-катышуучунун классын тандаңыз` : `Please select grade for member #${i}`, true);
+      classEl?.classList.add('select-error');
+      classEl?.focus();
+      return;
+    }
+    members.push({ name, class: classInfo });
+  }
+
+  if (members.length === 0) {
+    showMessage(lang === 'ky' ? 'Катышуучулардын маалыматын толтуруңуз' : 'Please fill in team member details', true);
+    document.querySelector('[name="member_1_name"]')?.focus();
+    return;
   }
 
   const payload = {
     team_name: data.team_name,
     password: data.password,
-    captain_name: data.captain_name,
-    captain_email: data.captain_email,
-    captain_phone: data.captain_phone,
+    team_email: teamEmailVal,
+    email: teamEmailVal,
     members,
-    school: data.school,
-    city: data.city,
+    branch: data.branch,
+    school: data.branch,
+    city: data.branch,
     category_id: data.category_id
   };
 
   try {
+    submitBtn.disabled = true;
+    const originalBtnHtml = submitBtn.innerHTML;
+    submitBtn.innerHTML = `<span>${lang === 'ky' ? 'Катталууда...' : 'Registering...'}</span>`;
+
     const res = await fetch('/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const j = await res.json();
+    const j = await res.json().catch(() => ({}));
+
     if (!res.ok) {
-      msg.textContent = j.error || 'Ошибка';
-      msg.style.color = '#b00020';
-      msg.className = 'small-muted error';
+      showMessage(j.error || (lang === 'ky' ? 'Ката кетти' : 'Registration error'), true);
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnHtml;
       return;
     }
-    msg.textContent = 'Успешно зарегистрированы! Перенаправление...';
-    msg.style.color = '#166534';
-    msg.className = 'small-muted success';
-    setTimeout(() => location.href = '/login', 800);
+
+    if (j.token) {
+      localStorage.setItem('token', j.token);
+      try {
+        document.cookie = `team_token=${encodeURIComponent(j.token)}; path=/; max-age=1209600; SameSite=None; Secure`;
+      } catch {}
+    }
+    if (j.team) {
+      localStorage.setItem('team', JSON.stringify(j.team));
+      if (j.team.id) localStorage.setItem('team_id', String(j.team.id));
+    }
+
+    showMessage(lang === 'ky' ? 'Ийгиликтүү катталдыңыз! Команданын кабинетине өтүүдө...' : 'Team registered successfully! Redirecting to cabinet...', false);
+    setTimeout(() => {
+      window.location.href = '/team';
+    }, 800);
   } catch (err) {
     console.error(err);
-    msg.textContent = 'Сервер недоступен. Проверьте подключение к интернету.';
-    msg.style.color = '#b00020';
-    msg.className = 'small-muted error';
+    showMessage(lang === 'ky' ? 'Сервер менен байланыш үзүлдү. Интернетти текшериңиз.' : 'Server unavailable. Please check your internet connection.', true);
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalBtnHtml;
   }
 });
+
+// Check if team is already authenticated and display prominent cabinet shortcut
+async function checkCurrentAuth() {
+  const token = localStorage.getItem('token');
+  const headers = {};
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  try {
+    const res = await fetch('/api/me', { headers, credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      const team = (data && data.team) || data || {};
+      const teamName = team.team_name || 'Команда';
+      const banner = document.getElementById('alreadyLoggedInBanner');
+      const teamNameSpan = document.getElementById('loggedInTeamName');
+      const cabinetBtn = document.getElementById('topAuthCabinetLink');
+      const cabinetText = document.getElementById('topAuthCabinetText');
+      if (teamNameSpan) teamNameSpan.textContent = teamName;
+      if (cabinetText) cabinetText.textContent = `${lang === 'ky' ? 'Кабинет' : 'Cabinet'} (${teamName})`;
+      if (banner) banner.style.display = 'block';
+      if (cabinetBtn) cabinetBtn.style.display = 'inline-flex';
+    }
+  } catch (e) {}
+}
+checkCurrentAuth();
 </script>
 </body>
 </html>

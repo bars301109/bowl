@@ -23,12 +23,21 @@ router.get('/api/tests', async (req, res) => {
     let tests;
     if (categoryId) {
       tests = await allAsync(
-        'SELECT id,title,description,preview_text,lang,duration_minutes,window_start,window_end,status,category_id FROM tests WHERE category_id = $1 ORDER BY id',
+        `SELECT t.id, t.title, t.description, t.preview_text, t.lang, t.duration_minutes, t.window_start, t.window_end, t.status, t.category_id,
+                c.name_ru AS category_name_ru, c.name_ky AS category_name_ky, c.name_ru AS category_name
+         FROM tests t
+         LEFT JOIN categories c ON c.id = t.category_id
+         WHERE t.category_id = $1
+         ORDER BY t.id`,
         [categoryId]
       );
     } else {
       tests = await allAsync(
-        'SELECT id,title,description,preview_text,lang,duration_minutes,window_start,window_end,status,category_id FROM tests ORDER BY id'
+        `SELECT t.id, t.title, t.description, t.preview_text, t.lang, t.duration_minutes, t.window_start, t.window_end, t.status, t.category_id,
+                c.name_ru AS category_name_ru, c.name_ky AS category_name_ky, c.name_ru AS category_name
+         FROM tests t
+         LEFT JOIN categories c ON c.id = t.category_id
+         ORDER BY t.id`
       );
     }
 
@@ -117,8 +126,8 @@ router.get('/api/tests/:id', async (req, res) => {
 // Start test session (Server-side timer & anti-cheat tracker)
 router.post('/api/tests/:id/start', teamAuth, async (req, res) => {
   try {
-    const testId = req.params.id;
-    const teamId = req.team.id;
+    const testId = parseInt(req.params.id, 10);
+    const teamId = parseInt(req.team.id, 10);
     const now = Date.now();
 
     const test = await getAsync(
@@ -136,15 +145,15 @@ router.post('/api/tests/:id/start', teamAuth, async (req, res) => {
 
     // Check if already submitted
     const settings = await getAsync('SELECT one_submission_allowed FROM settings WHERE id=1');
-    if (settings && settings.one_submission_allowed) {
-      const existing = await getAsync(
-        'SELECT id FROM results WHERE team_id = $1 AND test_id = $2',
-        [teamId, testId]
-      );
-      if (existing) {
-        return res.status(400).json({ error: 'Вы уже сдали этот тест' });
-      }
+    const existingResult = await getAsync(
+      'SELECT id FROM results WHERE team_id = $1 AND test_id = $2',
+      [teamId, testId]
+    );
+    if (existingResult && settings && settings.one_submission_allowed) {
+      return res.status(400).json({ error: 'Вы уже сдали этот тест' });
     }
+
+    const durationSec = (test.duration_minutes || 60) * 60;
 
     // Check existing session
     let session = await getAsync(
@@ -152,15 +161,26 @@ router.post('/api/tests/:id/start', teamAuth, async (req, res) => {
       [teamId, testId]
     );
 
-    const durationSec = (test.duration_minutes || 60) * 60;
+    // If no session exists, or session is expired, or session was completed:
+    // start fresh session if retakes or new attempts are allowed!
+    const sessionStartMs = session?.started_at ? new Date(session.started_at).getTime() : 0;
+    const isStale = session && (now - sessionStartMs >= durationSec * 1000);
+    const isCompleted = session && session.status === 'completed';
 
-    if (!session) {
+    if (!session || isStale || isCompleted) {
       const startedAtIso = new Date(now).toISOString();
       const expiresAtIso = new Date(now + durationSec * 1000).toISOString();
-      await runAsync(
-        'INSERT INTO test_sessions (team_id, test_id, started_at, status, expires_at) VALUES ($1,$2,$3,$4,$5)',
-        [teamId, testId, startedAtIso, 'in_progress', expiresAtIso]
-      );
+      if (!session) {
+        await runAsync(
+          'INSERT INTO test_sessions (team_id, test_id, started_at, status, expires_at) VALUES ($1,$2,$3,$4,$5)',
+          [teamId, testId, startedAtIso, 'in_progress', expiresAtIso]
+        );
+      } else {
+        await runAsync(
+          'UPDATE test_sessions SET started_at = $1, status = $2, expires_at = $3 WHERE team_id = $4 AND test_id = $5',
+          [startedAtIso, 'in_progress', expiresAtIso, teamId, testId]
+        );
+      }
       session = {
         team_id: teamId,
         test_id: testId,
@@ -170,8 +190,8 @@ router.post('/api/tests/:id/start', teamAuth, async (req, res) => {
       };
     }
 
-    const sessionStartMs = new Date(session.started_at).getTime();
-    const elapsedSec = Math.max(0, Math.floor((now - sessionStartMs) / 1000));
+    const currentSessionStartMs = new Date(session.started_at).getTime();
+    const elapsedSec = Math.max(0, Math.floor((now - currentSessionStartMs) / 1000));
     const remainingSec = Math.max(0, durationSec - elapsedSec);
 
     res.json({
@@ -179,8 +199,10 @@ router.post('/api/tests/:id/start', teamAuth, async (req, res) => {
       session: {
         started_at: session.started_at,
         duration_minutes: test.duration_minutes || 60,
-        server_now: new Date(now).toISOString(),
+        duration_seconds: durationSec,
+        server_now: now,
         remaining_seconds: remainingSec,
+        expires_at: session.expires_at || new Date(now + remainingSec * 1000).toISOString(),
         is_expired: remainingSec <= 0,
       },
     });
@@ -193,8 +215,8 @@ router.post('/api/tests/:id/start', teamAuth, async (req, res) => {
 // Check session status
 router.get('/api/tests/:id/session', teamAuth, async (req, res) => {
   try {
-    const testId = req.params.id;
-    const teamId = req.team.id;
+    const testId = parseInt(req.params.id, 10);
+    const teamId = parseInt(req.team.id, 10);
     const now = Date.now();
 
     const session = await getAsync(
@@ -217,12 +239,15 @@ router.get('/api/tests/:id/session', teamAuth, async (req, res) => {
     const remainingSec = Math.max(0, durationSec - elapsedSec);
 
     res.json({
-      active: session.status === 'in_progress' && !result,
-      completed: !!result,
+      active: session.status === 'in_progress' && remainingSec > 0,
+      completed: session.status === 'completed' || !!result,
       result: result || null,
       session: {
         started_at: session.started_at,
+        duration_seconds: durationSec,
+        server_now: now,
         remaining_seconds: remainingSec,
+        expires_at: session.expires_at || new Date(now + remainingSec * 1000).toISOString(),
         is_expired: remainingSec <= 0,
       },
     });
@@ -234,8 +259,8 @@ router.get('/api/tests/:id/session', teamAuth, async (req, res) => {
 // Submit answers
 router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
   try {
-    const testId = req.params.id;
-    const teamId = req.team.id;
+    const testId = parseInt(req.params.id, 10);
+    const teamId = parseInt(req.team.id, 10);
     const answers = req.body.answers || {};
     const clientStartTime = req.body.started_at || null;
 
@@ -264,6 +289,7 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
       return res.status(400).json({ error: 'Вы уже сдали этот тест' });
     }
 
+    // Include correct in query!
     const qs = await allAsync(
       'SELECT id, ordinal, text, options, correct, points, type, category_id, lang FROM questions WHERE test_id=$1 ORDER BY ordinal',
       [testId]
@@ -279,20 +305,11 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
       [teamId, testId]
     );
 
-    let startedAt = session ? session.started_at : (clientStartTime ? new Date(parseInt(clientStartTime, 10)).toISOString() : new Date().toISOString());
+    let startedAt = session ? session.started_at : (clientStartTime ? (isNaN(Number(clientStartTime)) ? clientStartTime : new Date(Number(clientStartTime)).toISOString()) : new Date().toISOString());
     const sessionStartMs = new Date(startedAt).getTime();
     const timeTakenSec = Math.max(1, Math.round((now - sessionStartMs) / 1000));
-    
-    // Server-side anti-cheat duration check with 45s grace period for latency
     const maxSec = (test.duration_minutes || 60) * 60;
-    const GRACE_PERIOD_SEC = 45;
-    if (timeTakenSec > (maxSec + GRACE_PERIOD_SEC)) {
-      return res.status(400).json({
-        error: 'Время на прохождение теста истекло. Ответы не приняты.',
-        time_taken_sec: timeTakenSec,
-        max_sec: maxSec,
-      });
-    }
+    const recordedTimeSec = Math.min(timeTakenSec, maxSec);
 
     // Grade answers
     let score = 0;
@@ -307,15 +324,22 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
       const correct = q.correct;
       let qok = false;
 
-      if (correct === null || correct === undefined || correct === '') {
+      if (correct === null || correct === undefined || String(correct).trim() === '') {
         qok = false;
+      } else if (q.type === 'text') {
+        // Open-ended / text answer: case-insensitive trimmed comparison
+        const givenText = String(given || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        const correctText = String(correct || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        if (givenText && (givenText === correctText || correctText.split('|').map(s => s.trim()).includes(givenText))) {
+          qok = true;
+        }
       } else if (String(correct).match(/^\d+$/)) {
         // MCQ: compare index
         if (given !== null && given !== undefined && String(given) === String(correct)) {
           qok = true;
         }
       } else {
-        // Text answer: case-insensitive match
+        // Fallback text match
         const givenText = String(given || '').trim().toLowerCase();
         const correctText = String(correct).trim().toLowerCase();
         if (givenText && givenText === correctText) {
@@ -330,11 +354,20 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
       answersArr.push({ question_id: qid, given, ok: qok, points: pts });
     }
 
-    // Record results atomically
-    await runAsync(
-      'INSERT INTO results (team_id, test_id, score, answers, taken_at, started_at, time_taken_sec) VALUES ($1,$2,$3,$4,NOW(),$5,$6)',
-      [teamId, testId, score, JSON.stringify(answersArr), startedAt, timeTakenSec]
-    );
+    const answersJson = JSON.stringify(answersArr);
+
+    // Record results atomically (update existing if retaking, or insert)
+    if (existing) {
+      await runAsync(
+        'UPDATE results SET score = $1, answers = $2, taken_at = NOW(), started_at = $3, time_taken_sec = $4 WHERE id = $5',
+        [score, answersJson, startedAt, recordedTimeSec, existing.id]
+      );
+    } else {
+      await runAsync(
+        'INSERT INTO results (team_id, test_id, score, answers, taken_at, started_at, time_taken_sec) VALUES ($1,$2,$3,$4,NOW(),$5,$6)',
+        [teamId, testId, score, answersJson, startedAt, recordedTimeSec]
+      );
+    }
 
     // Update test_sessions status
     await runAsync(
@@ -342,14 +375,14 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
       ['completed', teamId, testId]
     ).catch(() => {});
 
-    console.log(`✓ Test submitted: team_id=${teamId}, test_id=${testId}, score=${score}/${qs.reduce((s, q) => s + (q.points || 1), 0)}, time=${timeTakenSec}s`);
+    console.log(`✓ Test submitted: team_id=${teamId}, test_id=${testId}, score=${score}/${qs.reduce((s, q) => s + (q.points || 1), 0)}, time=${recordedTimeSec}s`);
     res.json({
       ok: true,
       score,
       maxScore: qs.reduce((s, q) => s + (q.points || 1), 0),
       correct: correctCount,
       total: qs.length,
-      time_taken_sec: timeTakenSec,
+      time_taken_sec: recordedTimeSec,
     });
   } catch (e) {
     console.error('Error in /api/tests/:id/submit', e);
@@ -360,6 +393,7 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
 // Public categories
 router.get('/api/categories', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     const rows = await allAsync('SELECT id, name_ru, name_ky, desc_ru, desc_ky FROM categories ORDER BY id');
     res.json(rows);
   } catch (e) {
@@ -382,18 +416,43 @@ router.get('/api/settings', async (req, res) => {
 // Homepage blocks (public)
 router.get('/api/homepage-blocks', async (req, res) => {
   try {
-    const blocks = await allAsync('SELECT block_key, title_ru, title_ky, content_ru, content_ky FROM homepage_blocks');
+    await runAsync(`CREATE TABLE IF NOT EXISTS homepage_blocks (
+      id SERIAL PRIMARY KEY,
+      block_key TEXT UNIQUE,
+      badge_en TEXT DEFAULT '',
+      badge_ky TEXT DEFAULT '',
+      badge_ru TEXT DEFAULT '',
+      title_en TEXT DEFAULT '',
+      title_ky TEXT DEFAULT '',
+      title_ru TEXT DEFAULT '',
+      content_en TEXT DEFAULT '',
+      content_ky TEXT DEFAULT '',
+      content_ru TEXT DEFAULT '',
+      updated_at TEXT
+    )`).catch(() => {});
+    const colsToAdd = ['badge_en', 'badge_ky', 'badge_ru', 'title_en', 'title_ky', 'title_ru', 'content_en', 'content_ky', 'content_ru'];
+    for (const c of colsToAdd) {
+      await runAsync(`ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS ${c} TEXT DEFAULT ''`).catch(() => {});
+    }
+
+    const blocks = await allAsync(`SELECT * FROM homepage_blocks`);
     const result = {};
-    blocks.forEach((b) => {
+    (blocks || []).forEach((b) => {
       result[b.block_key] = {
-        title_ru: b.title_ru || '',
+        badge_en: b.badge_en || '',
+        badge_ky: b.badge_ky || '',
+        badge_ru: b.badge_ru || '',
+        title_en: b.title_en || '',
         title_ky: b.title_ky || '',
-        content_ru: b.content_ru || '',
+        title_ru: b.title_ru || '',
+        content_en: b.content_en || '',
         content_ky: b.content_ky || '',
+        content_ru: b.content_ru || '',
       };
     });
     res.json(result);
   } catch (e) {
+    console.error('Homepage blocks public get error:', e);
     res.status(500).json({ error: e.message });
   }
 });

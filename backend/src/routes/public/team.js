@@ -14,19 +14,16 @@ router.post('/api/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// All routes below require team authentication (skip for non-API paths)
-router.use((req, res, next) => {
-  if (!req.path.startsWith('/api/')) return next();
-  teamAuth(req, res, next);
-});
+// Require team authentication for /api/me endpoints
+router.use('/api/me', teamAuth);
 
 // Get current team profile
 router.get('/api/me', async (req, res) => {
   try {
     const t = await getAsync(
       `SELECT
-         t.id, t.team_name, t.login, t.captain_name, t.captain_email,
-         t.captain_phone, t.members, t.school, t.city, t.category_id,
+         t.id, t.team_name, t.login, t.team_email, t.email, t.phone,
+         t.members, t.school, t.city, t.category_id,
          c.name_ru AS category_name_ru, c.name_ky AS category_name_ky
        FROM teams t
        LEFT JOIN categories c ON c.id = t.category_id
@@ -35,8 +32,11 @@ router.get('/api/me', async (req, res) => {
     );
     if (!t) return res.status(404).json({ error: 'Team not found' });
 
+    t.team_email = t.team_email || t.email || '';
+    t.email = t.team_email;
+    t.phone = t.phone || '';
     t.members = parseMembers(t.members);
-    res.json({ ok: true, team: t });
+    res.json({ ok: true, team: t, ...t });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -45,29 +45,98 @@ router.get('/api/me', async (req, res) => {
 // Update team profile
 router.put('/api/me', async (req, res) => {
   try {
-    const allowedFields = ['team_name', 'captain_name', 'captain_phone', 'school', 'city', 'members', 'category_id'];
+    const b = req.body || {};
     const updates = [];
     const params = [];
 
-    for (const field of allowedFields) {
-      if (Object.prototype.hasOwnProperty.call(req.body, field)) {
-        if (field === 'members') {
-          const members = Array.isArray(req.body.members)
-            ? req.body.members
-                .map((m) => ({ name: String(m?.name || '').trim(), class: String(m?.class || '').trim() }))
-                .filter((m) => m.name || m.class)
-            : [];
-          updates.push('members = $' + (params.length + 1));
-          params.push(JSON.stringify(members));
-        } else if (field === 'category_id') {
-          const catId = req.body.category_id ? parseInt(req.body.category_id, 10) || null : null;
-          updates.push('category_id = $' + (params.length + 1));
-          params.push(catId);
-        } else {
-          updates.push(`${field} = $${params.length + 1}`);
-          params.push(req.body[field] ?? null);
+    // Support flexible alias keys
+    const teamName = b.team_name !== undefined ? b.team_name : undefined;
+    const emailVal = b.team_email !== undefined ? b.team_email : b.email;
+    const phoneVal = b.phone !== undefined ? b.phone : undefined;
+    const schoolVal = b.school !== undefined ? b.school : b.branch;
+    const cityVal = b.city !== undefined ? b.city : undefined;
+    const categoryIdVal = b.category_id !== undefined ? b.category_id : undefined;
+
+    if (teamName !== undefined) {
+      updates.push(`team_name = $${params.length + 1}`);
+      params.push(String(teamName).trim());
+    }
+
+    if (emailVal !== undefined) {
+      const email = String(emailVal).trim().toLowerCase();
+      const { isValidEmail } = require('../../utils/sanitization');
+      if (email && !isValidEmail(email)) {
+        return res.status(400).json({ error: 'Некорректный email адрес' });
+      }
+      if (email) {
+        const existing = await getAsync(
+          'SELECT id FROM teams WHERE (LOWER(COALESCE(team_email, \'\')) = $1 OR LOWER(COALESCE(email, \'\')) = $1) AND id != $2',
+          [email, req.team.id]
+        );
+        if (existing) {
+          return res.status(400).json({ error: 'Этот email уже используется другой командой' });
+        }
+        updates.push(`team_email = $${params.length + 1}`);
+        params.push(email);
+        updates.push(`email = $${params.length + 1}`);
+        params.push(email);
+      }
+    }
+
+    if (phoneVal !== undefined) {
+      const p = String(phoneVal).trim();
+      updates.push(`phone = $${params.length + 1}`);
+      params.push(p);
+    }
+
+    if (schoolVal !== undefined) {
+      updates.push(`school = $${params.length + 1}`);
+      params.push(String(schoolVal).trim());
+    }
+
+    if (cityVal !== undefined) {
+      updates.push(`city = $${params.length + 1}`);
+      params.push(String(cityVal).trim());
+    }
+
+    if (categoryIdVal !== undefined) {
+      const catId = categoryIdVal ? parseInt(categoryIdVal, 10) || null : null;
+      updates.push(`category_id = $${params.length + 1}`);
+      params.push(catId);
+    }
+
+    if (b.members !== undefined) {
+      const ALLOWED_CLASSES = [
+        '7-A', '7-B', '7-C',
+        '8-A', '8-B', '8-C',
+        '9-A', '9-B', '9-C'
+      ];
+      const rawList = Array.isArray(b.members) ? b.members : [];
+      const members = rawList
+        .map((m) => ({ name: String(m?.name || '').trim(), class: String(m?.class || '').trim() }))
+        .filter((m) => m.name || m.class);
+
+      if (members.length > 0) {
+        if (members.length < 2) {
+          return res.status(400).json({ error: 'В команде должно быть минимум 2 участника' });
+        }
+        for (let i = 0; i < members.length; i++) {
+          const m = members[i];
+          if (!m.name) {
+            return res.status(400).json({ error: `Пожалуйста, укажите ФИО участника #${i + 1}` });
+          }
+          if (!m.class) {
+            return res.status(400).json({ error: `Пожалуйста, выберите класс для участника #${i + 1}` });
+          }
+          if (!ALLOWED_CLASSES.includes(m.class)) {
+            return res.status(400).json({
+              error: `Класс «${m.class}» недопустим. Выберите класс для участника #${i + 1} из списка (7-A ... 9-C).`
+            });
+          }
         }
       }
+      updates.push(`members = $${params.length + 1}`);
+      params.push(JSON.stringify(members));
     }
 
     if (updates.length === 0) {
@@ -78,10 +147,21 @@ router.put('/api/me', async (req, res) => {
     await runAsync(`UPDATE teams SET ${updates.join(', ')} WHERE id = $${params.length}`, params);
 
     const t = await getAsync(
-      'SELECT id, team_name, login, captain_name, captain_email, captain_phone, members, school, city FROM teams WHERE id=$1',
+      `SELECT
+         t.id, t.team_name, t.login, t.team_email, t.email, t.phone,
+         t.members, t.school, t.city, t.category_id,
+         c.name_ru AS category_name_ru, c.name_ky AS category_name_ky
+       FROM teams t
+       LEFT JOIN categories c ON c.id = t.category_id
+       WHERE t.id = $1`,
       [req.team.id]
     );
-    if (t) t.members = parseMembers(t.members);
+    if (t) {
+      t.team_email = t.team_email || t.email || '';
+      t.email = t.team_email;
+      t.phone = t.phone || '';
+      t.members = parseMembers(t.members);
+    }
     res.json({ ok: true, team: t });
   } catch (e) {
     console.error(e);
@@ -210,15 +290,16 @@ router.get('/api/leaderboard', async (req, res) => {
 });
 
 function parseMembers(membersStr) {
-  if (!membersStr) return [];
+  let list = [];
   if (typeof membersStr === 'string') {
-    try {
-      return JSON.parse(membersStr);
-    } catch {
-      return [];
-    }
+    try { list = JSON.parse(membersStr); } catch { list = []; }
+  } else if (Array.isArray(membersStr)) {
+    list = membersStr;
   }
-  return membersStr;
+  if (!Array.isArray(list)) list = [];
+  return list
+    .map(m => typeof m === 'string' ? { name: m, class: '' } : { name: String(m?.name || '').trim(), class: String(m?.class || '').trim() })
+    .filter(m => m.name || m.class);
 }
 
 function processResults(rows) {
@@ -252,5 +333,201 @@ function processResults(rows) {
     };
   });
 }
+
+// --- Announcements & Support Tickets ---
+const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require('../../config');
+
+function optionalTeamAuth(req) {
+  const authHeader = req.headers['authorization'] || '';
+  let token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token && req.cookies?.team_token) {
+    token = req.cookies.team_token;
+  }
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
+// Announcements for teams
+router.get('/api/announcements', async (req, res) => {
+  try {
+    const team = optionalTeamAuth(req);
+    let categoryId = null;
+    if (team && team.id) {
+      const teamRow = await getAsync('SELECT category_id FROM teams WHERE id = $1', [team.id]);
+      if (teamRow) categoryId = teamRow.category_id;
+    }
+
+    let rows;
+    if (categoryId) {
+      rows = await allAsync(
+        `SELECT a.*, c.name_ru AS category_name_ru, c.name_ky AS category_name_ky
+         FROM announcements a
+         LEFT JOIN categories c ON c.id = a.target_category_id
+         WHERE a.is_published = 1 AND (a.target_type = 'all' OR a.target_category_id = $1)
+         ORDER BY 
+           CASE 
+             WHEN a.priority = 'urgent' THEN 1 
+             WHEN a.priority = 'important' THEN 2 
+             ELSE 3 
+           END,
+           a.created_at DESC`,
+        [categoryId]
+      );
+    } else {
+      rows = await allAsync(
+        `SELECT a.*, c.name_ru AS category_name_ru, c.name_ky AS category_name_ky
+         FROM announcements a
+         LEFT JOIN categories c ON c.id = a.target_category_id
+         WHERE a.is_published = 1 AND a.target_type = 'all'
+         ORDER BY 
+           CASE 
+             WHEN a.priority = 'urgent' THEN 1 
+             WHEN a.priority = 'important' THEN 2 
+             ELSE 3 
+           END,
+           a.created_at DESC`
+      );
+    }
+
+    res.json({ ok: true, announcements: rows || [] });
+  } catch (e) {
+    console.error('Announcements fetch error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Support tickets list for team
+router.get('/api/team/support/tickets', teamAuth, async (req, res) => {
+  try {
+    const teamId = req.team.id;
+    const tickets = await allAsync(
+      `SELECT t.*, 
+        (SELECT COUNT(*) FROM support_messages m WHERE m.ticket_id = t.id) AS message_count,
+        (SELECT m.message FROM support_messages m WHERE m.ticket_id = t.id ORDER BY m.id DESC LIMIT 1) AS last_message,
+        (SELECT m.created_at FROM support_messages m WHERE m.ticket_id = t.id ORDER BY m.id DESC LIMIT 1) AS last_message_at,
+        (SELECT m.sender_type FROM support_messages m WHERE m.ticket_id = t.id ORDER BY m.id DESC LIMIT 1) AS last_sender
+       FROM support_tickets t
+       WHERE t.team_id = $1
+       ORDER BY t.updated_at DESC, t.id DESC`,
+      [teamId]
+    );
+
+    res.json({ ok: true, tickets: tickets || [] });
+  } catch (e) {
+    console.error('Support tickets fetch error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Create new support ticket
+router.post('/api/team/support/tickets', teamAuth, async (req, res) => {
+  try {
+    const teamId = req.team.id;
+    const { subject, category, message } = req.body || {};
+
+    if (!subject || !String(subject).trim()) {
+      return res.status(400).json({ error: 'Тема обращения обязательна' });
+    }
+    if (!message || !String(message).trim()) {
+      return res.status(400).json({ error: 'Текст сообщения обязателен' });
+    }
+
+    const teamRow = await getAsync('SELECT team_name FROM teams WHERE id = $1', [teamId]);
+    const teamName = teamRow?.team_name || req.team.team_name || 'Команда';
+
+    const cleanSubject = String(subject).trim();
+    const cleanCategory = String(category || 'general').trim();
+    const cleanMessage = String(message).trim();
+
+    const insertTicket = await runAsync(
+      `INSERT INTO support_tickets (team_id, subject, category, status, created_at, updated_at)
+       VALUES ($1, $2, $3, 'open', NOW(), NOW()) RETURNING id`,
+      [teamId, cleanSubject, cleanCategory]
+    );
+
+    const ticketId = insertTicket.lastID || insertTicket.id || (insertTicket.rows && insertTicket.rows[0]?.id);
+
+    await runAsync(
+      `INSERT INTO support_messages (ticket_id, sender_type, sender_name, message, created_at)
+       VALUES ($1, 'team', $2, $3, NOW())`,
+      [ticketId, teamName, cleanMessage]
+    );
+
+    res.json({ ok: true, ticket_id: ticketId, message: 'Обращение успешно создано' });
+  } catch (e) {
+    console.error('Support ticket creation error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get single support ticket with all its messages
+router.get('/api/team/support/tickets/:id', teamAuth, async (req, res) => {
+  try {
+    const teamId = req.team.id;
+    const ticketId = parseInt(req.params.id, 10);
+    if (!ticketId) return res.status(400).json({ error: 'Неверный ID обращения' });
+
+    const ticket = await getAsync(
+      'SELECT * FROM support_tickets WHERE id = $1 AND team_id = $2',
+      [ticketId, teamId]
+    );
+    if (!ticket) return res.status(404).json({ error: 'Обращение не найдено' });
+
+    const messages = await allAsync(
+      'SELECT * FROM support_messages WHERE ticket_id = $1 ORDER BY id ASC',
+      [ticketId]
+    );
+
+    res.json({ ok: true, ticket, messages: messages || [] });
+  } catch (e) {
+    console.error('Support ticket detail fetch error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Reply to existing ticket
+router.post('/api/team/support/tickets/:id/reply', teamAuth, async (req, res) => {
+  try {
+    const teamId = req.team.id;
+    const ticketId = parseInt(req.params.id, 10);
+    const { message } = req.body || {};
+
+    if (!ticketId) return res.status(400).json({ error: 'Неверный ID обращения' });
+    if (!message || !String(message).trim()) {
+      return res.status(400).json({ error: 'Текст сообщения не может быть пустым' });
+    }
+
+    const ticket = await getAsync(
+      'SELECT * FROM support_tickets WHERE id = $1 AND team_id = $2',
+      [ticketId, teamId]
+    );
+    if (!ticket) return res.status(404).json({ error: 'Обращение не найдено' });
+
+    const teamRow = await getAsync('SELECT team_name FROM teams WHERE id = $1', [teamId]);
+    const teamName = teamRow?.team_name || req.team.team_name || 'Команда';
+    const cleanMessage = String(message).trim();
+
+    await runAsync(
+      `INSERT INTO support_messages (ticket_id, sender_type, sender_name, message, created_at)
+       VALUES ($1, 'team', $2, $3, NOW())`,
+      [ticketId, teamName, cleanMessage]
+    );
+
+    await runAsync(
+      `UPDATE support_tickets SET updated_at = NOW(), status = CASE WHEN status = 'resolved' THEN 'open' ELSE status END WHERE id = $1`,
+      [ticketId]
+    );
+
+    res.json({ ok: true, message: 'Сообщение отправлено' });
+  } catch (e) {
+    console.error('Support reply error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 module.exports = router;
