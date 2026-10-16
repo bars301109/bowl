@@ -54,7 +54,7 @@ export const tests = pgTable("tests", {
 // Questions table
 export const questions = pgTable("questions", {
   id: serial("id").primaryKey(),
-  test_id: integer("test_id").references(() => tests.id),
+  test_id: integer("test_id").references(() => tests.id, { onDelete: "cascade" }),
   ordinal: integer("ordinal"),
   text: text("text"),
   options: text("options"),
@@ -69,8 +69,8 @@ export const questions = pgTable("questions", {
 // Results table
 export const results = pgTable("results", {
   id: serial("id").primaryKey(),
-  team_id: integer("team_id").references(() => teams.id),
-  test_id: integer("test_id").references(() => tests.id),
+  team_id: integer("team_id").references(() => teams.id, { onDelete: "cascade" }),
+  test_id: integer("test_id").references(() => tests.id, { onDelete: "cascade" }),
   score: integer("score"),
   answers: text("answers"),
   taken_at: text("taken_at"),
@@ -81,8 +81,8 @@ export const results = pgTable("results", {
 // Test sessions table
 export const testSessions = pgTable("test_sessions", {
   id: serial("id").primaryKey(),
-  team_id: integer("team_id").references(() => teams.id),
-  test_id: integer("test_id").references(() => tests.id),
+  team_id: integer("team_id").references(() => teams.id, { onDelete: "cascade" }),
+  test_id: integer("test_id").references(() => tests.id, { onDelete: "cascade" }),
   started_at: text("started_at"),
   status: text("status").default("in_progress"),
   expires_at: text("expires_at"),
@@ -137,7 +137,7 @@ export const announcements = pgTable("announcements", {
   content_ky: text("content_ky").default(""),
   content_en: text("content_en").default(""),
   target_type: text("target_type").default("all"),
-  target_category_id: integer("target_category_id").references(() => categories.id),
+  target_category_id: integer("target_category_id").references(() => categories.id, { onDelete: "set null" }),
   priority: text("priority").default("normal"),
   is_published: integer("is_published").default(1),
   created_at: text("created_at"),
@@ -147,7 +147,7 @@ export const announcements = pgTable("announcements", {
 // Support tickets table
 export const supportTickets = pgTable("support_tickets", {
   id: serial("id").primaryKey(),
-  team_id: integer("team_id").references(() => teams.id),
+  team_id: integer("team_id").references(() => teams.id, { onDelete: "cascade" }),
   subject: text("subject").notNull(),
   category: text("category").default("general"),
   status: text("status").default("open"),
@@ -158,11 +158,9 @@ export const supportTickets = pgTable("support_tickets", {
 // Support messages table
 export const supportMessages = pgTable("support_messages", {
   id: serial("id").primaryKey(),
-  ticket_id: integer("ticket_id").references(() => supportTickets.id),
+  ticket_id: integer("ticket_id").references(() => supportTickets.id, { onDelete: "cascade" }),
   sender_type: text("sender_type").notNull(),
   sender_name: text("sender_name"),
   message: text("message").notNull(),
   created_at: text("created_at"),
 });
-
-

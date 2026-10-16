@@ -220,6 +220,38 @@ async function ensureSchema() {
       message TEXT NOT NULL,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     )`,
+    // Ensure foreign key constraints have ON DELETE CASCADE on existing tables
+    'ALTER TABLE support_messages DROP CONSTRAINT IF EXISTS support_messages_ticket_id_fkey',
+    'ALTER TABLE support_messages DROP CONSTRAINT IF EXISTS support_messages_ticket_id_support_tickets_id_fk',
+    'ALTER TABLE support_messages ADD CONSTRAINT support_messages_ticket_id_support_tickets_id_fk FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE',
+
+    'ALTER TABLE support_tickets DROP CONSTRAINT IF EXISTS support_tickets_team_id_fkey',
+    'ALTER TABLE support_tickets DROP CONSTRAINT IF EXISTS support_tickets_team_id_teams_id_fk',
+    'ALTER TABLE support_tickets ADD CONSTRAINT support_tickets_team_id_teams_id_fk FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE',
+
+    'ALTER TABLE results DROP CONSTRAINT IF EXISTS results_team_id_fkey',
+    'ALTER TABLE results DROP CONSTRAINT IF EXISTS results_team_id_teams_id_fk',
+    'ALTER TABLE results ADD CONSTRAINT results_team_id_teams_id_fk FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE',
+
+    'ALTER TABLE results DROP CONSTRAINT IF EXISTS results_test_id_fkey',
+    'ALTER TABLE results DROP CONSTRAINT IF EXISTS results_test_id_tests_id_fk',
+    'ALTER TABLE results ADD CONSTRAINT results_test_id_tests_id_fk FOREIGN KEY (test_id) REFERENCES tests(id) ON DELETE CASCADE',
+
+    'ALTER TABLE test_sessions DROP CONSTRAINT IF EXISTS test_sessions_team_id_fkey',
+    'ALTER TABLE test_sessions DROP CONSTRAINT IF EXISTS test_sessions_team_id_teams_id_fk',
+    'ALTER TABLE test_sessions ADD CONSTRAINT test_sessions_team_id_teams_id_fk FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE',
+
+    'ALTER TABLE test_sessions DROP CONSTRAINT IF EXISTS test_sessions_test_id_fkey',
+    'ALTER TABLE test_sessions DROP CONSTRAINT IF EXISTS test_sessions_test_id_tests_id_fk',
+    'ALTER TABLE test_sessions ADD CONSTRAINT test_sessions_test_id_tests_id_fk FOREIGN KEY (test_id) REFERENCES tests(id) ON DELETE CASCADE',
+
+    'ALTER TABLE questions DROP CONSTRAINT IF EXISTS questions_test_id_fkey',
+    'ALTER TABLE questions DROP CONSTRAINT IF EXISTS questions_test_id_tests_id_fk',
+    'ALTER TABLE questions ADD CONSTRAINT questions_test_id_tests_id_fk FOREIGN KEY (test_id) REFERENCES tests(id) ON DELETE CASCADE',
+
+    'ALTER TABLE announcements DROP CONSTRAINT IF EXISTS announcements_target_category_id_fkey',
+    'ALTER TABLE announcements DROP CONSTRAINT IF EXISTS announcements_target_category_id_categories_id_fk',
+    'ALTER TABLE announcements ADD CONSTRAINT announcements_target_category_id_categories_id_fk FOREIGN KEY (target_category_id) REFERENCES categories(id) ON DELETE SET NULL',
   ];
 
   for (const stmt of ddlList) {

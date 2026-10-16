@@ -2087,6 +2087,8 @@ router.delete('/api/admin/teams/:id', async (req, res) => {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
+        await client.query('DELETE FROM support_messages WHERE ticket_id IN (SELECT id FROM support_tickets WHERE team_id = $1)', [teamId]);
+        await client.query('DELETE FROM support_tickets WHERE team_id = $1', [teamId]);
         await client.query('DELETE FROM test_sessions WHERE team_id = $1', [teamId]);
         await client.query('DELETE FROM results WHERE team_id = $1', [teamId]);
         await client.query('DELETE FROM teams WHERE id = $1', [teamId]);
@@ -2098,6 +2100,8 @@ router.delete('/api/admin/teams/:id', async (req, res) => {
         client.release();
       }
     } else {
+      await runAsync('DELETE FROM support_messages WHERE ticket_id IN (SELECT id FROM support_tickets WHERE team_id = $1)', [teamId]);
+      await runAsync('DELETE FROM support_tickets WHERE team_id = $1', [teamId]);
       await runAsync('DELETE FROM test_sessions WHERE team_id = $1', [teamId]);
       await runAsync('DELETE FROM results WHERE team_id = $1', [teamId]);
       await runAsync('DELETE FROM teams WHERE id = $1', [teamId]);
@@ -3082,7 +3086,8 @@ router.delete('/api/admin/support/tickets/:id', adminAuth, async (req, res) => {
     const ticketId = parseInt(req.params.id, 10);
     if (!ticketId) return res.status(400).json({ error: 'Неверный ID' });
 
-    // Messages are deleted automatically by CASCADE
+    // Сначала удаляем сообщения обращения, затем сам тикет
+    await runAsync('DELETE FROM support_messages WHERE ticket_id = $1', [ticketId]).catch(() => {});
     await runAsync('DELETE FROM support_tickets WHERE id = $1', [ticketId]);
     res.json({ ok: true, message: 'Обращение удалено' });
   } catch (e) {
