@@ -104,8 +104,8 @@ router.post('/api/teams/create', async (req, res) => {
 
     const teamId = insertRes.lastID || insertRes.rows?.[0]?.id;
 
-    await runAsync('UPDATE participants SET team_id = NULL, category_id = NULL, category_confirmed = FALSE WHERE id = $1', [req.participantId]).catch(() => {
-      return runAsync('UPDATE participants SET team_id = NULL, category_id = NULL, category_confirmed = 0 WHERE id = $1', [req.participantId]);
+    await runAsync('UPDATE participants SET team_id = $1, category_id = NULL, category_confirmed = FALSE WHERE id = $2', [teamId, req.participantId]).catch(() => {
+      return runAsync('UPDATE participants SET team_id = $1, category_id = NULL, category_confirmed = 0 WHERE id = $2', [teamId, req.participantId]);
     });
 
     res.json({ ok: true, invite_code: inviteCode, team_id: teamId });
@@ -163,7 +163,9 @@ router.post('/api/teams/join', async (req, res) => {
       });
     }
 
-    await runAsync('UPDATE participants SET team_id = $1, category_id = NULL, category_confirmed = false WHERE id = $2', [team.id, req.participantId]);
+    await runAsync('UPDATE participants SET team_id = $1, category_id = NULL, category_confirmed = false WHERE id = $2', [team.id, req.participantId]).catch(() => {
+      return runAsync('UPDATE participants SET team_id = $1, category_id = NULL, category_confirmed = 0 WHERE id = $2', [team.id, req.participantId]);
+    });
 
     const newCount = memberCount + 1;
     if (newCount === 3) {
@@ -190,7 +192,9 @@ router.post('/api/teams/leave', async (req, res) => {
 
     const teamId = participant.team_id;
 
-    await runAsync('UPDATE participants SET team_id = NULL, category_id = NULL, category_confirmed = false WHERE id = $1', [req.participantId]);
+    await runAsync('UPDATE participants SET team_id = NULL, category_id = NULL, category_confirmed = false WHERE id = $1', [req.participantId]).catch(() => {
+      return runAsync('UPDATE participants SET team_id = NULL, category_id = NULL, category_confirmed = 0 WHERE id = $1', [req.participantId]);
+    });
 
     // Update team status back to forming if it was full or ready
     await runAsync("UPDATE teams SET status = 'forming' WHERE id = $1", [teamId]);
