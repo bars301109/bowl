@@ -32,7 +32,7 @@ export const teams = pgTable("teams", {
 export const participants = pgTable("participants", {
   id: serial("id").primaryKey(),
   full_name: text("full_name").notNull(),
-  email: text("email").notNull().unique(),
+  email: text("email").notNull(),
   password_hash: text("password_hash").notNull(),
   phone: text("phone"),
   grade: text("grade"),
@@ -89,6 +89,8 @@ export const results = pgTable("results", {
   id: serial("id").primaryKey(),
   team_id: integer("team_id").references(() => teams.id, { onDelete: "cascade" }),
   test_id: integer("test_id").references(() => tests.id, { onDelete: "cascade" }),
+  participant_id: integer("participant_id"),
+  category_id: integer("category_id"),
   score: integer("score"),
   answers: text("answers"),
   taken_at: text("taken_at"),
