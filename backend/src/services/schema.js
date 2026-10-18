@@ -31,7 +31,7 @@ async function ensureSchema() {
       id SERIAL PRIMARY KEY,
       team_name TEXT NOT NULL,
       login TEXT,
-      password TEXT NOT NULL,
+      password TEXT,
       team_email TEXT,
       email TEXT,
       phone TEXT,
@@ -39,6 +39,8 @@ async function ensureSchema() {
       school TEXT,
       city TEXT,
       category_id INTEGER,
+      invite_code TEXT UNIQUE,
+      status TEXT DEFAULT 'forming',
       created_at TEXT
     )`,
     // Ensure all columns exist on teams table
@@ -52,6 +54,26 @@ async function ensureSchema() {
     'ALTER TABLE teams ADD COLUMN IF NOT EXISTS login TEXT',
     'ALTER TABLE teams ADD COLUMN IF NOT EXISTS password TEXT',
     'ALTER TABLE teams ADD COLUMN IF NOT EXISTS team_name TEXT',
+    'ALTER TABLE teams ADD COLUMN IF NOT EXISTS invite_code TEXT',
+    'ALTER TABLE teams ADD COLUMN IF NOT EXISTS status TEXT DEFAULT \'forming\'',
+
+    // Participants table (Individual student accounts)
+    `CREATE TABLE IF NOT EXISTS participants (
+      id SERIAL PRIMARY KEY,
+      full_name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      phone TEXT,
+      grade VARCHAR(20),
+      school TEXT,
+      city TEXT,
+      team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
+      category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+      category_confirmed BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    'ALTER TABLE results ADD COLUMN IF NOT EXISTS participant_id INTEGER',
+    'ALTER TABLE results ADD COLUMN IF NOT EXISTS category_id INTEGER',
 
     // Uploaded files
     `CREATE TABLE IF NOT EXISTS public.uploaded_files (
@@ -481,15 +503,30 @@ async function ensureSchema() {
     }
   }
 
-  // Seed default categories if empty
+  // Ensure default 3 tournament categories are seeded
   const catCount = await getAsync('SELECT COUNT(*) as count FROM categories').catch(() => null);
-  if (!catCount || parseInt(catCount.count, 10) === 0) {
-    await runAsync(
-      `INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES
-       ('Общая категория', 'Жалпы категория', 'Вопросы общей тематики', 'Жалпы темалар боюнча суроолор', NOW()),
-       ('История и культура', 'Тарых жана маданият', 'Вопросы по истории и культуре', 'Тарых жана маданият боюнча суроолор', NOW()),
-       ('Наука и природа', 'Илим жана жаратылыш', 'Вопросы по науке и природе', 'Илим жана жаратылыш боюнча суроолор', NOW())`
-    ).catch(() => {});
+  const countNum = parseInt(catCount?.count || 0, 10);
+  if (countNum < 3) {
+    const existing = await allAsync('SELECT name_ru FROM categories').catch(() => []);
+    const existingNames = new Set(existing.map(c => c.name_ru));
+    if (!existingNames.has('Общая категория')) {
+      await runAsync(
+        `INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at)
+         VALUES ('Общая категория', 'Жалпы категория', 'Вопросы общей тематики', 'Жалпы темалар боюнча суроолор', NOW())`
+      ).catch(() => {});
+    }
+    if (!existingNames.has('История и культура')) {
+      await runAsync(
+        `INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at)
+         VALUES ('История и культура', 'Тарых жана маданият', 'Вопросы по истории и культуре', 'Тарых жана маданият боюнча суроолор', NOW())`
+      ).catch(() => {});
+    }
+    if (!existingNames.has('Наука и природа')) {
+      await runAsync(
+        `INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at)
+         VALUES ('Наука и природа', 'Илим жана жаратылыш', 'Вопросы по науке и природе', 'Илим жана жаратылыш боюнча суроолор', NOW())`
+      ).catch(() => {});
+    }
   }
 
   // Seed settings if empty

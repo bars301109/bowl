@@ -12,126 +12,80 @@ const router = express.Router();
 const { runAsync, getAsync } = db;
 
 // Register
+function canonicalBranch(b) {
+  const s = String(b || '').trim().toLowerCase();
+  if (s === 'талас' || s === 'talas') return 'Талас';
+  if (s === 'манас' || s === 'manas') return 'Манас';
+  if (s === 'чолпон-ата' || s === 'чолпоната' || s === 'cholpon-ata' || s === 'cholponata') return 'Чолпон-Ата';
+  return String(b || '').trim();
+}
+
+function getReqLang(req) {
+  const l = String(req.headers['x-lang'] || req.headers['accept-language'] || req.body?.lang || '').toLowerCase();
+  return l.includes('ky') ? 'ky' : 'en';
+}
+
+// Register participant
 router.post('/api/register', async (req, res) => {
   try {
+    const isKy = getReqLang(req) === 'ky';
     const data = req.body || {};
-    const teamEmail = String(data.team_email || data.email || '').trim().toLowerCase();
-    const teamName = String(data.team_name || '').trim();
+    const fullName = String(data.full_name || data.name || '').trim();
+    const email = String(data.email || '').trim().toLowerCase();
     const password = String(data.password || '');
+    const grade = String(data.grade || data.class || '').trim();
+    const rawBranch = String(data.branch || data.school || data.city || '').trim();
+    const branch = canonicalBranch(rawBranch);
 
-    if (!teamName || !password || !teamEmail) {
-      return res.status(400).json({ error: 'Пожалуйста, заполните название команды, email и пароль' });
+    if (!fullName || !email || !password || !grade || !branch) {
+      return res.status(400).json({ 
+        error: isKy 
+          ? 'Аты-жөнүңүздү, email, сырсөз, класс жана филиалды толтуруңуз' 
+          : 'Please fill in full name, email, password, grade, and branch' 
+      });
     }
 
-    if (!isValidEmail(teamEmail)) {
-      return res.status(400).json({ error: 'Некорректный email адрес команды' });
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ 
+        error: isKy ? 'Туура эмес email дареги' : 'Invalid email address' 
+      });
     }
 
     if (!isStrongPassword(password)) {
-      return res.status(400).json({ error: 'Пароль должен содержать не менее 6 символов' });
+      return res.status(400).json({ 
+        error: isKy 
+          ? 'Сырсөз кеминде 8 белгиден туруп, коопсуздук талаптарына жооп бериши керек' 
+          : 'Password must be at least 8 characters and meet security requirements' 
+      });
     }
 
-    const exists = await getAsync(
-      'SELECT id FROM teams WHERE LOWER(COALESCE(team_email, \'\')) = $1 OR LOWER(COALESCE(email, \'\')) = $1',
-      [teamEmail]
-    );
+    const exists = await getAsync('SELECT id FROM participants WHERE LOWER(email) = $1', [email]);
     if (exists) {
-      return res.status(400).json({ error: 'Команда с таким email уже зарегистрирована' });
+      return res.status(400).json({ 
+        error: isKy 
+          ? 'Бул email менен катышуучу буга чейин катталган' 
+          : 'A participant with this email is already registered' 
+      });
     }
-
-    const categoryId = data.category_id ? parseInt(data.category_id, 10) || null : null;
 
     const hashed = await bcrypt.hash(password, 10);
 
-    // Format participants (members)
-    let members = [];
-    if (Array.isArray(data.members)) {
-      members = data.members
-        .map((m) => ({
-          name: String(m?.name || '').trim(),
-          class: String(m?.class || '').trim(),
-        }))
-        .filter((m) => m.name || m.class);
-    } else {
-      for (let i = 1; i <= 6; i++) {
-        const mName = String(data[`member_${i}_name`] || '').trim();
-        const mClass = String(data[`member_${i}_info`] || data[`member_${i}_class`] || '').trim();
-        if (mName || mClass) {
-          members.push({ name: mName, class: mClass });
-        }
-      }
-    }
-
-    const ALLOWED_CLASSES = [
-      '7-A', '7-B', '7-C',
-      '8-A', '8-B', '8-C',
-      '9-A', '9-B', '9-C'
-    ];
-    if (members.length === 0) {
-      return res.status(400).json({ error: 'Пожалуйста, укажите участников команды' });
-    }
-    for (let i = 0; i < members.length; i++) {
-      const m = members[i];
-      if (!m.name) {
-        return res.status(400).json({ error: `Пожалуйста, укажите ФИО участника #${i + 1}` });
-      }
-      if (!m.class) {
-        return res.status(400).json({ error: `Пожалуйста, выберите класс для участника #${i + 1}` });
-      }
-      if (!ALLOWED_CLASSES.includes(m.class)) {
-        return res.status(400).json({
-          error: `Класс «${m.class}» недопустим. Выберите класс из предложенного списка.`
-        });
-      }
-    }
-
-    const randomLogin = 'team_' + Math.random().toString(36).substring(2, 12);
-    const branchVal = String(data.branch || data.school || '').trim();
-    const cityVal = String(data.city || (data.branch ? data.branch : '')).trim();
-
-    const insertResult = await runAsync(
-      `INSERT INTO teams (team_name, login, password, team_email, email, phone, members, school, city, category_id, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW()) RETURNING id`,
-      [
-        teamName,
-        randomLogin,
-        hashed,
-        teamEmail,
-        teamEmail,
-        '',
-        JSON.stringify(members),
-        branchVal,
-        cityVal,
-        categoryId,
-      ]
+    const insertRes = await runAsync(
+      `INSERT INTO participants (full_name, email, password_hash, grade, school, city, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id`,
+      [fullName, email, hashed, grade, branch, branch]
     );
 
-    const teamId = insertResult.lastID || insertResult.rows?.[0]?.id;
+    const participantId = insertRes.lastID || insertRes.rows?.[0]?.id;
+    const participant = await getAsync('SELECT id, full_name, email, grade, school, city, team_id, category_id, category_confirmed FROM participants WHERE id = $1', [participantId]);
 
-    const newTeam = await getAsync(
-      'SELECT id, team_name, login, team_email, email, phone, members, school, city, category_id FROM teams WHERE id = $1',
-      [teamId]
-    );
-
-    const token = signTeamToken(newTeam);
+    const token = signTeamToken(participant);
     setTeamCookie(res, token);
 
-    console.log(`✓ Team registered and logged in: ${teamName} (${teamEmail})`);
     res.json({
       ok: true,
       token,
-      team: {
-        id: newTeam.id,
-        team_name: newTeam.team_name,
-        login: newTeam.login,
-        team_email: newTeam.team_email || newTeam.email || teamEmail,
-        email: newTeam.team_email || newTeam.email || teamEmail,
-        phone: newTeam.phone || '',
-        members: members,
-        school: newTeam.school || '',
-        city: newTeam.city || '',
-        category_id: newTeam.category_id,
-      },
+      participant,
     });
   } catch (e) {
     console.error('Register error:', e);
@@ -139,57 +93,44 @@ router.post('/api/register', async (req, res) => {
   }
 });
 
-// Login (supports Team Email, Team Name, or Login)
+// Login participant
 router.post('/api/login', rateLimit(RATE_LIMITS.login), async (req, res) => {
   try {
-    const inputIdentifier = req.body?.email || req.body?.login || req.body?.team_email || req.body?.username;
-    const password = req.body?.password;
-    if (!inputIdentifier || !password) {
-      return res.status(400).json({ error: 'Email (или название команды) и пароль обязательны' });
+    const isKy = getReqLang(req) === 'ky';
+    const email = String(req.body?.email || req.body?.login || req.body?.team_email || '').trim().toLowerCase();
+    const password = String(req.body?.password || '');
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: isKy ? 'Email жана сырсөз талап кылынат' : 'Email and password are required' 
+      });
     }
 
-    const cleanInput = String(inputIdentifier).trim().toLowerCase();
-    const team = await getAsync(
-      `SELECT id, team_name, login, password, team_email, email, phone, members, school, city, category_id
-       FROM teams 
-       WHERE LOWER(COALESCE(team_email, '')) = $1 
-          OR LOWER(COALESCE(email, '')) = $1 
-          OR LOWER(COALESCE(login, '')) = $1
-          OR LOWER(COALESCE(team_name, '')) = $1`,
-      [cleanInput]
+    const participant = await getAsync(
+      'SELECT id, full_name, email, password_hash, grade, school, city, team_id, category_id, category_confirmed FROM participants WHERE LOWER(email) = $1',
+      [email]
     );
-    if (!team) {
-      return res.status(401).json({ error: 'Неверный email или пароль' });
+
+    if (!participant) {
+      return res.status(401).json({ 
+        error: isKy ? 'Email же сырсөз туура эмес' : 'Invalid email or password' 
+      });
     }
 
-    const matchBcrypt = await bcrypt.compare(String(password), String(team.password));
-    const matchPlain = (team.password === password);
-    if (!matchBcrypt && !matchPlain) {
-      return res.status(401).json({ error: 'Неверный email или пароль' });
+    const matchBcrypt = await bcrypt.compare(password, participant.password_hash);
+    if (!matchBcrypt) {
+      return res.status(401).json({ 
+        error: isKy ? 'Email же сырсөз туура эмес' : 'Invalid email or password' 
+      });
     }
 
-    let parsedMembers = [];
-    try { parsedMembers = JSON.parse(team.members || '[]'); } catch { parsedMembers = []; }
-    if (!Array.isArray(parsedMembers)) parsedMembers = [];
-
-    const token = signTeamToken(team);
+    const token = signTeamToken(participant);
     setTeamCookie(res, token);
 
+    delete participant.password_hash;
     res.json({
       ok: true,
       token,
-      team: {
-        id: team.id,
-        team_name: team.team_name,
-        login: team.login,
-        team_email: team.team_email || team.email || cleanInput,
-        email: team.team_email || team.email || cleanInput,
-        phone: team.phone || '',
-        members: parsedMembers,
-        school: team.school || '',
-        city: team.city || '',
-        category_id: team.category_id,
-      },
+      participant,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -199,18 +140,19 @@ router.post('/api/login', rateLimit(RATE_LIMITS.login), async (req, res) => {
 // Password reset: request code
 router.post('/api/password-reset/request', rateLimit(RATE_LIMITS.reset), async (req, res) => {
   try {
+    const isKy = getReqLang(req) === 'ky';
     const { email } = req.body || {};
-    if (!email) return res.status(400).json({ error: 'Email обязателен' });
-    if (!isValidEmail(email)) return res.status(400).json({ error: 'Некорректный email адрес' });
+    if (!email) return res.status(400).json({ error: isKy ? 'Email талап кылынат' : 'Email is required' });
+    if (!isValidEmail(email)) return res.status(400).json({ error: isKy ? 'Туура эмес email дареги' : 'Invalid email address' });
 
     const cleanEmail = email.trim().toLowerCase();
+    const participant = await getAsync('SELECT id, full_name, email FROM participants WHERE LOWER(email) = $1', [cleanEmail]);
     const team = await getAsync(
       'SELECT id, team_name, team_email, email FROM teams WHERE LOWER(COALESCE(team_email, \'\')) = $1 OR LOWER(COALESCE(email, \'\')) = $1 OR LOWER(COALESCE(login, \'\')) = $1',
       [cleanEmail]
     );
-    if (!team) {
-      await new Promise((r) => setTimeout(r, 1000));
-      return res.json({ ok: true, message: 'Если email зарегистрирован, код для сброса пароля отправлен' });
+    if (!participant && !team) {
+      return res.status(404).json({ error: isKy ? 'Бул email менен аккаунт табылган жок' : 'Account with this email not found.' });
     }
 
     const code = generateCode(6);
@@ -224,7 +166,7 @@ router.post('/api/password-reset/request', rateLimit(RATE_LIMITS.reset), async (
 
     let sendResult = { success: false };
     try {
-      sendResult = await sendPasswordResetEmail({ email: cleanEmail, team, code });
+      sendResult = await sendPasswordResetEmail({ email: cleanEmail, team: team || { team_name: participant?.full_name }, code });
     } catch (emailError) {
       console.error('✗ Failed to send password reset email:', emailError.message);
       sendResult = { success: false, error: emailError.message };
@@ -233,27 +175,28 @@ router.post('/api/password-reset/request', rateLimit(RATE_LIMITS.reset), async (
     const emailSent = Boolean(sendResult && sendResult.success);
     if (!emailSent) {
       await runAsync('DELETE FROM password_reset_codes WHERE LOWER(email) = $1', [cleanEmail]);
-      const errorMsg = sendResult.userMessage || 'Не удалось отправить письмо с кодом на указанную почту. Проверьте настройки почты.';
+      const errorMsg = sendResult.userMessage || (isKy ? 'Код жөнөтүүдө ката кетти. Почта орнотууларын текшериңиз.' : 'Failed to send reset code. Please check email settings.');
       return res.status(500).json({ error: errorMsg });
     }
 
     res.json({
       ok: true,
-      message: 'Код сброса пароля отправлен на ваш email',
+      message: isKy ? 'Сырсөздү калыбына келтирүү коду электрондук почтаңызга жөнөтүлдү' : 'Password reset code sent to your email',
     });
   } catch (e) {
     console.error('Password reset request error:', e);
-    res.status(500).json({ error: 'Ошибка сервера. Пожалуйста, попробуйте позже.' });
+    res.status(500).json({ error: 'Server error. Please try again later.' });
   }
 });
 
 // Password reset: verify code
 router.post('/api/password-reset/verify-code', rateLimit(RATE_LIMITS.reset), async (req, res) => {
   try {
+    const isKy = getReqLang(req) === 'ky';
     const { email, code } = req.body || {};
     const cleanEmail = (email || '').trim().toLowerCase();
 
-    if (!cleanEmail || !code) return res.status(400).json({ error: 'Email и код обязательны' });
+    if (!cleanEmail || !code) return res.status(400).json({ error: isKy ? 'Email жана код талап кылынат' : 'Email and code are required' });
 
     const resetCode = await getAsync(
       'SELECT * FROM password_reset_codes WHERE LOWER(email) = $1 AND code = $2 AND used = 0 AND expires_at::timestamp > NOW()',
@@ -261,10 +204,10 @@ router.post('/api/password-reset/verify-code', rateLimit(RATE_LIMITS.reset), asy
     );
 
     if (!resetCode) {
-      return res.status(400).json({ error: 'Неверный или истекший код' });
+      return res.status(400).json({ error: isKy ? 'Код туура эмес же мөөнөтү бүткөн' : 'Invalid or expired code' });
     }
 
-    res.json({ ok: true, message: 'Код успешно подтвержден' });
+    res.json({ ok: true, message: isKy ? 'Код ийгиликтүү текшерилди' : 'Code verified successfully' });
   } catch (e) {
     console.error('Password reset verify-code error:', e);
     res.status(500).json({ error: e.message || String(e) });
@@ -274,15 +217,16 @@ router.post('/api/password-reset/verify-code', rateLimit(RATE_LIMITS.reset), asy
 // Password reset: verify code + reset password
 router.post('/api/password-reset/verify', rateLimit(RATE_LIMITS.reset), async (req, res) => {
   try {
+    const isKy = getReqLang(req) === 'ky';
     const { email, code, newPassword } = req.body || {};
     const cleanEmail = (email || '').trim().toLowerCase();
 
     if (!cleanEmail || !code || !newPassword) {
-      return res.status(400).json({ error: 'Email, код и новый пароль обязательны' });
+      return res.status(400).json({ error: isKy ? 'Email, код жана жаңы сырсөз талап кылынат' : 'Email, code, and new password are required' });
     }
 
     if (!isStrongPassword(newPassword)) {
-      return res.status(400).json({ error: 'Пароль должен содержать минимум 6 символов' });
+      return res.status(400).json({ error: isKy ? 'Сырсөз кеминде 8 белгиден турушу керек' : 'Password must be at least 8 characters' });
     }
 
     const resetCode = await getAsync(
@@ -291,10 +235,11 @@ router.post('/api/password-reset/verify', rateLimit(RATE_LIMITS.reset), async (r
     );
 
     if (!resetCode) {
-      return res.status(400).json({ error: 'Неверный или истекший код' });
+      return res.status(400).json({ error: isKy ? 'Код туура эмес же мөөнөтү бүткөн' : 'Invalid or expired code' });
     }
 
     const hashed = await bcrypt.hash(newPassword, 10);
+    await runAsync('UPDATE participants SET password_hash = $1 WHERE LOWER(email) = $2', [hashed, cleanEmail]);
     await runAsync(
       'UPDATE teams SET password = $1 WHERE LOWER(COALESCE(team_email, \'\')) = $2 OR LOWER(COALESCE(email, \'\')) = $2 OR LOWER(COALESCE(login, \'\')) = $2',
       [hashed, cleanEmail]
@@ -302,7 +247,7 @@ router.post('/api/password-reset/verify', rateLimit(RATE_LIMITS.reset), async (r
     await runAsync('UPDATE password_reset_codes SET used = 1 WHERE id = $1', [resetCode.id]);
 
     console.log(`Password reset successful for ${email}`);
-    res.json({ ok: true, message: 'Пароль успешно изменен' });
+    res.json({ ok: true, message: isKy ? 'Сырсөз ийгиликтүү өзгөртүлдү' : 'Password successfully updated' });
   } catch (e) {
     console.error('Password reset verify error:', e);
     res.status(500).json({ error: e.message });

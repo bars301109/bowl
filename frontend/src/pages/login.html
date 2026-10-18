@@ -770,7 +770,7 @@
         <span>Akylman Quiz Bowl</span>
       </div>
       <h1 class="reg-title" data-i18n="login.title">Log In</h1>
-      <p class="reg-subtitle" data-i18n="login.subtitle">Sign in to your team cabinet to participate in the tournament</p>
+      <p class="reg-subtitle" data-i18n="login.subtitle">Sign in to participate in the tournament</p>
     </div>
 
     <form id="loginForm" novalidate>
@@ -789,10 +789,10 @@
           <!-- Email Field -->
           <div class="reg-field">
             <label class="reg-label" for="login_email">
-              <span><span data-i18n="login.email">Team Email</span><span class="req">*</span></span>
+              <span><span data-i18n="login.email">Email</span><span class="req">*</span></span>
             </label>
             <div class="reg-input-wrapper">
-              <input class="reg-input" id="login_email" type="email" name="email" placeholder="Enter team email" data-i18n-ph="login.email.placeholder" required autocomplete="email"/>
+              <input class="reg-input" id="login_email" type="email" name="email" placeholder="example@email.com" data-i18n-ph="login.email.placeholder" required autocomplete="email"/>
             </div>
           </div>
 
@@ -829,8 +829,8 @@
 
         <div class="reg-footer-nav">
           <div class="reg-login-hint">
-            <span data-i18n="login.no_account">Don't have a team account yet?</span>
-            <a class="reg-login-link" href="/register" data-i18n="login.register_link">Register a team</a>
+            <span data-i18n="login.no_account">Don't have an account yet?</span>
+            <a class="reg-login-link" href="/register" data-i18n="login.register_link">Register</a>
           </div>
           <a class="reg-home-link" href="/" data-i18n="nav.home">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -856,7 +856,7 @@
           <p class="reset-description" data-i18n="reset.enter_email">Enter email to receive reset code:</p>
           <div class="reg-field">
             <label class="reg-label" for="resetEmail">
-              <span data-i18n="login.email">Team Email</span>
+              <span data-i18n="login.email">Email</span>
             </label>
             <div class="reg-input-wrapper">
               <input class="reg-input" type="email" id="resetEmail" placeholder="your-email@gmail.com" required autocomplete="email"/>
@@ -950,89 +950,109 @@ if (toggleResetPw && resetPasswordInput) {
 }
 
 // Login form submission
-document.getElementById('loginForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const msg = document.getElementById('msg');
-  const submitBtn = document.getElementById('submitLoginBtn');
-  const lang = typeof AkylI18n !== 'undefined' ? AkylI18n.getLang() : 'ru';
-  
-  function showMessage(text, isError) {
-    msg.textContent = text;
-    msg.className = isError ? 'error show' : 'success show';
-  }
+const loginForm = document.getElementById('loginForm');
+if (loginForm) {
+  loginForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const msg = document.getElementById('msg');
+    const submitBtn = document.getElementById('submitLoginBtn');
+    const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
+    
+    function showMessage(text, isError) {
+      if (!msg) return;
+      msg.textContent = text;
+      msg.className = isError ? 'error show' : 'success show';
+    }
 
-  const data = Object.fromEntries(new FormData(e.target).entries());
-  data.email = (data.email || '').trim();
-  data.password = data.password || '';
+    const data = Object.fromEntries(new FormData(e.target).entries());
+    data.email = (data.email || '').trim();
+    data.password = data.password || '';
 
-  if (!data.email) {
-    showMessage(lang === 'ky' ? 'Электрондук почтаны киргизиңиз' : 'Please enter team email', true);
-    document.getElementById('login_email')?.focus();
-    return;
-  }
-
-  if (!data.password) {
-    showMessage(lang === 'ky' ? 'Сырсөздү киргизиңиз' : 'Please enter password', true);
-    document.getElementById('login_password')?.focus();
-    return;
-  }
-
-  submitBtn.disabled = true;
-  const originalHtml = submitBtn.innerHTML;
-  submitBtn.innerHTML = `
-    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-    <span>${lang === 'ky' ? 'Кирүүдө...' : 'Signing in...'}</span>
-  `;
-  msg.className = '';
-  msg.style.display = 'none';
-  
-  try {
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email: data.email, password: data.password })
-    });
-    const j = await res.json();
-    if (!res.ok) {
-      const errorText = (j.error === 'Неправильный логин или пароль' || j.error === 'Неверный email или пароль') 
-        ? (typeof AkylI18n !== 'undefined' ? AkylI18n.t('login.error') : 'Неверный email или пароль') 
-        : (j.error || 'Ошибка входа');
-      showMessage(errorText, true);
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = originalHtml;
+    if (!data.email) {
+      showMessage(lang === 'ky' ? 'Электрондук почтаны киргизиңиз' : 'Please enter email', true);
+      document.getElementById('login_email')?.focus();
       return;
     }
-    
-    if (j.token) {
-      localStorage.setItem('token', j.token);
-      try {
-        document.cookie = `team_token=${encodeURIComponent(j.token)}; path=/; max-age=1209600; SameSite=None; Secure`;
-      } catch {}
-    }
-    if (j.team) {
-      localStorage.setItem('team', JSON.stringify(j.team));
-      if (j.team.id) localStorage.setItem('team_id', String(j.team.id));
+
+    if (!data.password) {
+      showMessage(lang === 'ky' ? 'Сырсөздү киргизиңиз' : 'Please enter password', true);
+      document.getElementById('login_password')?.focus();
+      return;
     }
 
-    showMessage(lang === 'ky' ? 'Ийгиликтүү! Багытталууда...' : 'Success! Redirecting...', false);
-    setTimeout(() => location.href = '/team', 300);
-  } catch (err) {
-    console.error(err);
-    showMessage(lang === 'ky' ? 'Сервер байланышы үзүлдү. Интернетти текшериңиз.' : 'Server unavailable. Please check your internet connection.', true);
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = originalHtml;
-  }
-});
+    const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        <span>${lang === 'ky' ? 'Кирүүдө...' : 'Signing in...'}</span>
+      `;
+    }
+    if (msg) {
+      msg.className = '';
+      msg.style.display = 'none';
+    }
+    
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Lang': lang
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email: data.email, password: data.password })
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const errorText = j.error || (lang === 'ky' ? 'Электрондук почта же сырсөз туура эмес' : 'Invalid email or password');
+        showMessage(errorText, true);
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalHtml;
+        }
+        return;
+      }
+      
+      if (j.token) {
+        localStorage.setItem('token', j.token);
+        try {
+          document.cookie = `team_token=${encodeURIComponent(j.token)}; path=/; max-age=1209600; SameSite=None; Secure`;
+        } catch {}
+      }
+      if (j.participant) {
+        localStorage.setItem('participant', JSON.stringify(j.participant));
+        localStorage.setItem('team', JSON.stringify(j.participant));
+        if (j.participant.id) localStorage.setItem('participant_id', String(j.participant.id));
+      } else if (j.team) {
+        localStorage.setItem('team', JSON.stringify(j.team));
+        if (j.team.id) localStorage.setItem('team_id', String(j.team.id));
+      }
+
+      showMessage(lang === 'ky' ? 'Ийгиликтүү! Багытталууда...' : 'Success! Redirecting...', false);
+      setTimeout(() => location.href = '/team', 300);
+    } catch (err) {
+      console.error(err);
+      showMessage(lang === 'ky' ? 'Сервер байланышы үзүлдү. Интернетти текшериңиз.' : 'Server unavailable. Please check your internet connection.', true);
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalHtml;
+      }
+    }
+  });
+}
 
 // Password reset functionality
 let resetEmail = '';
 let resetTimer = null;
 
-document.getElementById('forgotPassword').onclick = (e) => {
-  e.preventDefault();
-  openResetModal();
-};
+const forgotPasswordBtn = document.getElementById('forgotPassword');
+if (forgotPasswordBtn) {
+  forgotPasswordBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    openResetModal();
+  });
+}
 
 function openResetModal() {
   const modal = document.getElementById('resetModal');

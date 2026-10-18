@@ -844,44 +844,50 @@
         </svg>
         <span>Akylman Quiz Bowl</span>
       </div>
-      <h1 class="reg-title" data-i18n="register.title">Team Registration</h1>
-      <p class="reg-subtitle" data-i18n="register.subtitle">Fill in your team details to join Akylman Quiz Bowl tournament</p>
+      <h1 class="reg-title" data-i18n="register.title">Registration</h1>
+      <p class="reg-subtitle" data-i18n="register.subtitle">Fill in your details to participate in Akylman Quiz Bowl tournament</p>
     </div>
 
     <form id="regForm" novalidate>
 
-      <!-- Section 1: Team & Category -->
+      <!-- Section 1: Participant Information -->
       <div class="reg-section">
         <div class="reg-section-header">
           <div class="reg-section-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
-              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
-              <path d="M4 22h16"></path>
-              <path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1h10c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-2c-.55 0-1-.45-1-1v-2.34"></path>
-              <path d="M18 4H6v7a6 6 0 0 0 12 0V4z"></path>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
             </svg>
           </div>
-          <h2 class="reg-section-title" data-i18n="register.section.team">Team Information</h2>
+          <h2 class="reg-section-title" data-i18n="register.section.participant">Participant Information</h2>
         </div>
 
         <div class="reg-grid">
           <div class="reg-field">
-            <label class="reg-label" for="reg_team_name">
-              <span><span data-i18n="register.team_name">Team Name</span><span class="req">*</span></span>
+            <label class="reg-label" for="full_name_input">
+              <span><span data-i18n="register.participant_name">Full Name</span><span class="req">*</span></span>
             </label>
             <div class="reg-input-wrapper">
-              <input class="reg-input" id="reg_team_name" name="team_name" placeholder="e.g. Shumkarlar" data-i18n-ph="register.team_name.placeholder" required autocomplete="off"/>
+              <input class="reg-input" id="full_name_input" name="full_name" placeholder="John Doe" data-i18n-ph="register.participant_name.placeholder" required autocomplete="name"/>
             </div>
           </div>
 
           <div class="reg-field">
-            <label class="reg-label" for="team_category">
-              <span><span data-i18n="register.category">Category</span><span class="req">*</span></span>
+            <label class="reg-label" for="grade_select">
+              <span><span data-i18n="register.grade">Grade</span><span class="req">*</span></span>
             </label>
             <div class="reg-input-wrapper">
-              <select id="team_category" name="category_id" class="reg-select admin-input" required>
-                <option value="" data-i18n="register.category.placeholder">Select category</option>
+              <select id="grade_select" name="grade" class="reg-select admin-input" required>
+                <option value="" data-i18n="register.grade.placeholder">Select grade</option>
+                <option value="7-A">7-A</option>
+                <option value="7-B">7-B</option>
+                <option value="7-C">7-C</option>
+                <option value="8-A">8-A</option>
+                <option value="8-B">8-B</option>
+                <option value="8-C">8-C</option>
+                <option value="9-A">9-A</option>
+                <option value="9-B">9-B</option>
+                <option value="9-C">9-C</option>
               </select>
             </div>
           </div>
@@ -942,7 +948,7 @@
         </div>
       </div>
 
-      <!-- Section 3: Team Email -->
+      <!-- Section 3: Contacts -->
       <div class="reg-section">
         <div class="reg-section-header">
           <div class="reg-section-icon">
@@ -951,16 +957,16 @@
               <polyline points="22,6 12,13 2,6"></polyline>
             </svg>
           </div>
-          <h2 class="reg-section-title" data-i18n="register.section.contact">Team Contacts</h2>
+          <h2 class="reg-section-title" data-i18n="register.section.contact">Contacts</h2>
         </div>
 
         <div class="reg-grid single">
           <div class="reg-field">
             <label class="reg-label" for="team_email_input">
-              <span><span data-i18n="register.contact_email">Contact Email (for login and communication)</span><span class="req">*</span></span>
+              <span><span data-i18n="register.email">Email</span><span class="req">*</span></span>
             </label>
             <div class="reg-input-wrapper">
-              <input type="email" class="reg-input" id="team_email_input" name="email" placeholder="example@email.com" data-i18n-ph="register.contact_email.placeholder" required autocomplete="email"/>
+              <input type="email" class="reg-input" id="team_email_input" name="email" placeholder="example@email.com" required autocomplete="email"/>
             </div>
           </div>
         </div>
@@ -986,9 +992,9 @@
             <div class="reg-input-wrapper">
               <select id="branch_select" name="branch" class="reg-select admin-input" required>
                 <option value="" data-i18n="register.branch.placeholder">Select branch</option>
-                <option value="Манас">Манас</option>
-                <option value="Талас">Талас</option>
-                <option value="Чолпон-Ата">Чолпон-Ата</option>
+                <option value="Манас" data-i18n="register.branch.manas">Manas</option>
+                <option value="Талас" data-i18n="register.branch.talas">Talas</option>
+                <option value="Чолпон-Ата" data-i18n="register.branch.cholpon_ata">Cholpon-Ata</option>
               </select>
             </div>
 
@@ -999,78 +1005,31 @@
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
-                <span>Манас</span>
+                <span data-i18n="register.branch.manas">Manas</span>
               </button>
               <button type="button" class="branch-btn" data-branch="Талас">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
-                <span>Талас</span>
+                <span data-i18n="register.branch.talas">Talas</span>
               </button>
               <button type="button" class="branch-btn" data-branch="Чолпон-Ата">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
-                <span>Чолпон-Ата</span>
+                <span data-i18n="register.branch.cholpon_ata">Cholpon-Ata</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Section 5: Team Members -->
-      <div class="reg-section">
-        <div class="reg-section-header">
-          <div class="reg-section-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-          </div>
-          <h2 class="reg-section-title" data-i18n="register.section.members">Team Members</h2>
-        </div>
-
-        <div class="reg-field" style="margin-bottom: 20px;">
-          <label class="reg-label" for="members_count">
-            <span data-i18n="register.members_count">Number of Members</span>
-          </label>
-
-          <!-- Interactive Member Count Buttons -->
-          <div class="members-count-selector" id="memberCountButtons">
-            <button type="button" class="count-btn active" data-count="2">
-              <span class="count-num">2</span>
-              <span class="count-label">members</span>
-            </button>
-            <button type="button" class="count-btn" data-count="3">
-              <span class="count-num">3</span>
-              <span class="count-label">members</span>
-            </button>
-            <button type="button" class="count-btn" data-count="4">
-              <span class="count-num">4</span>
-              <span class="count-label">members</span>
-            </button>
-          </div>
-
-          <!-- Native Select (Hidden but fully synced for compatibility) -->
-          <select id="members_count" name="members_count" style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px;">
-            <option value="2" selected>2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-          </select>
-        </div>
-
-        <!-- Dynamic Member Inputs Container -->
-        <div id="members_fields"></div>
-      </div>
-
       <!-- Submit & Actions -->
       <div class="reg-actions">
         <button class="reg-submit-btn" type="submit" id="submitBtn">
-          <span data-i18n="register.submit">Register Team</span>
+          <span data-i18n="register.submit">Register</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="5" y1="12" x2="19" y2="12"></line>
             <polyline points="12 5 19 12 12 19"></polyline>
@@ -1101,14 +1060,10 @@
 <script src="/js/i18n.js"></script>
 <script>AkylI18n.initSwitcher();</script>
 <script>
-const membersDiv = document.getElementById('members_fields');
 const passwordInput = document.getElementById('passwordInput');
 const passwordInput2 = document.getElementById('passwordInput2');
-const categorySelect = document.getElementById('team_category');
 const branchSelect = document.getElementById('branch_select');
 const branchButtons = document.querySelectorAll('#branchButtons .branch-btn');
-const membersCountSelect = document.getElementById('members_count');
-const countButtons = document.querySelectorAll('#memberCountButtons .count-btn');
 const pwMatchHint = document.getElementById('pwMatchHint');
 
 // Password requirements rules
@@ -1196,178 +1151,51 @@ function setupPwToggle(btnId, inputId, iconId) {
 setupPwToggle('togglePw1', 'passwordInput', 'eyeIcon1');
 setupPwToggle('togglePw2', 'passwordInput2', 'eyeIcon2');
 
-// Render Members with generous spacious fields (All equal participants)
-function renderMembers(n) {
-  membersDiv.innerHTML = '';
-  const lang = AkylI18n.getLang();
-  
-  for (let i = 1; i <= n; i++) {
-    const card = document.createElement('div');
-    card.className = 'member-item-card';
-
-    let memberLabel, classLabel;
-    if (lang === 'ky') {
-      memberLabel = `${i}-${AkylI18n.t('register.member_name') || 'катышуучунун аты-жөнү'}`;
-      classLabel = AkylI18n.t('register.member_class') || 'Классы';
-    } else {
-      memberLabel = `Member #${i} Full Name`;
-      classLabel = AkylI18n.t('register.member_class') || 'Grade';
-    }
-    const memberPh = AkylI18n.t('register.member_name.placeholder') || (lang === 'ky' ? 'Катышуучунун аты-жөнү' : 'Member Full Name');
-    const classPlaceholder = lang === 'ky' ? 'Классты тандаңыз' : 'Select grade';
-
-    card.innerHTML = `
-      <div class="member-item-header">
-        <span class="member-num-pill">${i}</span>
-        <span class="member-title-text">${memberLabel}</span>
-      </div>
-      <div class="member-inputs-grid">
-        <div class="reg-field">
-          <label class="reg-field-label" style="display:block; font-size:12.5px; font-weight:600; color:#475569; margin-bottom:5px;">
-            ${lang === 'ky' ? 'Аты-жөнү' : 'Member Full Name'} <span style="color:#ef4444;">*</span>
-          </label>
-          <div class="reg-input-wrapper">
-            <input class="reg-input" name="member_${i}_name" placeholder="${memberPh}" required autocomplete="name"/>
-          </div>
-        </div>
-        <div class="reg-field">
-          <label class="reg-field-label" style="display:block; font-size:12.5px; font-weight:600; color:#475569; margin-bottom:5px;">
-            ${classLabel} <span style="color:#ef4444;">*</span>
-          </label>
-          <div class="reg-input-wrapper">
-            <select class="reg-select" name="member_${i}_info" required>
-              <option value="">-- ${classPlaceholder} * --</option>
-              <option value="7-A">7-A</option>
-              <option value="7-B">7-B</option>
-              <option value="7-C">7-C</option>
-              <option value="8-A">8-A</option>
-              <option value="8-B">8-B</option>
-              <option value="8-C">8-C</option>
-              <option value="9-A">9-A</option>
-              <option value="9-B">9-B</option>
-              <option value="9-C">9-C</option>
-            </select>
-          </div>
-        </div>
-      </div>
-    `;
-    const selEl = card.querySelector(`[name="member_${i}_info"]`);
-    if (selEl) {
-      selEl.addEventListener('change', () => selEl.classList.remove('select-error'));
-    }
-    membersDiv.appendChild(card);
-  }
-}
-
-// Update segment button labels based on language
-function updateCountButtonLabels() {
-  const lang = AkylI18n.getLang();
-  countButtons.forEach(btn => {
-    const count = btn.dataset.count;
-    const numEl = btn.querySelector('.count-num');
-    const labelEl = btn.querySelector('.count-label');
-    const labelText = lang === 'ky' ? 'катышуучу' : 'members';
-    if (numEl) numEl.textContent = count;
-    if (labelEl) labelEl.textContent = labelText;
-    else btn.textContent = `${count} ${labelText}`;
-  });
-}
-
-// Sync Segment Buttons with hidden select
-countButtons.forEach(btn => {
-  btn.addEventListener('click', () => {
-    countButtons.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const val = parseInt(btn.dataset.count);
-    membersCountSelect.value = val;
-    renderMembers(val);
-  });
-});
-
-membersCountSelect.addEventListener('change', e => {
-  const val = parseInt(e.target.value);
-  countButtons.forEach(b => {
-    if (parseInt(b.dataset.count) === val) b.classList.add('active');
-    else b.classList.remove('active');
-  });
-  renderMembers(val);
-});
-
-// Load Categories
-async function loadCategoriesForTeams() {
-  if (!categorySelect) return;
-  try {
-    const res = await fetch('/api/categories');
-    if (!res.ok) return;
-    const cats = await res.json();
-    const lang = AkylI18n.getLang();
-    const placeholder = lang === 'ky' ? 'Категорияны тандаңыз' : 'Select category';
-    categorySelect.innerHTML = `<option value="">${placeholder}</option>` +
-      cats.map(c => `<option value="${c.id}">${lang === 'ky' ? escHtml(c.name_ky) : escHtml(c.name_ru)}</option>`).join('');
-  } catch (e) {
-    console.error('Failed to load categories', e);
-  }
-}
-
-function escHtml(s) {
-  const div = document.createElement('div');
-  div.textContent = s || '';
-  return div.innerHTML;
-}
-
-// Initial renders
-renderMembers(2);
-updateCountButtonLabels();
-updateBranchPlaceholder();
-loadCategoriesForTeams();
-
-// Clear errors on selection
-if (categorySelect) {
-  categorySelect.addEventListener('change', () => {
-    categorySelect.classList.remove('select-error');
-  });
-}
-
 // Sync Branch buttons with branch select
-branchButtons.forEach(btn => {
-  btn.addEventListener('click', () => {
-    const val = btn.dataset.branch;
-    if (branchSelect) {
-      branchSelect.value = val;
-      branchSelect.classList.remove('select-error');
-    }
-    branchButtons.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+if (branchButtons && branchButtons.length) {
+  branchButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.branch;
+      if (branchSelect) {
+        branchSelect.value = val;
+        branchSelect.classList.remove('select-error');
+      }
+      branchButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
   });
-});
+}
 
 if (branchSelect) {
   branchSelect.addEventListener('change', e => {
     const val = e.target.value;
-    branchButtons.forEach(b => {
-      if (b.dataset.branch === val) b.classList.add('active');
-      else b.classList.remove('active');
-    });
+    if (branchButtons && branchButtons.length) {
+      branchButtons.forEach(b => {
+        if (b.dataset.branch === val) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+    }
     branchSelect.classList.remove('select-error');
   });
 }
 
 function updateBranchPlaceholder() {
   if (!branchSelect) return;
-  const lang = AkylI18n.getLang();
+  const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
   const firstOpt = branchSelect.querySelector('option[value=""]');
   if (firstOpt) {
     firstOpt.textContent = lang === 'ky' ? 'Филиалды тандаңыз' : 'Select branch';
   }
 }
 
+updateBranchPlaceholder();
+
 // Language change handler
 window.addEventListener('akyl-langchange', () => {
-  renderMembers(parseInt(membersCountSelect.value));
-  updateCountButtonLabels();
   updateBranchPlaceholder();
-  AkylI18n.applyI18n(AkylI18n.getLang());
-  loadCategoriesForTeams();
+  if (typeof AkylI18n !== 'undefined' && AkylI18n.applyI18n) {
+    AkylI18n.applyI18n(AkylI18n.getLang());
+  }
   checkPasswordMatch();
 });
 
@@ -1386,164 +1214,152 @@ if (passwordInput2) {
 }
 
 // Form Submission
-document.getElementById('regForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const msg = document.getElementById('msg');
-  const submitBtn = document.getElementById('submitBtn');
-  const lang = AkylI18n.getLang();
+const regForm = document.getElementById('regForm');
+if (regForm) {
+  regForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const msg = document.getElementById('msg');
+    const submitBtn = document.getElementById('submitBtn');
+    const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
 
-  function showMessage(text, isError) {
-    msg.textContent = text;
-    msg.className = isError ? 'error show' : 'success show';
-  }
-
-  // Clear previous error state on category and branch select
-  if (categorySelect) categorySelect.classList.remove('select-error');
-  if (branchSelect) branchSelect.classList.remove('select-error');
-
-  const data = Object.fromEntries(new FormData(e.target).entries());
-
-  if (!data.category_id) {
-    showMessage(lang === 'ky' ? 'Категорияны тандаңыз' : 'Please select a category', true);
-    if (categorySelect) {
-      categorySelect.classList.add('select-error');
-      categorySelect.focus();
+    function showMessage(text, isError) {
+      if (!msg) return;
+      msg.textContent = text;
+      msg.className = isError ? 'error show' : 'success show';
     }
-    return;
-  }
 
-  if (!data.branch) {
-    showMessage(lang === 'ky' ? 'Филиалды тандаңыз' : 'Please select a branch', true);
-    if (branchSelect) {
-      branchSelect.classList.add('select-error');
-      branchSelect.focus();
-    }
-    return;
-  }
+    // Clear previous error state on branch select
+    if (branchSelect) branchSelect.classList.remove('select-error');
 
-  const teamEmailVal = (data.team_email || data.email || '').trim();
-  if (!isValidEmail(teamEmailVal)) {
-    showMessage(lang === 'ky' ? 'Туура эмес электрондук почта' : 'Invalid team email address', true);
-    document.getElementById('team_email_input')?.focus();
-    return;
-  }
+    const data = Object.fromEntries(new FormData(e.target).entries());
 
-  if (data.password !== data.password2) {
-    showMessage(lang === 'ky' ? 'Сырсөздөр дал келген жок' : 'Passwords do not match', true);
-    passwordInput2?.focus();
-    return;
-  }
-
-  if (!isValidPassword(data.password)) {
-    showMessage(lang === 'ky' ? 'Сырсөз бардык талаптарга жооп бериши керек' : 'Password does not meet security requirements', true);
-    passwordInput?.focus();
-    return;
-  }
-
-  const ALLOWED_CLASSES = [
-    '7-A', '7-B', '7-C',
-    '8-A', '8-B', '8-C',
-    '9-A', '9-B', '9-C'
-  ];
-  const members = [];
-  const cnt = parseInt(data.members_count || 2, 10);
-  for (let i = 1; i <= cnt; i++) {
-    const nameEl = document.querySelector(`[name="member_${i}_name"]`);
-    const classEl = document.querySelector(`[name="member_${i}_info"]`);
-    const name = (nameEl?.value || '').trim();
-    const classInfo = (classEl?.value || '').trim();
-
-    if (!name) {
-      showMessage(lang === 'ky' ? `${i}-катышуучунун аты-жөнүн жазыңыз` : `Please enter full name for member #${i}`, true);
-      nameEl?.focus();
-      return;
-    }
-    if (!classInfo || !ALLOWED_CLASSES.includes(classInfo)) {
-      showMessage(lang === 'ky' ? `${i}-катышуучунун классын тандаңыз` : `Please select grade for member #${i}`, true);
-      classEl?.classList.add('select-error');
-      classEl?.focus();
-      return;
-    }
-    members.push({ name, class: classInfo });
-  }
-
-  if (members.length === 0) {
-    showMessage(lang === 'ky' ? 'Катышуучулардын маалыматын толтуруңуз' : 'Please fill in team member details', true);
-    document.querySelector('[name="member_1_name"]')?.focus();
-    return;
-  }
-
-  const payload = {
-    team_name: data.team_name,
-    password: data.password,
-    team_email: teamEmailVal,
-    email: teamEmailVal,
-    members,
-    branch: data.branch,
-    school: data.branch,
-    city: data.branch,
-    category_id: data.category_id
-  };
-
-  try {
-    submitBtn.disabled = true;
-    const originalBtnHtml = submitBtn.innerHTML;
-    submitBtn.innerHTML = `<span>${lang === 'ky' ? 'Катталууда...' : 'Registering...'}</span>`;
-
-    const res = await fetch('/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const j = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      showMessage(j.error || (lang === 'ky' ? 'Ката кетти' : 'Registration error'), true);
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = originalBtnHtml;
+    if (!data.full_name || !String(data.full_name).trim()) {
+      showMessage(lang === 'ky' ? 'Аты-жөнүңүздү жазыңыз' : 'Please enter full name', true);
+      document.getElementById('full_name_input')?.focus();
       return;
     }
 
-    if (j.token) {
-      localStorage.setItem('token', j.token);
-      try {
-        document.cookie = `team_token=${encodeURIComponent(j.token)}; path=/; max-age=1209600; SameSite=None; Secure`;
-      } catch {}
-    }
-    if (j.team) {
-      localStorage.setItem('team', JSON.stringify(j.team));
-      if (j.team.id) localStorage.setItem('team_id', String(j.team.id));
+    const ALLOWED_CLASSES = [
+      '7-A', '7-B', '7-C',
+      '8-A', '8-B', '8-C',
+      '9-A', '9-B', '9-C'
+    ];
+    if (!data.grade || !ALLOWED_CLASSES.includes(data.grade)) {
+      showMessage(lang === 'ky' ? 'Классты тандаңыз' : 'Please select grade', true);
+      document.getElementById('grade_select')?.focus();
+      return;
     }
 
-    showMessage(lang === 'ky' ? 'Ийгиликтүү катталдыңыз! Команданын кабинетине өтүүдө...' : 'Team registered successfully! Redirecting to cabinet...', false);
-    setTimeout(() => {
-      window.location.href = '/team';
-    }, 800);
-  } catch (err) {
-    console.error(err);
-    showMessage(lang === 'ky' ? 'Сервер менен байланыш үзүлдү. Интернетти текшериңиз.' : 'Server unavailable. Please check your internet connection.', true);
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = originalBtnHtml;
-  }
-});
+    if (!data.branch) {
+      showMessage(lang === 'ky' ? 'Филиалды тандаңыз' : 'Please select a branch', true);
+      if (branchSelect) {
+        branchSelect.classList.add('select-error');
+        branchSelect.focus();
+      }
+      return;
+    }
 
-// Check if team is already authenticated and display prominent cabinet shortcut
+    const emailVal = (data.email || '').trim();
+    if (!isValidEmail(emailVal)) {
+      showMessage(lang === 'ky' ? 'Туура эмес email дареги' : 'Invalid email address', true);
+      document.getElementById('team_email_input')?.focus();
+      return;
+    }
+
+    if (data.password !== data.password2) {
+      showMessage(lang === 'ky' ? 'Сырсөздөр дал келген жок' : 'Passwords do not match', true);
+      passwordInput2?.focus();
+      return;
+    }
+
+    if (!isValidPassword(data.password)) {
+      showMessage(lang === 'ky' ? 'Сырсөз бардык коопсуздук талаптарына жооп бериши керек' : 'Password does not meet security requirements', true);
+      passwordInput?.focus();
+      return;
+    }
+
+    const payload = {
+      full_name: String(data.full_name).trim(),
+      email: emailVal,
+      password: data.password,
+      grade: data.grade,
+      school: data.branch,
+      city: data.branch,
+      branch: data.branch
+    };
+
+    const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+    try {
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>${lang === 'ky' ? 'Катталууда...' : 'Registering...'}</span>`;
+      }
+
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Lang': lang
+        },
+        body: JSON.stringify(payload)
+      });
+      const j = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        showMessage(j.error || (lang === 'ky' ? 'Каттоодо ката кетти' : 'Registration error'), true);
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnHtml;
+        }
+        return;
+      }
+
+      if (j.token) {
+        localStorage.setItem('token', j.token);
+        try {
+          document.cookie = `team_token=${encodeURIComponent(j.token)}; path=/; max-age=1209600; SameSite=None; Secure`;
+        } catch {}
+      }
+      if (j.participant) {
+        localStorage.setItem('participant', JSON.stringify(j.participant));
+        localStorage.setItem('team', JSON.stringify(j.participant));
+        if (j.participant.id) localStorage.setItem('participant_id', String(j.participant.id));
+      }
+
+      showMessage(lang === 'ky' ? 'Ийгиликтүү катталдыңыз! Кабинетке өтүүдө...' : 'Registered successfully! Redirecting to cabinet...', false);
+      setTimeout(() => {
+        window.location.href = '/team';
+      }, 700);
+    } catch (err) {
+      console.error(err);
+      showMessage(lang === 'ky' ? 'Сервер менен байланыш үзүлдү. Интернетти текшериңиз.' : 'Server unavailable. Please check your internet connection.', true);
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml;
+      }
+    }
+  });
+}
+
+// Check if participant/team is already authenticated and display prominent cabinet shortcut
 async function checkCurrentAuth() {
   const token = localStorage.getItem('token');
   const headers = {};
   if (token) headers['Authorization'] = 'Bearer ' + token;
+  const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
   try {
     const res = await fetch('/api/me', { headers, credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
-      const team = (data && data.team) || data || {};
-      const teamName = team.team_name || 'Команда';
+      const team = data?.team || {};
+      const participant = data?.participant || {};
+      const displayName = team.team_name || participant.full_name || (lang === 'ky' ? 'Катышуучу' : 'Participant');
       const banner = document.getElementById('alreadyLoggedInBanner');
       const teamNameSpan = document.getElementById('loggedInTeamName');
       const cabinetBtn = document.getElementById('topAuthCabinetLink');
       const cabinetText = document.getElementById('topAuthCabinetText');
-      if (teamNameSpan) teamNameSpan.textContent = teamName;
-      if (cabinetText) cabinetText.textContent = `${lang === 'ky' ? 'Кабинет' : 'Cabinet'} (${teamName})`;
+      if (teamNameSpan) teamNameSpan.textContent = displayName;
+      if (cabinetText) cabinetText.textContent = `${lang === 'ky' ? 'Кабинет' : 'Cabinet'} (${displayName})`;
       if (banner) banner.style.display = 'block';
       if (cabinetBtn) cabinetBtn.style.display = 'inline-flex';
     }

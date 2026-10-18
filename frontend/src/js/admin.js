@@ -2375,6 +2375,144 @@ function editQuestion(id, qs, cs){
   };
 }
 
+// Participants Tab
+async function renderParticipants(){
+  setActiveTab(document.getElementById('tabParticipants'));
+  showLoading('Загрузка участников...');
+  const r = await adminFetch('/api/admin/participants',{ headers: aHeaders() });
+  if(!r.ok){ showAlert('Нет доступа', 'error'); return; }
+  const rows = await r.json();
+
+  function renderTable(filterText = '') {
+    const term = filterText.toLowerCase().trim();
+    const filtered = term ? rows.filter(p => 
+      (p.full_name||'').toLowerCase().includes(term) ||
+      (p.email||'').toLowerCase().includes(term) ||
+      (p.phone||'').toLowerCase().includes(term) ||
+      (p.school||'').toLowerCase().includes(term) ||
+      (p.city||'').toLowerCase().includes(term) ||
+      (p.grade||'').toLowerCase().includes(term) ||
+      (p.team_name||'').toLowerCase().includes(term) ||
+      (p.category_name||'').toLowerCase().includes(term) ||
+      String(p.id).includes(term)
+    ) : rows;
+
+    const tbody = document.getElementById('participantsTbody');
+    if (!tbody) return;
+    if (filtered.length > 0) {
+      tbody.innerHTML = filtered.map(p => {
+        const branchVal = esc(p.school || p.city || '—');
+        const gradeVal = esc(p.grade ? `${p.grade} класс` : '—');
+        const teamVal = p.team_name ? `<span style="color:#0284c7; font-weight:500;">${esc(p.team_name)}</span>` : `<span style="color:#94a3b8; font-style:italic;">Без команды</span>`;
+        const emailVal = esc(p.email || '');
+        const phoneVal = esc(p.phone || '—');
+        const catVal = esc(p.category_name || 'Не выбрана');
+        return `
+          <tr>
+            <td><span style="font-weight:600; color:#64748b;">#${p.id}</span></td>
+            <td><strong style="color:#0f172a;">${esc(p.full_name||'')}</strong></td>
+            <td>
+              <div style="font-size:13px; color:#1e293b; font-weight:500;">${emailVal}</div>
+              <div style="font-size:12px; color:#64748b;">${phoneVal}</div>
+            </td>
+            <td><span style="background:#f1f5f9; padding:3px 8px; border-radius:6px; font-size:12.5px; font-weight:600; color:#334155;">${branchVal}</span></td>
+            <td><span style="font-size:13px; color:#334155;">${gradeVal}</span></td>
+            <td>${teamVal}</td>
+            <td><span class="status-badge status-published">${catVal}</span></td>
+            <td style="color:#64748b; font-size:12.5px;">${esc(p.created_at_formatted||p.created_at||'')}</td>
+            <td>
+              <div class="admin-table-actions">
+                <button class="admin-button danger delete-participant-btn" data-id="${p.id}" data-name="${esc(p.full_name||'Участник')}">
+                  🗑️ Удалить
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      tbody.querySelectorAll('.delete-participant-btn').forEach(btn => {
+        btn.onclick = () => {
+          const pId = btn.dataset.id;
+          const pName = btn.dataset.name;
+          showAdminConfirm('Удаление участника', `Удалить участника <strong>«${esc(pName)}»</strong> (#${pId})?`, 'Это действие нельзя отменить.', async () => {
+            const delRes = await adminFetch(`/api/admin/participants/${pId}`, { method: 'DELETE', headers: aHeaders() });
+            if (!delRes.ok) {
+              const err = await delRes.json().catch(() => ({}));
+              showAlert(err.error || 'Ошибка при удалении участника', 'error');
+              return;
+            }
+            showAlert(`Участник «${pName}» успешно удален`, 'success');
+            renderParticipants();
+          });
+        };
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:#64748b;">Участники не найдены${term ? ` по запросу «${esc(term)}»` : ''}</td></tr>`;
+    }
+  }
+
+  content.innerHTML = `
+    <div class="admin-form">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+        <div>
+          <h3 style="margin:0 0 4px 0;">🎓 Зарегистрированные участники (${rows.length})</h3>
+          <div class="small-muted">Полный список всех индивидуальных зарегистрированных участников турнира с филиалами, классами и датами регистрации</div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <a href="/api/admin/participants/export-csv" class="admin-button success" style="padding:8px 16px; text-decoration:none; display:inline-flex; align-items:center;">📤 Экспорт CSV</a>
+          <button id="wipeParticipants" class="admin-button danger" style="padding:8px 16px;">🗑️ Очистить участников</button>
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <input id="participantsSearchInput" class="admin-input" placeholder="🔍 Поиск участника по ФИО, email, филиалу, классу, команде..." style="max-width:480px;"/>
+      </div>
+    </div>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th style="width:60px;">ID</th>
+            <th>ФИО участника</th>
+            <th>Контакты</th>
+            <th>Филиал / Школа</th>
+            <th>Класс</th>
+            <th>Команда</th>
+            <th>Категория</th>
+            <th>Дата регистрации</th>
+            <th style="width:100px;">Действия</th>
+          </tr>
+        </thead>
+        <tbody id="participantsTbody">
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  renderTable();
+
+  const searchInput = document.getElementById('participantsSearchInput');
+  if (searchInput) {
+    searchInput.oninput = (e) => renderTable(e.target.value);
+  }
+
+  const wipeBtn = document.getElementById('wipeParticipants');
+  if (wipeBtn) {
+    wipeBtn.onclick = () => {
+      showAdminConfirm('Очистка участников', 'Вы действительно хотите удалить ВСЕХ участников?', 'Это действие полностью очистит таблицу участников и сбросит счетчик ID.', async () => {
+        const res = await adminFetch('/api/admin/reset-participants', { method: 'POST', headers: aHeaders() });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          showAlert(err.error || 'Ошибка очистки', 'error');
+          return;
+        }
+        showAlert('Все участники успешно удалены', 'success');
+        renderParticipants();
+      });
+    };
+  }
+}
+
 // Teams Tab
 async function renderTeams(){
   setActiveTab(document.getElementById('tabTeams'));
@@ -4762,6 +4900,7 @@ async function updateAdminBadges() {
 // Tab bindings
 const bTests = document.getElementById('tabTests');
 const bCats = document.getElementById('tabCategories');
+const bParticipants = document.getElementById('tabParticipants');
 const bTeams = document.getElementById('tabTeams');
 const bResults = document.getElementById('tabResults');
 const bAnnouncements = document.getElementById('tabAnnouncements');
@@ -4772,6 +4911,7 @@ const bBackup = document.getElementById('tabBackup');
 
 if (bTests) bTests.onclick = () => { closeMobileSidebar(); renderTests(); };
 if (bCats) bCats.onclick = () => { closeMobileSidebar(); renderCategories(); };
+if (bParticipants) bParticipants.onclick = () => { closeMobileSidebar(); renderParticipants(); };
 if (bTeams) bTeams.onclick = () => { closeMobileSidebar(); renderTeams(); };
 if (bResults) bResults.onclick = () => { closeMobileSidebar(); renderResults(); };
 if (bAnnouncements) bAnnouncements.onclick = () => { closeMobileSidebar(); renderAnnouncements(); };

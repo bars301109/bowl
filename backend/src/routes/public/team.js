@@ -14,30 +14,270 @@ router.post('/api/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// Require team authentication for /api/me endpoints
+// Require team authentication for /api/me and /api/teams endpoints
 router.use('/api/me', teamAuth);
+router.use('/api/teams', teamAuth);
 
 // Get current team profile
+// Get current participant profile, team, teammates, and categories
 router.get('/api/me', async (req, res) => {
   try {
-    const t = await getAsync(
-      `SELECT
-         t.id, t.team_name, t.login, t.team_email, t.email, t.phone,
-         t.members, t.school, t.city, t.category_id,
-         c.name_ru AS category_name_ru, c.name_ky AS category_name_ky
-       FROM teams t
-       LEFT JOIN categories c ON c.id = t.category_id
-       WHERE t.id = $1`,
-      [req.team.id]
+    const participant = await getAsync(
+      `SELECT id, full_name, email, grade, school, city, team_id, category_id, category_confirmed
+       FROM participants WHERE id = $1`,
+      [req.participantId]
     );
-    if (!t) return res.status(404).json({ error: 'Team not found' });
+    if (!participant) return res.status(404).json({ error: 'Participant not found' });
 
-    t.team_email = t.team_email || t.email || '';
-    t.email = t.team_email;
-    t.phone = t.phone || '';
-    t.members = parseMembers(t.members);
-    res.json({ ok: true, team: t, ...t });
+    let team = null;
+    let teammates = [];
+    if (participant.team_id) {
+      team = await getAsync(
+        `SELECT id, team_name, school, city, invite_code, status, created_at FROM teams WHERE id = $1`,
+        [participant.team_id]
+      );
+      teammates = await allAsync(
+        `SELECT id, full_name, email, grade, school, category_id, category_confirmed FROM participants WHERE team_id = $1`,
+        [participant.team_id]
+      );
+    }
+
+    const categories = await allAsync('SELECT id, name_ru, name_ky, desc_ru, desc_ky FROM categories ORDER BY id ASC');
+
+    res.json({
+      ok: true,
+      participant,
+      team,
+      teammates,
+      categories,
+      // For legacy frontend compatibility:
+      teamData: team ? { ...team, members: teammates } : null
+    });
   } catch (e) {
+    console.error('Get me error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+function canonicalBranch(b) {
+  const s = String(b || '').trim().toLowerCase();
+  if (s === 'талас' || s === 'talas') return 'Талас';
+  if (s === 'манас' || s === 'manas') return 'Манас';
+  if (s === 'чолпон-ата' || s === 'чолпоната' || s === 'cholpon-ata' || s === 'cholponata') return 'Чолпон-Ата';
+  return String(b || '').trim();
+}
+
+function getReqLang(req) {
+  const l = String(req.headers['x-lang'] || req.headers['accept-language'] || req.body?.lang || '').toLowerCase();
+  return l.includes('ky') ? 'ky' : 'en';
+}
+
+// Create team
+router.post('/api/teams/create', async (req, res) => {
+  try {
+    const isKy = getReqLang(req) === 'ky';
+    const { team_name } = req.body || {};
+    if (!team_name || !String(team_name).trim()) {
+      return res.status(400).json({ 
+        error: isKy ? 'Команданын атын жазыңыз' : 'Please enter team name' 
+      });
+    }
+
+    const participant = await getAsync('SELECT team_id, school, city FROM participants WHERE id = $1', [req.participantId]);
+    if (!participant) {
+      return res.status(401).json({ error: isKy ? 'Авторизация талап кылынат' : 'Authentication required' });
+    }
+    if (participant.team_id) {
+      return res.status(400).json({ 
+        error: isKy ? 'Сиз мурунтан эле командада барсыз. Алгач командадан чыгыңыз.' : 'You are already in a team. Please leave your current team first.' 
+      });
+    }
+
+    const branch = canonicalBranch(participant.school || participant.city);
+    const inviteCode = 'AKYL-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+
+    const insertRes = await runAsync(
+      `INSERT INTO teams (team_name, school, city, invite_code, status, created_at)
+       VALUES ($1, $2, $3, $4, 'forming', NOW()) RETURNING id`,
+      [String(team_name).trim(), branch, branch, inviteCode]
+    );
+
+    const teamId = insertRes.lastID || insertRes.rows?.[0]?.id;
+
+    await runAsync('UPDATE participants SET team_id = $1, category_id = NULL, category_confirmed = FALSE WHERE id = $2', [teamId, req.participantId]);
+
+    res.json({ ok: true, invite_code: inviteCode, team_id: teamId });
+  } catch (e) {
+    console.error('Create team error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Join team by invite code
+router.post('/api/teams/join', async (req, res) => {
+  try {
+    const isKy = getReqLang(req) === 'ky';
+    const inviteCode = String(req.body?.invite_code || '').trim().toUpperCase();
+    if (!inviteCode) {
+      return res.status(400).json({ 
+        error: isKy ? 'Чакыруу кодун киргизиңиз' : 'Please enter invite code' 
+      });
+    }
+
+    const participant = await getAsync('SELECT team_id, school, city FROM participants WHERE id = $1', [req.participantId]);
+    if (!participant) {
+      return res.status(401).json({ error: isKy ? 'Авторизация талап кылынат' : 'Authentication required' });
+    }
+    if (participant.team_id) {
+      return res.status(400).json({ 
+        error: isKy ? 'Сиз буга чейин командада барсыз' : 'You are already in a team' 
+      });
+    }
+
+    const team = await getAsync('SELECT id, team_name, school, city, status FROM teams WHERE UPPER(invite_code) = $1', [inviteCode]);
+    if (!team) {
+      return res.status(404).json({ 
+        error: isKy ? 'Бул код менен команда табылган жок' : 'Team with this invite code was not found' 
+      });
+    }
+
+    // Enforce branch matching
+    const pBranch = canonicalBranch(participant.school || participant.city);
+    const tBranch = canonicalBranch(team.school || team.city);
+    if (pBranch && tBranch && pBranch !== tBranch) {
+      return res.status(400).json({ 
+        error: isKy
+          ? `Команданын катышуучулары бир гана филиалдан (${tBranch}) боло алышат. Сиз ${pBranch} филиалынансыз.`
+          : `Team members must be from the same branch (${tBranch}). You are registered under ${pBranch}.`
+      });
+    }
+
+    const countRes = await getAsync('SELECT COUNT(*) as cnt FROM participants WHERE team_id = $1', [team.id]);
+    const memberCount = parseInt(countRes?.cnt || 0, 10);
+
+    if (memberCount >= 3) {
+      return res.status(400).json({ 
+        error: isKy ? 'Командада орундар толду (максимум 3 катышуучу)' : 'Team is already full (maximum 3 members)' 
+      });
+    }
+
+    await runAsync('UPDATE participants SET team_id = $1, category_id = NULL, category_confirmed = FALSE WHERE id = $2', [team.id, req.participantId]);
+
+    const newCount = memberCount + 1;
+    if (newCount === 3) {
+      await runAsync("UPDATE teams SET status = 'full' WHERE id = $1", [team.id]);
+    }
+
+    res.json({ ok: true, team_id: team.id, team_name: team.team_name });
+  } catch (e) {
+    console.error('Join team error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Leave team
+router.post('/api/teams/leave', async (req, res) => {
+  try {
+    const isKy = getReqLang(req) === 'ky';
+    const participant = await getAsync('SELECT team_id FROM participants WHERE id = $1', [req.participantId]);
+    if (!participant?.team_id) {
+      return res.status(400).json({ 
+        error: isKy ? 'Сиз командада жоксуз' : 'You are not in a team' 
+      });
+    }
+
+    const teamId = participant.team_id;
+
+    await runAsync('UPDATE participants SET team_id = NULL, category_id = NULL, category_confirmed = FALSE WHERE id = $1', [req.participantId]);
+
+    // Update team status back to forming if it was full or ready
+    await runAsync("UPDATE teams SET status = 'forming' WHERE id = $1", [teamId]);
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Leave team error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Select category
+router.post('/api/teams/category', async (req, res) => {
+  try {
+    const isKy = getReqLang(req) === 'ky';
+    const categoryId = parseInt(req.body?.category_id, 10);
+    if (!categoryId) {
+      return res.status(400).json({ 
+        error: isKy ? 'Категорияны тандаңыз' : 'Please select a category' 
+      });
+    }
+
+    const participant = await getAsync('SELECT team_id FROM participants WHERE id = $1', [req.participantId]);
+    if (!participant?.team_id) {
+      return res.status(400).json({ 
+        error: isKy ? 'Сиз командада жоксуз' : 'You are not in a team' 
+      });
+    }
+
+    // Check if category is already taken by another teammate
+    const taken = await getAsync(
+      'SELECT id FROM participants WHERE team_id = $1 AND category_id = $2 AND id != $3',
+      [participant.team_id, categoryId, req.participantId]
+    );
+    if (taken) {
+      return res.status(400).json({ 
+        error: isKy ? 'Бул категорияны командалашыңыз тандап алган' : 'This category is already chosen by a teammate' 
+      });
+    }
+
+    await runAsync('UPDATE participants SET category_id = $1, category_confirmed = FALSE WHERE id = $2', [categoryId, req.participantId]);
+
+    // Reset team status to forming/full (not ready until re-confirmed)
+    await runAsync("UPDATE teams SET status = 'full' WHERE id = $1 AND status = 'ready'", [participant.team_id]);
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Select category error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Confirm category distribution
+router.post('/api/teams/confirm', async (req, res) => {
+  try {
+    const isKy = getReqLang(req) === 'ky';
+    const participant = await getAsync('SELECT team_id, category_id FROM participants WHERE id = $1', [req.participantId]);
+    if (!participant?.team_id) {
+      return res.status(400).json({ 
+        error: isKy ? 'Сиз командада жоксуз' : 'You are not in a team' 
+      });
+    }
+    if (!participant.category_id) {
+      return res.status(400).json({ 
+        error: isKy ? 'Алгач өз категорияңызды тандаңыз' : 'Please select your category first' 
+      });
+    }
+
+    const confirmed = req.body?.confirmed !== false;
+
+    await runAsync('UPDATE participants SET category_confirmed = $1 WHERE id = $2', [confirmed, req.participantId]);
+
+    // Check if all team members (3) have confirmed
+    const teammates = await allAsync('SELECT id, category_id, category_confirmed FROM participants WHERE team_id = $1', [participant.team_id]);
+    
+    if (teammates.length === 3) {
+      const allConfirmed = teammates.every(m => m.category_confirmed && m.category_id);
+      const uniqueCats = new Set(teammates.map(m => m.category_id));
+      
+      if (allConfirmed && uniqueCats.size === 3) {
+        await runAsync("UPDATE teams SET status = 'ready' WHERE id = $1", [participant.team_id]);
+      } else {
+        await runAsync("UPDATE teams SET status = 'full' WHERE id = $1", [participant.team_id]);
+      }
+    }
+
+    res.json({ ok: true, confirmed });
+  } catch (e) {
+    console.error('Confirm category error:', e);
     res.status(500).json({ error: e.message });
   }
 });

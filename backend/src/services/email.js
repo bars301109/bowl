@@ -52,26 +52,32 @@ async function sendViaNodemailer({ to, subject, html }) {
   let transporter = null;
   let fromAddress = '';
 
-  if (GMAIL_USER && GMAIL_APP_PASSWORD) {
-    transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: GMAIL_USER,
-        pass: GMAIL_APP_PASSWORD.replace(/\s+/g, ''),
-      },
-    });
-    fromAddress = `Akylman Quiz Bowl <${GMAIL_USER}>`;
-  } else if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
-    transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT || 587,
-      secure: SMTP_PORT === 465,
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      },
-    });
-    fromAddress = SMTP_FROM || `Akylman Quiz Bowl <${SMTP_USER}>`;
+  const user = String(SMTP_USER || GMAIL_USER || '').trim();
+  const pass = String(SMTP_PASS || GMAIL_APP_PASSWORD || '').trim().replace(/\s+/g, '');
+  const host = String(SMTP_HOST || (user.endsWith('@gmail.com') ? 'smtp.gmail.com' : '')).trim();
+  const port = SMTP_PORT || 587;
+
+  if (user && pass) {
+    if (user.endsWith('@gmail.com') || host.includes('gmail.com')) {
+      transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user,
+          pass,
+        },
+      });
+    } else {
+      transporter = nodemailer.createTransport({
+        host: host || 'smtp.gmail.com',
+        port,
+        secure: port === 465,
+        auth: {
+          user,
+          pass,
+        },
+      });
+    }
+    fromAddress = SMTP_FROM || `Akylman Quiz Bowl <${user}>`;
   }
 
   if (!transporter) {

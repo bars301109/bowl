@@ -23,8 +23,27 @@ export const teams = pgTable("teams", {
   school: text("school"),
   city: text("city"),
   category_id: integer("category_id"),
+  invite_code: text("invite_code"),
+  status: text("status").default("forming"),
   created_at: text("created_at"),
 });
+
+// Participants table
+export const participants = pgTable("participants", {
+  id: serial("id").primaryKey(),
+  full_name: text("full_name").notNull(),
+  email: text("email").notNull().unique(),
+  password_hash: text("password_hash").notNull(),
+  phone: text("phone"),
+  grade: text("grade"),
+  school: text("school"),
+  city: text("city"),
+  team_id: integer("team_id"),
+  category_id: integer("category_id"),
+  category_confirmed: integer("category_confirmed").default(0),
+  created_at: text("created_at"),
+});
+
 
 // Uploaded files table
 export const uploadedFiles = pgTable("uploaded_files", {

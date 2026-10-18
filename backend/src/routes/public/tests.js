@@ -357,15 +357,17 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
     const answersJson = JSON.stringify(answersArr);
 
     // Record results atomically (update existing if retaking, or insert)
+    const participantId = req.participantId || null;
+    const catId = test.category_id || null;
     if (existing) {
       await runAsync(
-        'UPDATE results SET score = $1, answers = $2, taken_at = NOW(), started_at = $3, time_taken_sec = $4 WHERE id = $5',
-        [score, answersJson, startedAt, recordedTimeSec, existing.id]
+        'UPDATE results SET score = $1, answers = $2, taken_at = NOW(), started_at = $3, time_taken_sec = $4, participant_id = COALESCE($5, participant_id), category_id = COALESCE($6, category_id) WHERE id = $7',
+        [score, answersJson, startedAt, recordedTimeSec, participantId, catId, existing.id]
       );
     } else {
       await runAsync(
-        'INSERT INTO results (team_id, test_id, score, answers, taken_at, started_at, time_taken_sec) VALUES ($1,$2,$3,$4,NOW(),$5,$6)',
-        [teamId, testId, score, answersJson, startedAt, recordedTimeSec]
+        'INSERT INTO results (team_id, test_id, score, answers, taken_at, started_at, time_taken_sec, participant_id, category_id) VALUES ($1,$2,$3,$4,NOW(),$5,$6,$7,$8)',
+        [teamId, testId, score, answersJson, startedAt, recordedTimeSec, participantId, catId]
       );
     }
 

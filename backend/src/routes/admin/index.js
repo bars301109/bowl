@@ -1191,6 +1191,7 @@ router.delete('/api/admin/categories/:id', async (req, res) => {
 // --- Storage & Backup endpoints ---
 router.get('/api/admin/storage/status', async (req, res) => {
   try {
+    const participants = await allAsync('SELECT COUNT(*) AS cnt FROM participants').catch(() => [{ cnt: 0 }]);
     const teams = await allAsync('SELECT COUNT(*) AS cnt FROM teams').catch(() => [{ cnt: 0 }]);
     const categories = await allAsync('SELECT COUNT(*) AS cnt FROM categories').catch(() => [{ cnt: 0 }]);
     const tests = await allAsync('SELECT COUNT(*) AS cnt FROM tests').catch(() => [{ cnt: 0 }]);
@@ -1202,6 +1203,7 @@ router.get('/api/admin/storage/status', async (req, res) => {
       storage_type: 'postgres',
       store_file: 'Cloud SQL PostgreSQL Database',
       counts: {
+        participants: parseInt(participants[0]?.cnt || 0, 10),
         teams: parseInt(teams[0]?.cnt || 0, 10),
         categories: parseInt(categories[0]?.cnt || 0, 10),
         tests: parseInt(tests[0]?.cnt || 0, 10),
@@ -1240,6 +1242,7 @@ router.get('/api/admin/storage/backup', async (req, res) => {
     const tables = {
       categories: await allAsync('SELECT id, name_ru, name_ky, desc_ru, desc_ky, created_at FROM categories ORDER BY id ASC').catch(() => []),
       settings: await allAsync('SELECT id, day1_date, day2_date, day3_date, final_place_ru, final_place_ky, results_published, one_submission_allowed, updated_at FROM settings ORDER BY id ASC').catch(() => []),
+      participants: await allAsync('SELECT id, full_name, email, phone, grade, school, city, team_id, category_id, category_confirmed, created_at FROM participants ORDER BY id ASC').catch(() => []),
       teams: await allAsync('SELECT id, team_name, login, password, team_email, email, phone, members, school, city, category_id, created_at FROM teams ORDER BY id ASC').catch(() => []),
       tests: await allAsync('SELECT id, title, description, preview_text, lang, duration_minutes, window_start, window_end, status, category_id, created_at FROM tests ORDER BY id ASC').catch(() => []),
       questions: rawQuestions,
@@ -1904,6 +1907,184 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
     if (tempFilePath && fs.existsSync(tempFilePath)) {
       try { fs.unlinkSync(tempFilePath); } catch {}
     }
+  }
+});
+
+// --- Participants ---
+router.get('/api/admin/participants', async (req, res) => {
+  try {
+    const participants = await allAsync(
+      `SELECT 
+         p.id,
+         p.full_name,
+         p.email,
+         p.phone,
+         p.grade,
+         p.school,
+         p.city,
+         p.team_id,
+         p.category_id,
+         p.category_confirmed,
+         p.created_at,
+         t.team_name,
+         t.invite_code,
+         t.school AS team_school,
+         c.name_ru AS category_name_ru,
+         c.name_ky AS category_name_ky
+       FROM participants p
+       LEFT JOIN teams t ON t.id = p.team_id
+       LEFT JOIN categories c ON c.id = p.category_id
+       ORDER BY p.id DESC`
+    );
+
+    const formatted = (participants || []).map((p) => {
+      let createdAtFormatted = '';
+      if (p.created_at) {
+        try {
+          const d = new Date(p.created_at);
+          if (!isNaN(d.getTime())) {
+            createdAtFormatted = d.toLocaleString('ru-RU', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          } else {
+            createdAtFormatted = String(p.created_at);
+          }
+        } catch {
+          createdAtFormatted = String(p.created_at);
+        }
+      }
+
+      return {
+        ...p,
+        branch: p.school || p.city || '—',
+        grade: p.grade || '—',
+        team_name: p.team_name || null,
+        category_name: p.category_name_ru || (p.category_id ? `Категория #${p.category_id}` : 'Не выбрана'),
+        category_name_ky: p.category_name_ky || '',
+        created_at_formatted: createdAtFormatted || '—',
+      };
+    });
+
+    res.json(formatted);
+  } catch (e) {
+    console.error('Error fetching participants:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/api/admin/participants/:id', async (req, res) => {
+  try {
+    const participantId = parseInt(req.params.id, 10);
+    if (!participantId) return res.status(400).json({ error: 'Неверный ID участника' });
+
+    await runAsync('UPDATE results SET participant_id = NULL WHERE participant_id = $1', [participantId]).catch(() => {});
+    await runAsync('DELETE FROM participants WHERE id = $1', [participantId]);
+
+    console.log(`✓ Participant ${participantId} deleted successfully`);
+    res.json({ ok: true, message: 'Участник успешно удален' });
+  } catch (e) {
+    console.error('Error deleting participant:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/api/admin/reset-participants', async (req, res) => {
+  try {
+    await runAsync('UPDATE results SET participant_id = NULL').catch(() => {});
+    await runAsync('DELETE FROM participants');
+    const pool = getDbPool();
+    if (pool) {
+      await pool.query("SELECT setval(pg_get_serial_sequence('participants', 'id'), 1, false)").catch(() => {});
+      await pool.query("SELECT setval('participants_id_seq', 1, false)").catch(() => {});
+    } else {
+      await runAsync("SELECT setval('participants_id_seq', 1, false)", []).catch(() => {});
+    }
+    console.log('✓ All participants reset successfully');
+    res.json({ ok: true, message: 'Все участники удалены. Нумерация сброшена с 1.' });
+  } catch (e) {
+    console.error('Error resetting participants:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/api/admin/participants/export-csv', async (req, res) => {
+  try {
+    const participants = await allAsync(
+      `SELECT 
+         p.id,
+         p.full_name,
+         p.email,
+         p.phone,
+         p.grade,
+         p.school,
+         p.city,
+         p.team_id,
+         p.category_id,
+         p.category_confirmed,
+         p.created_at,
+         t.team_name,
+         c.name_ru AS category_name_ru
+       FROM participants p
+       LEFT JOIN teams t ON t.id = p.team_id
+       LEFT JOIN categories c ON c.id = p.category_id
+       ORDER BY p.id ASC`
+    );
+
+    const header = [
+      '№',
+      'ID',
+      'ФИО участника',
+      'Email',
+      'Телефон',
+      'Филиал / Школа',
+      'Класс',
+      'Команда',
+      'Категория',
+      'Статус категории',
+      'Дата регистрации'
+    ].map(toCsvValue).join(',');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    setSafeContentDisposition(res, 'participants_export.csv', 'Участники_Akylman.csv');
+
+    if (!participants?.length) {
+      return res.send('\ufeff' + header + '\n');
+    }
+
+    const lines = participants.map((p, i) => {
+      let createdAtStr = '';
+      if (p.created_at) {
+        try {
+          const d = new Date(p.created_at);
+          createdAtStr = isNaN(d.getTime()) ? String(p.created_at) : d.toLocaleString('ru-RU');
+        } catch {
+          createdAtStr = String(p.created_at);
+        }
+      }
+
+      return [
+        i + 1,
+        p.id,
+        p.full_name || '',
+        p.email || '',
+        p.phone || '',
+        p.school || p.city || '',
+        p.grade ? `${p.grade} класс` : '',
+        p.team_name || 'Без команды',
+        p.category_name_ru || (p.category_id ? `ID #${p.category_id}` : 'Не выбрана'),
+        p.category_confirmed ? 'Подтверждена' : 'Не подтверждена',
+        createdAtStr
+      ].map(toCsvValue).join(',');
+    });
+
+    res.send('\ufeff' + header + '\n' + lines.join('\n'));
+  } catch (e) {
+    console.error('Error exporting participants CSV:', e);
+    res.status(500).json({ error: e.message });
   }
 });
 

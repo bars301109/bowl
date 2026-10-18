@@ -54,22 +54,33 @@ function updateTeamNameHeader() {
   const teamNameHeader = document.getElementById('teamNameHeader');
   const avatarEl = document.getElementById('sidebarTeamAvatar');
   const catEl = document.getElementById('sidebarCategoryLabel');
+  const teamNameSidebar = document.getElementById('teamNameSidebar');
+  const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
+  const isKy = lang === 'ky';
 
-  if (teamData) {
-    const tName = teamData.team_name || 'Команда';
+  if (teamData && teamData.team_name) {
+    const tName = teamData.team_name;
     if (teamNameHeader) teamNameHeader.textContent = tName;
-    const teamNameSidebar = document.getElementById('teamNameSidebar');
     if (teamNameSidebar) teamNameSidebar.textContent = tName;
     if (avatarEl) {
       avatarEl.textContent = tName.trim().charAt(0).toUpperCase();
     }
     if (catEl) {
-      const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
-      const isKy = lang === 'ky';
       const catName = isKy
         ? (teamData.category_name_ky || teamData.category_name_en || teamData.category_name_ru)
         : (teamData.category_name_en || teamData.category_name_ru || teamData.category_name_ky);
-      catEl.textContent = catName || (isKy ? 'Турнирдин катышуучусу' : 'Tournament Participant');
+      catEl.textContent = catName || (teamData.school ? `${teamData.school} (3/3)` : (isKy ? 'Турнирдин командасы' : 'Tournament Team'));
+    }
+  } else if (window.participantData) {
+    const p = window.participantData;
+    const pName = p.full_name || 'Участник';
+    if (teamNameHeader) teamNameHeader.textContent = pName;
+    if (teamNameSidebar) teamNameSidebar.textContent = pName;
+    if (avatarEl) {
+      avatarEl.textContent = pName.trim().charAt(0).toUpperCase();
+    }
+    if (catEl) {
+      catEl.textContent = p.school ? `${p.school} · ${p.grade}` : (isKy ? 'Жеке кабинет' : 'Personal Cabinet');
     }
   }
 }
@@ -77,15 +88,30 @@ function updateTeamNameHeader() {
 async function load() {
   try {
     const data = await apiFetch('/api/me');
-    if (!data || !data.ok || !data.team) {
+    if (!data || !data.ok || !data.participant) {
       localStorage.removeItem('token');
       localStorage.removeItem('team');
       location.href = '/login';
       return;
     }
-    teamData = data.team;
-    localStorage.setItem('team', JSON.stringify(teamData));
-    if (teamData.id) localStorage.setItem('team_id', String(teamData.id));
+    window.participantData = data.participant;
+    window.currentTeam = data.team;
+    window.teammatesList = data.teammates || [];
+    window.categoriesList = data.categories || [];
+
+    if (data.team) {
+      teamData = {
+        ...data.team,
+        members: data.teammates || []
+      };
+      localStorage.setItem('team', JSON.stringify(teamData));
+      if (teamData.id) localStorage.setItem('team_id', String(teamData.id));
+    } else {
+      teamData = null;
+      localStorage.removeItem('team');
+      localStorage.removeItem('team_id');
+    }
+
     updateTeamNameHeader();
     try {
       await renderHomeSection(document.getElementById('tabHome'));
@@ -94,14 +120,12 @@ async function load() {
     }
   } catch (e) {
     console.warn('Session check warning:', e);
-    // If unauthorized / token error, clear and redirect to login
     if (e.status === 401 || e.status === 403) {
       localStorage.removeItem('token');
       localStorage.removeItem('team');
       location.href = '/login';
       return;
     }
-    // Otherwise try cached profile
     const cached = localStorage.getItem('team');
     if (cached) {
       try {
@@ -249,245 +273,574 @@ async function renderHomeSection(btn) {
       </div>
     </div>
   `;
-  
-  if (!teamData) {
-    try {
-      const j = await apiFetch('/api/me');
-      if (j.ok && j.team) {
-        teamData = j.team;
-        updateTeamNameHeader();
-      }
-    } catch (err) {
-      console.error(err);
-      out.setAttribute('aria-busy', 'false');
-      out.innerHTML = '<div class="modern-empty-state"><p style="color: var(--app-rose);">Ошибка загрузки данных. Пожалуйста, обновите страницу.</p></div>';
-      return;
+
+  // Always refresh latest state from /api/me
+  try {
+    const data = await apiFetch('/api/me');
+    if (data && data.ok) {
+      window.participantData = data.participant;
+      window.currentTeam = data.team;
+      window.teammatesList = data.teammates || [];
+      window.categoriesList = data.categories || [];
+      teamData = data.team ? { ...data.team, members: data.teammates } : null;
+      updateTeamNameHeader();
     }
+  } catch (err) {
+    console.warn('Refresh me warning in renderHomeSection:', err);
   }
-  
+
   out.setAttribute('aria-busy', 'false');
-  
-  if (teamData) {
-    const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
-    const isKy = lang === 'ky';
 
-    // Calculate total participants: participant list
-    const membersList = Array.isArray(teamData.members) 
-      ? teamData.members.filter(m => m && (m.name || m.class)) 
-      : [];
+  const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
+  const isKy = lang === 'ky';
+  const participant = window.participantData;
 
-    let categoryLabel = '';
-    if (teamData.category_name_en || teamData.category_name_ru || teamData.category_name_ky) {
-      categoryLabel = isKy
-        ? (teamData.category_name_ky || teamData.category_name_en || teamData.category_name_ru || '')
-        : (teamData.category_name_en || teamData.category_name_ru || teamData.category_name_ky || '');
-    } else if (teamData.category_id) {
-      categoryLabel = 'ID: ' + teamData.category_id;
-    }
-
-    const branchVal = teamData.city || teamData.school || (isKy ? 'Талас' : 'Талас');
-
-    // Build member rows - strictly showing ONLY participant's class
-    const displayList = membersList.length >= 2 
-      ? membersList 
-      : [
-          membersList[0] || { name: (isKy ? '1-катышуучу' : 'Member 1'), class: '' },
-          membersList[1] || { name: (isKy ? '2-катышуучу' : 'Member 2'), class: '' }
-        ];
-
-    const totalCount = membersList.length || displayList.length;
-
-    let membersHtml = displayList.map((m, idx) => {
-      const memNum = idx + 1;
-      const memName = escapeHtml(m.name || (isKy ? `${memNum}-катышуучу` : `Member ${memNum}`));
-      const memClass = m.class ? escapeHtml(m.class) : '';
-      const classDisplay = memClass 
-        ? `${memClass} ${isKy ? 'класс' : 'grade'}` 
-        : (isKy ? 'Классы көрсөтүлгөн эмес' : 'Grade not specified');
-
-      return `
-        <div class="member-item-row">
-          <div class="member-person-meta">
-            <span class="member-index-badge">${memNum}</span>
-            <div>
-              <div class="member-name-text">${memName}</div>
-              <div style="font-size: 12.5px; color: var(--app-primary); font-weight: 600; margin-top: 2px;">
-                ${classDisplay}
-              </div>
-            </div>
-          </div>
-          <span style="font-size: 12px; font-weight: 600; color: var(--app-primary-dark); background: var(--app-primary-light); border: 1px solid var(--app-primary-border); padding: 4px 12px; border-radius: 9999px;">${isKy ? `${memNum}-катышуучу` : `Member ${memNum}`}</span>
-        </div>
-      `;
-    }).join('');
+  // ==========================================
+  // CASE 1: Student has no team yet (State 1)
+  // ==========================================
+  if (!window.currentTeam || !participant?.team_id) {
+    const pName = participant?.full_name || (isKy ? 'Катышуучу' : 'Participant');
+    const pSchool = participant?.school || (isKy ? 'Филиал көрсөтүлгөн эмес' : 'Branch not specified');
+    const pGrade = participant?.grade || '';
 
     out.innerHTML = `
-      <!-- Welcome Hero Banner -->
-      <div class="dashboard-hero-card">
+      <!-- Personal Welcome Card -->
+      <div class="dashboard-hero-card" style="margin-bottom: 24px;">
         <div class="hero-content">
           <div class="hero-text-block">
             <div style="display:inline-flex; align-items:center; gap:6px; padding:5px 14px; background:var(--app-primary-light); border:1px solid var(--app-primary-border); border-radius:9999px; color:var(--app-primary-dark); font-size:12.5px; font-weight:700; margin-bottom:12px;">
               <span>🏆</span>
-              <span>Akylman Quiz Bowl</span>
+              <span>Akylman Quiz Bowl · ${isKy ? 'Жеке кабинет' : 'Personal Cabinet'}</span>
             </div>
-            <h2>«${escapeHtml(teamData.team_name || 'Команда')}»</h2>
+            <h2>${escapeHtml(pName)}</h2>
             <ul class="hero-bullet-list">
               <li class="hero-bullet-item">
                 <span class="hero-bullet-dot"></span>
-                <span><strong>${isKy ? 'Филиал:' : 'Branch:'}</strong> ${escapeHtml(branchVal)}</span>
+                <span><strong>${isKy ? 'Филиал:' : 'Branch:'}</strong> ${escapeHtml(pSchool)}</span>
               </li>
               <li class="hero-bullet-item">
                 <span class="hero-bullet-dot"></span>
-                <span><strong>${isKy ? 'Категория:' : 'Category:'}</strong> ${escapeHtml(categoryLabel || (isKy ? 'Негизги' : 'Main'))}</span>
+                <span><strong>${isKy ? 'Класс:' : 'Grade:'}</strong> ${escapeHtml(pGrade)}</span>
               </li>
               <li class="hero-bullet-item">
                 <span class="hero-bullet-dot"></span>
-                <span><strong>${isKy ? 'Катышуучулардын саны:' : 'Number of participants:'}</strong> ${totalCount}</span>
+                <span><strong>${isKy ? 'Командалык формат:' : 'Team Format:'}</strong> ${isKy ? '3 катышуучу (1 филиалдан)' : '3 members (same branch)'}</span>
               </li>
             </ul>
           </div>
-        </div>
-      </div>
-
-      <!-- Quick Navigation Hub: Light Pastel Blue & Soft Champagne Gold -->
-      <div class="quick-hub-section">
-        <div class="quick-hub-header">
-          <span>⚡</span>
-          <span>${isKy ? 'Негизги бөлүмдөр' : 'Quick Navigation'}</span>
-        </div>
-        <div class="quick-hub-grid">
-          <!-- Card 1: Tests -->
-          <div class="quick-hub-card" id="hubTileTests" role="button" tabindex="0">
-            <div class="quick-hub-card-body">
-              <div class="quick-hub-icon">📝</div>
-              <div>
-                <h4 class="quick-hub-title">${isKy ? 'Тестирлөө' : 'Online Testing'}</h4>
-                <p class="quick-hub-desc">${isKy ? 'Олимпиаданын тесттерин тапшыруу' : 'Available league tests'}</p>
-              </div>
-            </div>
-            <div class="quick-hub-action-row">
-              <span class="quick-hub-btn">${isKy ? 'Тесттерге өтүү →' : 'Go to tests →'}</span>
-            </div>
-          </div>
-
-          <!-- Card 2: Results -->
-          <div class="quick-hub-card" id="hubTileResults" role="button" tabindex="0">
-            <div class="quick-hub-card-body">
-              <div class="quick-hub-icon">📊</div>
-              <div>
-                <h4 class="quick-hub-title">${isKy ? 'Жыйынтыктар' : 'Results'}</h4>
-                <p class="quick-hub-desc">${isKy ? 'Упайлар жана сынак статистикасы' : 'Scores and answer statistics'}</p>
-              </div>
-            </div>
-            <div class="quick-hub-action-row">
-              <span class="quick-hub-btn">${isKy ? 'Жыйынтыктарды көрүү →' : 'View results →'}</span>
-            </div>
-          </div>
-
-          <!-- Card 3: Leaderboard -->
-          <div class="quick-hub-card" id="hubTileLeaderboard" role="button" tabindex="0">
-            <div class="quick-hub-card-body">
-              <div class="quick-hub-icon">🏆</div>
-              <div>
-                <h4 class="quick-hub-title">${isKy ? 'Турнирдин рейтинги' : 'Leaderboard'}</h4>
-                <p class="quick-hub-desc">${isKy ? 'Жалпы таблица жана орундар' : 'Tournament team rankings'}</p>
-              </div>
-            </div>
-            <div class="quick-hub-action-row">
-              <span class="quick-hub-btn">${isKy ? 'Рейтингди ачуу →' : 'Open leaderboard →'}</span>
-            </div>
-          </div>
-
-          <!-- Card 4: Rules -->
-          <div class="quick-hub-card" id="hubTileRules" role="button" tabindex="0">
-            <div class="quick-hub-card-body">
-              <div class="quick-hub-icon">📜</div>
-              <div>
-                <h4 class="quick-hub-title">${isKy ? 'Регламент жана эрежелер' : 'Tournament Regulations & Rules'}</h4>
-                <p class="quick-hub-desc">${isKy ? 'Сынактын расмий тартиби' : 'Official rules and regulations'}</p>
-              </div>
-            </div>
-            <div class="quick-hub-action-row">
-              <span class="quick-hub-btn">${isKy ? 'Эрежелерди окуу →' : 'Read rules →'}</span>
+          <!-- Animated Pixel Art Cat Mascot -->
+          <div class="hero-cat-container" id="teamCatMascot" title="${isKy ? 'Команданын талисманы 🐾' : 'Талисман турнира 🐾'}">
+            <div class="hero-cat-speech-bubble" id="catMascotSpeech">${isKy ? 'Команда түз же коду менен кошул! 🐾' : 'Создай команду или вступи по коду! 🐾'}</div>
+            <div class="pixelart-cat-scaler">
+              <div class="pixelart-to-css" role="img" aria-label="Pixel art cat mascot"></div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Two Clean Cards: Team Members & Quick Passport -->
-      <div class="dashboard-content-grid" style="margin-bottom: 24px;">
-        <!-- Card 1: Team Members -->
-        <div class="app-card card-blue-top">
-          <div class="app-card-header">
+      <!-- Team Formation Choice Cards -->
+      <div class="dashboard-content-grid" style="grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 30px;">
+        <!-- Option 1: Create Team -->
+        <div class="app-card card-blue-top" style="padding: 24px;">
+          <div class="app-card-header" style="margin-bottom: 16px;">
             <h3 class="app-card-title">
-              <span>👥</span>
-              <span>${isKy ? `Команданын курамы (${totalCount})` : `Team Roster (${totalCount})`}</span>
+              <span>🚀</span>
+              <span>${isKy ? 'Жаңы команда түзүү' : 'Create New Team'}</span>
             </h3>
-            <button type="button" class="app-card-action-btn" id="openSettingsMembersBtn">
-              ⚙️ ${isKy ? 'Өзгөртүү' : 'Edit'}
+          </div>
+          <p style="font-size: 14px; color: var(--ink-2); line-height: 1.5; margin-bottom: 20px;">
+            ${isKy 
+              ? 'Командаңыздын атын жазып түзүңүз. Сизге автоматтык түрдө чакыруу коду берилет. Аны өз филиалыңыздагы 2 катышуучу менен бөлүшүңүз.' 
+              : 'Enter team name to generate your squad invite code. Share the code with 2 classmates from your branch.'}
+          </p>
+
+          <form id="createTeamForm" style="display:flex; flex-direction:column; gap:16px;">
+            <div>
+              <label style="display:block; font-size:13px; font-weight:600; color:var(--ink); margin-bottom:6px;">
+                ${isKy ? 'Команданын аталышы' : 'Team Name'} <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="text" id="newTeamNameInput" class="reg-input" placeholder="${isKy ? 'Мисалы: Шумкарлар' : 'e.g. Phoenix Squad'}" required style="width:100%;" />
+            </div>
+
+            <div style="font-size:12.5px; color:var(--ink-2); background:var(--surface-2); padding:10px 14px; border-radius:8px; border:1px solid var(--line);">
+              📍 <strong>${isKy ? 'Филиал:' : 'Branch:'}</strong> ${escapeHtml(pSchool)} (${isKy ? 'команда ушул филиалга бекитилет' : 'team will be locked to this branch'})
+            </div>
+
+            <div id="createTeamMsg" style="display:none; font-size:13px; font-weight:600;"></div>
+
+            <button type="submit" id="createTeamSubmitBtn" class="btn btn-primary" style="width:100%; padding:10px; font-weight:600;">
+              ✨ ${isKy ? 'Команда түзүү жана код алуу' : 'Create Team & Generate Code'}
             </button>
-          </div>
-          <div class="members-flow-grid">
-            ${membersHtml}
-          </div>
+          </form>
         </div>
 
-        <!-- Card 2: Team Passport Overview -->
-        <div class="app-card card-gold-top">
-          <div class="app-card-header">
+        <!-- Option 2: Join Team by Code -->
+        <div class="app-card card-gold-top" style="padding: 24px;">
+          <div class="app-card-header" style="margin-bottom: 16px;">
             <h3 class="app-card-title">
-              <span>📋</span>
-              <span>${isKy ? 'Команданын паспорту' : 'Team Passport'}</span>
+              <span>🔑</span>
+              <span>${isKy ? 'Код менен кошулуу' : 'Join Team by Code'}</span>
             </h3>
-            <button type="button" class="app-card-action-btn" id="openSettingsPassportBtn">
-              ⚙️ ${isKy ? 'Настройкалар' : 'Settings'}
+          </div>
+          <p style="font-size: 14px; color: var(--ink-2); line-height: 1.5; margin-bottom: 20px;">
+            ${isKy 
+              ? 'Эгерде командалаштарыңыз команда түзүп койгон болсо, алардын 8 орундуу чакыруу кодун жазып, курамга кошулуңуз.' 
+              : 'If your classmate already created a team, enter the 8-character invite code to join their squad.'}
+          </p>
+
+          <form id="joinTeamForm" style="display:flex; flex-direction:column; gap:16px;">
+            <div>
+              <label style="display:block; font-size:13px; font-weight:600; color:var(--ink); margin-bottom:6px;">
+                ${isKy ? 'Чакыруу коду' : 'Invite Code'} <span style="color:#ef4444;">*</span>
+              </label>
+              <input type="text" id="joinInviteCodeInput" class="reg-input" placeholder="AKYL-XXXX" maxlength="12" required style="width:100%; text-transform:uppercase; font-family:monospace; font-weight:700; letter-spacing:1px;" />
+            </div>
+
+            <div style="font-size:12.5px; color:var(--ink-2); background:var(--surface-2); padding:10px 14px; border-radius:8px; border:1px solid var(--line);">
+              ⚠️ ${isKy ? `Эскертүү: Сиздин филиал ${pSchool}. Сиз башка филиалдын командасына кошула албайсыз.` : `Note: Your branch is ${pSchool}. You can only join teams from the same branch.`}
+            </div>
+
+            <div id="joinTeamMsg" style="display:none; font-size:13px; font-weight:600;"></div>
+
+            <button type="submit" id="joinTeamSubmitBtn" class="btn btn-primary" style="width:100%; padding:10px; font-weight:600;">
+              🤝 ${isKy ? 'Командага кошулуу' : 'Join Team'}
             </button>
-          </div>
-          <div class="info-row-list">
-            <div class="info-row">
-              <span class="info-row-label">🏷️ ${isKy ? 'Команданын аты:' : 'Team Name:'}</span>
-              <span class="info-row-value">${escapeHtml(teamData.team_name || '')}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-row-label">📍 ${isKy ? 'Филиал:' : 'Branch:'}</span>
-              <span class="info-row-value">${escapeHtml(branchVal)}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-row-label">🏆 ${isKy ? 'Категория:' : 'Category:'}</span>
-              <span class="info-row-value">${escapeHtml(categoryLabel || (isKy ? 'Негизги' : 'Main'))}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-row-label">✉️ ${isKy ? 'Почта:' : 'Login Email:'}</span>
-              <span class="info-row-value">${escapeHtml(teamData.email || '')}</span>
-            </div>
-          </div>
+          </form>
         </div>
       </div>
     `;
 
-    // Attach click actions
-    document.getElementById('hubTileTests')?.addEventListener('click', () => {
-      document.getElementById('tabTests')?.click();
+    // Attach Create Team handler
+    document.getElementById('createTeamForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nameInput = document.getElementById('newTeamNameInput');
+      const msgEl = document.getElementById('createTeamMsg');
+      const submitBtn = document.getElementById('createTeamSubmitBtn');
+      const teamName = (nameInput?.value || '').trim();
+      if (!teamName) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = isKy ? 'Түзүлүүдө...' : 'Creating...';
+      msgEl.style.display = 'none';
+
+      try {
+        const res = await apiFetch('/api/teams/create', {
+          method: 'POST',
+          body: JSON.stringify({ team_name: teamName })
+        });
+        if (res.ok) {
+          msgEl.style.display = 'block';
+          msgEl.style.color = '#10b981';
+          msgEl.textContent = isKy ? `Команда түзүлдү! Код: ${res.invite_code}` : `Team created! Code: ${res.invite_code}`;
+          setTimeout(() => { load(); }, 700);
+        }
+      } catch (err) {
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#ef4444';
+        msgEl.textContent = err.message || (isKy ? 'Ката кетти' : 'Error creating team');
+        submitBtn.disabled = false;
+        submitBtn.textContent = isKy ? 'Команда түзүү жана код алуу' : 'Create Team & Generate Code';
+      }
     });
-    document.getElementById('hubTileResults')?.addEventListener('click', () => {
-      document.getElementById('tabResults')?.click();
+
+    // Attach Join Team handler
+    document.getElementById('joinTeamForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const codeInput = document.getElementById('joinInviteCodeInput');
+      const msgEl = document.getElementById('joinTeamMsg');
+      const submitBtn = document.getElementById('joinTeamSubmitBtn');
+      const inviteCode = (codeInput?.value || '').trim().toUpperCase();
+      if (!inviteCode) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = isKy ? 'Текшерилүүдө...' : 'Joining...';
+      msgEl.style.display = 'none';
+
+      try {
+        const res = await apiFetch('/api/teams/join', {
+          method: 'POST',
+          body: JSON.stringify({ invite_code: inviteCode })
+        });
+        if (res.ok) {
+          msgEl.style.display = 'block';
+          msgEl.style.color = '#10b981';
+          msgEl.textContent = isKy ? 'Ийгиликтүү кошулдуңуз!' : 'Joined successfully!';
+          setTimeout(() => { load(); }, 700);
+        }
+      } catch (err) {
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#ef4444';
+        msgEl.textContent = err.message || (isKy ? 'Код туура эмес же ката' : 'Invalid code or error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = isKy ? 'Командага кошулуу' : 'Join Team';
+      }
     });
-    document.getElementById('hubTileLeaderboard')?.addEventListener('click', () => {
-      document.getElementById('tabLeaderboard')?.click();
-    });
-    document.getElementById('hubTileRules')?.addEventListener('click', () => {
-      document.getElementById('tabRules')?.click();
-    });
-    document.getElementById('openSettingsMembersBtn')?.addEventListener('click', () => {
-      document.getElementById('tabSettings')?.click();
-    });
-    document.getElementById('openSettingsPassportBtn')?.addEventListener('click', () => {
-      document.getElementById('tabSettings')?.click();
-    });
-  } else {
-    out.innerHTML = '<div class="modern-empty-state"><p data-i18n="team.loading">Загрузка...</p></div>';
+
+    if (typeof AkylI18n !== 'undefined' && AkylI18n.applyI18n) {
+      AkylI18n.applyI18n(AkylI18n.getLang(), out);
+    }
+    return;
   }
-  
+
+  // ==========================================
+  // CASE 2: Student is in a team (State 2, 3, 4)
+  // ==========================================
+  const team = window.currentTeam;
+  const teammates = window.teammatesList || [];
+  const categories = window.categoriesList || [];
+  const memberCount = teammates.length;
+  const isFull = memberCount === 3;
+  const isReady = team.status === 'ready';
+
+  // Status badge config
+  let statusBadgeHtml = '';
+  if (isReady) {
+    statusBadgeHtml = `<span style="display:inline-flex; align-items:center; gap:6px; background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:4px 12px; border-radius:9999px; font-size:12.5px; font-weight:700;">🟢 ${isKy ? 'Команда даяр (3/3)' : 'Squad Ready (3/3)'}</span>`;
+  } else if (isFull) {
+    statusBadgeHtml = `<span style="display:inline-flex; align-items:center; gap:6px; background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; padding:4px 12px; border-radius:9999px; font-size:12.5px; font-weight:700;">🔵 ${isKy ? 'Категорияларды тандоо (3/3)' : 'Category Selection (3/3)'}</span>`;
+  } else {
+    statusBadgeHtml = `<span style="display:inline-flex; align-items:center; gap:6px; background:#fef3c7; color:#b45309; border:1px solid #fcd34d; padding:4px 12px; border-radius:9999px; font-size:12.5px; font-weight:700;">🟡 ${isKy ? `Катышуучуларды күтүү (${memberCount}/3)` : `Gathering Squad (${memberCount}/3)`}</span>`;
+  }
+
+  // Build 3 distinct slots
+  const slotsHtml = [0, 1, 2].map(slotIdx => {
+    const mem = teammates[slotIdx] || null;
+    const slotNum = slotIdx + 1;
+    if (mem) {
+      const isMe = mem.id === participant.id;
+      const memCat = categories.find(c => c.id === mem.category_id);
+      const catTitle = memCat ? (isKy ? memCat.name_ky : memCat.name_ru) : (isKy ? 'Категория тандала элек' : 'No category selected');
+      const isConfirmed = !!mem.category_confirmed;
+
+      return `
+        <div class="member-item-row" style="background:var(--surface); border:1px solid ${isMe ? 'var(--accent)' : 'var(--line)'}; border-radius:12px; padding:16px; margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span class="member-index-badge" style="background:${isMe ? 'var(--accent)' : 'var(--surface-2)'}; color:${isMe ? '#fff' : 'var(--ink)'}; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-weight:700;">${slotNum}</span>
+              <div>
+                <div style="font-weight:700; font-size:15px; color:var(--ink);">
+                  ${escapeHtml(mem.full_name || `Member #${slotNum}`)}
+                  ${isMe ? `<span style="font-size:11.5px; padding:2px 8px; background:var(--accent-wash); color:var(--accent); border-radius:6px; font-weight:700; margin-left:6px;">${isKy ? 'Сиз' : 'You'}</span>` : ''}
+                </div>
+                <div style="font-size:12.5px; color:var(--ink-2); margin-top:2px;">
+                  ${escapeHtml(mem.school || team.school || '')} · ${escapeHtml(mem.grade || '')}
+                </div>
+              </div>
+            </div>
+
+            <!-- Category & Confirmation Status -->
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+              <span style="font-size:12.5px; font-weight:600; padding:4px 10px; border-radius:8px; background:${memCat ? 'var(--accent-wash)' : 'var(--surface-2)'}; color:${memCat ? 'var(--accent)' : 'var(--ink-2)'};">
+                📚 ${escapeHtml(catTitle)}
+              </span>
+              <span style="font-size:12px; font-weight:600; color:${isConfirmed ? '#16a34a' : '#d97706'};">
+                ${isConfirmed ? (isKy ? '✓ Ырасталды' : '✓ Confirmed') : (isKy ? '⏳ Ырастала элек' : '⏳ Pending confirmation')}
+              </span>
+            </div>
+          </div>
+
+          ${isMe && (!isReady || !isConfirmed) ? `
+            <div style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--line); display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+              <label style="font-size:13px; font-weight:600; color:var(--ink);">${isKy ? 'Сиздин категорияңыз:' : 'Your Category:'}</label>
+              <select id="myCategorySelect" class="reg-select" style="max-width:240px; padding:6px 12px; font-size:13px;">
+                <option value="">${isKy ? '-- Категорияны тандаңыз --' : '-- Select Category --'}</option>
+                ${categories.map(c => {
+                  const isTakenByOther = teammates.some(t => t.id !== participant.id && t.category_id === c.id);
+                  const isSelected = mem.category_id === c.id;
+                  const cTitle = isKy ? c.name_ky : c.name_ru;
+                  return `<option value="${c.id}" ${isSelected ? 'selected' : ''} ${isTakenByOther ? 'disabled' : ''}>${escapeHtml(cTitle)}${isTakenByOther ? ` (${isKy ? 'ээленген' : 'taken'})` : ''}</option>`;
+                }).join('')}
+              </select>
+              <button type="button" id="confirmMyCategoryBtn" class="btn btn-primary" style="padding:6px 16px; font-size:13px;">
+                ${isKy ? 'Категорияны бекитүү жана ырастоо' : 'Save & Confirm Category'}
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    } else {
+      return `
+        <div class="member-item-row" style="background:var(--paper); border:1.5px dashed var(--line); border-radius:12px; padding:16px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="background:var(--surface-2); color:var(--ink-2); width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-weight:700;">${slotNum}</span>
+            <div>
+              <div style="font-weight:600; font-size:14px; color:var(--ink-2);">
+                ${isKy ? `Бош орун #${slotNum}` : `Empty Slot #${slotNum}`}
+              </div>
+              <div style="font-size:12px; color:var(--ink-2);">
+                ${isKy ? `Филиалдагы катышуучуну күтүү (${team.school})` : `Waiting for teammate from branch (${team.school})`}
+              </div>
+            </div>
+          </div>
+          <button type="button" class="copy-invite-code-btn btn" data-code="${escapeHtml(team.invite_code || '')}" style="font-size:12.5px; padding:6px 12px; background:var(--surface); border:1px solid var(--line);">
+            📋 ${isKy ? 'Кодду көчүрүү' : 'Copy Code'}
+          </button>
+        </div>
+      `;
+    }
+  }).join('');
+
+  out.innerHTML = `
+    <!-- Welcome Hero Banner -->
+    <div class="dashboard-hero-card">
+      <div class="hero-content">
+        <div class="hero-text-block">
+          <div style="display:inline-flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+            <div style="display:inline-flex; align-items:center; gap:6px; padding:5px 14px; background:var(--app-primary-light); border:1px solid var(--app-primary-border); border-radius:9999px; color:var(--app-primary-dark); font-size:12.5px; font-weight:700;">
+              <span>🏆</span>
+              <span>Akylman Quiz Bowl</span>
+            </div>
+            ${statusBadgeHtml}
+          </div>
+
+          <h2>«${escapeHtml(team.team_name || 'Команда')}»</h2>
+
+          <ul class="hero-bullet-list">
+            <li class="hero-bullet-item">
+              <span class="hero-bullet-dot"></span>
+              <span><strong>${isKy ? 'Филиал:' : 'Branch:'}</strong> ${escapeHtml(team.school || '')}</span>
+            </li>
+            <li class="hero-bullet-item">
+              <span class="hero-bullet-dot"></span>
+              <span><strong>${isKy ? 'Курамы:' : 'Roster:'}</strong> ${memberCount} / 3 ${isKy ? 'катышуучу' : 'members'}</span>
+            </li>
+            <li class="hero-bullet-item">
+              <span class="hero-bullet-dot"></span>
+              <span><strong>${isKy ? 'Чакыруу коду:' : 'Invite Code:'}</strong> <code style="font-weight:700; font-size:15px; background:var(--accent-wash); color:var(--accent); padding:2px 8px; border-radius:6px; letter-spacing:1px;">${escapeHtml(team.invite_code || '')}</code></span>
+            </li>
+          </ul>
+
+          <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button type="button" id="heroCopyCodeBtn" class="btn" style="background:var(--surface); border:1px solid var(--line); font-size:13px; font-weight:600; padding:8px 16px;">
+              📋 ${isKy ? 'Чакыруу кодун көчүрүү' : 'Copy Invite Code'}
+            </button>
+            <button type="button" id="leaveTeamBtn" class="btn" style="background:transparent; border:1px solid #fecaca; color:#dc2626; font-size:13px; padding:8px 14px;">
+              🚪 ${isKy ? 'Командадан чыгуу' : 'Leave Team'}
+            </button>
+          </div>
+        </div>
+
+        <!-- Animated Pixel Art Cat Mascot -->
+        <div class="hero-cat-container" id="teamCatMascot" title="${isKy ? 'Команданын талисманы 🐾' : 'Team Mascot 🐾'}">
+          <div class="hero-cat-speech-bubble" id="catMascotSpeech">${isReady ? (isKy ? 'Команда даяр, алга! 🐾' : 'Team is ready, let\'s go! 🐾') : (isKy ? '3 катышуучу тең категориясын ырасташы керек! 🐾' : 'All 3 members must confirm their categories! 🐾')}</div>
+          <div class="pixelart-cat-scaler">
+            <div class="pixelart-to-css" role="img" aria-label="Pixel art cat mascot"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Squad Members & Category Matrix Card -->
+    <div class="app-card card-blue-top" style="padding: 24px; margin-bottom: 24px;">
+      <div class="app-card-header" style="margin-bottom: 16px;">
+        <h3 class="app-card-title">
+          <span>👥</span>
+          <span>${isKy ? 'Команданын курамы жана категориялар (3 катышуучу)' : 'Squad Roster & 3-Way Category Distribution'}</span>
+        </h3>
+      </div>
+
+      <div style="margin-bottom:16px; font-size:13.5px; color:var(--ink-2); line-height:1.5;">
+        ${isKy 
+          ? 'Ар бир катышуучу 3 категориянын бирин тандайт (бир категорияны 2 адам тандай албайт). Бардык 3 катышуучу тандоону ырастаганда гана команда сынакка даяр болот.' 
+          : 'Each member takes exactly 1 distinct category. All 3 members must mutually confirm their category distribution to unlock tournament exams.'}
+      </div>
+
+      <div id="membersSlotsContainer">
+        ${slotsHtml}
+      </div>
+
+      ${isReady ? `
+        <div style="margin-top:16px; padding:14px 18px; background:#ecfdf5; border:1.5px solid #86efac; border-radius:10px; color:#15803d; font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:10px;">
+          <span>🎉</span>
+          <span>${isKy 
+            ? 'Бардык 3 катышуучу категорияларды ийгиликтүү ырасташты! Сынак күнү ар бири өз категориясы боюнча тест тапшырат. Команданын упайы 3 катышуучунун тест упайларынын суммасы катары эсептелет.' 
+            : 'All 3 members confirmed category distribution! On competition day, each student takes their category exam. Team standing is the sum of all 3 scores.'}</span>
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- Quick Navigation Hub -->
+    <div class="quick-hub-section">
+      <div class="quick-hub-header">
+        <span>⚡</span>
+        <span>${isKy ? 'Негизги бөлүмдөр' : 'Quick Navigation'}</span>
+      </div>
+      <div class="quick-hub-grid">
+        <div class="quick-hub-card" id="hubTileTests" role="button" tabindex="0">
+          <div class="quick-hub-card-body">
+            <div class="quick-hub-icon">📝</div>
+            <div>
+              <h4 class="quick-hub-title">${isKy ? 'Тестирлөө' : 'Online Testing'}</h4>
+              <p class="quick-hub-desc">${isKy ? 'Сиздин категорияңыз боюнча тест' : 'Take your assigned category test'}</p>
+            </div>
+          </div>
+          <div class="quick-hub-action-row">
+            <span class="quick-hub-btn">${isKy ? 'Тесттерге өтүү →' : 'Go to tests →'}</span>
+          </div>
+        </div>
+
+        <div class="quick-hub-card" id="hubTileResults" role="button" tabindex="0">
+          <div class="quick-hub-card-body">
+            <div class="quick-hub-icon">📊</div>
+            <div>
+              <h4 class="quick-hub-title">${isKy ? 'Жыйынтыктар' : 'Results'}</h4>
+              <p class="quick-hub-desc">${isKy ? 'Упайлар жана сынак статистикасы' : 'Scores and answer statistics'}</p>
+            </div>
+          </div>
+          <div class="quick-hub-action-row">
+            <span class="quick-hub-btn">${isKy ? 'Жыйынтыктарды көрүү →' : 'View results →'}</span>
+          </div>
+        </div>
+
+        <div class="quick-hub-card" id="hubTileLeaderboard" role="button" tabindex="0">
+          <div class="quick-hub-card-body">
+            <div class="quick-hub-icon">🏆</div>
+            <div>
+              <h4 class="quick-hub-title">${isKy ? 'Турнирдин рейтинги' : 'Leaderboard'}</h4>
+              <p class="quick-hub-desc">${isKy ? '3 катышуучунун упайларынын суммасы' : 'Sum of 3 member test scores'}</p>
+            </div>
+          </div>
+          <div class="quick-hub-action-row">
+            <span class="quick-hub-btn">${isKy ? 'Рейтингди ачуу →' : 'Open leaderboard →'}</span>
+          </div>
+        </div>
+
+        <div class="quick-hub-card" id="hubTileRules" role="button" tabindex="0">
+          <div class="quick-hub-card-body">
+            <div class="quick-hub-icon">📜</div>
+            <div>
+              <h4 class="quick-hub-title">${isKy ? 'Регламент жана эрежелер' : 'Regulations'}</h4>
+              <p class="quick-hub-desc">${isKy ? 'Сынактын расмий тартиби' : 'Official tournament rules'}</p>
+            </div>
+          </div>
+          <div class="quick-hub-action-row">
+            <span class="quick-hub-btn">${isKy ? 'Эрежелерди окуу →' : 'Read rules →'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Attach Copy Code handler
+  const copyBtns = out.querySelectorAll('.copy-invite-code-btn, #heroCopyCodeBtn');
+  copyBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const code = team.invite_code || '';
+      navigator.clipboard.writeText(code).then(() => {
+        const orig = btn.innerHTML;
+        btn.innerHTML = `✓ ${isKy ? 'Көчүрүлдү!' : 'Copied!'}`;
+        setTimeout(() => { btn.innerHTML = orig; }, 1800);
+      }).catch(() => {
+        prompt(isKy ? 'Кодду көчүрүңүз:' : 'Copy code:', code);
+      });
+    });
+  });
+
+  // Attach Confirm Category handler
+  // Attach Confirm Category handler
+  document.getElementById('confirmMyCategoryBtn')?.addEventListener('click', async () => {
+    const sel = document.getElementById('myCategorySelect');
+    const catId = sel?.value;
+    if (!catId) {
+      if (typeof Toast !== 'undefined') {
+        Toast.error(isKy ? 'Категорияны тандаңыз' : 'Please select a category');
+      }
+      return;
+    }
+
+    try {
+      // 1. Select category
+      await apiFetch('/api/teams/category', {
+        method: 'POST',
+        body: JSON.stringify({ category_id: parseInt(catId, 10) })
+      });
+      // 2. Confirm category
+      await apiFetch('/api/teams/confirm', {
+        method: 'POST',
+        body: JSON.stringify({ confirmed: true })
+      });
+      if (typeof Toast !== 'undefined') {
+        Toast.success(isKy ? 'Категория ийгиликтүү ырасталды!' : 'Category successfully confirmed!');
+      }
+      load();
+    } catch (err) {
+      if (typeof Toast !== 'undefined') {
+        Toast.error(err.message || (isKy ? 'Ката кетти' : 'Error confirming category'));
+      }
+    }
+  });
+
+  // Attach Leave Team handler
+  document.getElementById('leaveTeamBtn')?.addEventListener('click', async () => {
+    let ok = false;
+    if (typeof showConfirmDialog === 'function') {
+      ok = await showConfirmDialog({
+        title: isKy ? 'Командадан чыгуу' : 'Leave Team',
+        message: isKy ? 'Чын эле командадан чыгууну каалайсызбы?' : 'Are you sure you want to leave this team?',
+        confirmText: isKy ? 'Чыгуу' : 'Leave',
+        cancelText: isKy ? 'Жокко чыгаруу' : 'Cancel',
+        isDestructive: true
+      });
+    } else {
+      ok = confirm(isKy ? 'Чын эле командадан чыгууну каалайсызбы?' : 'Are you sure you want to leave this team?');
+    }
+    if (!ok) return;
+
+    try {
+      await apiFetch('/api/teams/leave', { method: 'POST' });
+      if (typeof Toast !== 'undefined') {
+        Toast.info(isKy ? 'Командадан чыктыңыз' : 'You left the team');
+      }
+      load();
+    } catch (err) {
+      if (typeof Toast !== 'undefined') {
+        Toast.error(err.message || (isKy ? 'Ката кетти' : 'Error leaving team'));
+      }
+    }
+  });
+
+  // Quick Hub navigation
+  document.getElementById('hubTileTests')?.addEventListener('click', () => {
+    document.getElementById('tabTests')?.click();
+  });
+  document.getElementById('hubTileResults')?.addEventListener('click', () => {
+    document.getElementById('tabResults')?.click();
+  });
+  document.getElementById('hubTileLeaderboard')?.addEventListener('click', () => {
+    document.getElementById('tabLeaderboard')?.click();
+  });
+  document.getElementById('hubTileRules')?.addEventListener('click', () => {
+    document.getElementById('tabRules')?.click();
+  });
+
+  // Mascot click interaction
+  const catEl = document.getElementById('teamCatMascot');
+  if (catEl) {
+    const speechEl = document.getElementById('catMascotSpeech');
+    const phrasesKy = [
+      'Ийгилик, команда! 🐾',
+      'Мяу! 100 упай алгыла! 🏆',
+      'Биримдикте күч бар! 🍀',
+      'Муррр... 3 адам тең жакшы тапшырсын! 🎯'
+    ];
+    const phrasesRu = [
+      'Мяу! Вперёд к победе! 🐾',
+      '100/100 очков впереди! 🏆',
+      'Командный дух не сломить! ✨',
+      'Сумма баллов всех 3 решит победу! ⚡'
+    ];
+    let phraseIdx = 0;
+    catEl.addEventListener('click', () => {
+      const list = isKy ? phrasesKy : phrasesRu;
+      phraseIdx = (phraseIdx + 1) % list.length;
+      if (speechEl) {
+        speechEl.textContent = list[phraseIdx];
+        speechEl.style.transform = 'scale(1.1) translateY(-3px)';
+        setTimeout(() => { speechEl.style.transform = ''; }, 250);
+      }
+    });
+  }
+
   if (typeof AkylI18n !== 'undefined' && AkylI18n.applyI18n) {
     AkylI18n.applyI18n(AkylI18n.getLang(), out);
   }

@@ -3,9 +3,9 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET, JWT_EXPIRES_IN, ADMIN_USER, ADMIN_JWT_SECRET, ADMIN_JWT_EXPIRES_IN } = require('../config');
 
 // --- Team JWT in httpOnly cookie ---
-function signTeamToken(team) {
+function signTeamToken(participant) {
   return jwt.sign(
-    { id: team.id, team_name: team.team_name, login: team.login },
+    { id: participant.id, email: participant.email, full_name: participant.full_name, team_id: participant.team_id },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
@@ -30,6 +30,8 @@ function clearTeamCookie(res) {
   });
 }
 
+const db = require('../db');
+
 function teamAuth(req, res, next) {
   // Support both Bearer header and cookie
   const authHeader = req.headers['authorization'] || '';
@@ -43,7 +45,20 @@ function teamAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    req.team = payload;
+    req.participantId = payload.id;
+    req.participant = payload;
+    req.team = { id: payload.team_id };
+
+    if (!req.team.id && req.participantId && db.getAsync) {
+      db.getAsync('SELECT team_id FROM participants WHERE id = $1', [req.participantId])
+        .then(row => {
+          if (row && row.team_id) req.team.id = row.team_id;
+          next();
+        })
+        .catch(() => next());
+      return;
+    }
+
     next();
   } catch (e) {
     return res.status(401).json({ error: 'Invalid token' });

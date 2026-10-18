@@ -1,5 +1,17 @@
 /* Centralized configuration from environment variables */
 const path = require('path');
+const fs = require('fs');
+
+try {
+  const envPath = path.resolve(process.cwd(), '.env');
+  const envExamplePath = path.resolve(process.cwd(), '.env.example');
+  if (fs.existsSync(envPath)) {
+    require('dotenv').config({ path: envPath });
+  }
+  if (fs.existsSync(envExamplePath)) {
+    require('dotenv').config({ path: envExamplePath });
+  }
+} catch {}
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -20,13 +32,20 @@ const RESEND_FROM = (rawResendFrom && rawResendFrom.includes('@') && rawResendFr
   : 'Akylman Quiz Bowl <onboarding@resend.dev>';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 
-const GMAIL_USER = process.env.GMAIL_USER || '';
-const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD || '';
-const SMTP_HOST = process.env.SMTP_HOST || '';
+// If SMTP_USER is set (e.g. akylmanquiz@gmail.com), prioritize it over ambient platform GMAIL_USER
+const rawSmtpUser = String(process.env.SMTP_USER || '').trim();
+const rawSmtpPass = String(process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '').trim().replace(/\s+/g, '');
+const rawGmailUser = String(process.env.GMAIL_USER || '').trim();
+
+// Active email user: prefer explicit SMTP_USER if set, otherwise GMAIL_USER
+const SMTP_USER = rawSmtpUser || rawGmailUser;
+const SMTP_PASS = rawSmtpPass;
+const GMAIL_USER = SMTP_USER;
+const GMAIL_APP_PASSWORD = SMTP_PASS;
+
+const SMTP_HOST = String(process.env.SMTP_HOST || (SMTP_USER.endsWith('@gmail.com') ? 'smtp.gmail.com' : '')).trim();
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
-const SMTP_USER = process.env.SMTP_USER || GMAIL_USER || '';
-const SMTP_PASS = process.env.SMTP_PASS || GMAIL_APP_PASSWORD || '';
-const SMTP_FROM = process.env.SMTP_FROM || GMAIL_USER || 'noreply@akylman.edu.kg';
+const SMTP_FROM = String(process.env.SMTP_FROM || (SMTP_USER ? `Akylman Quiz Bowl <${SMTP_USER}>` : 'noreply@akylman.edu.kg')).trim();
 
 // Rate limits
 const RATE_LIMITS = {

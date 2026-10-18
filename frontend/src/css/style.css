@@ -235,24 +235,22 @@ header.header .container {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--ink);
+  color: var(--ink-2);
   background: transparent;
-  border: 1px solid var(--line);
-  padding: 8px 18px;
+  padding: 8px 14px;
   border-radius: var(--r-sm);
-  font-weight: 600;
-  font-size: 13.5px;
+  font-weight: 500;
+  font-size: 14.5px;
   text-decoration: none;
-  transition: all 0.15s ease;
+  border: none;
+  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 #nav-login:hover,
 .nav-btn-login:hover {
-  background: var(--surface);
-  border-color: var(--ink);
   color: var(--ink);
-  transform: translateY(-1px);
+  background: var(--surface-2);
 }
 
 #nav-register,
@@ -262,7 +260,7 @@ header.header .container {
   gap: 6px;
   color: var(--paper) !important;
   background: var(--ink);
-  padding: 8px 20px;
+  padding: 8px 18px;
   border-radius: var(--r-sm);
   font-weight: 600;
   font-size: 13.5px;
@@ -288,19 +286,19 @@ header.header .container {
   color: var(--accent) !important;
   background: var(--accent-wash);
   padding: 8px 14px;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   font-weight: 600;
   font-size: 14.5px;
   text-decoration: none;
+  border: none;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 #nav-profile:hover,
 .nav-btn-profile:hover {
-  background: var(--accent);
-  color: var(--paper) !important;
-  transform: translateY(-1px);
+  color: var(--accent) !important;
+  background: rgba(139, 37, 0, 0.12);
 }
 
 #nav-logout,
@@ -311,10 +309,11 @@ header.header .container {
   color: var(--ink-2);
   background: transparent;
   padding: 8px 14px;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   font-weight: 500;
   font-size: 14.5px;
   text-decoration: none;
+  border: none;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
