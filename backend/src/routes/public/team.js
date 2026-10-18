@@ -104,7 +104,9 @@ router.post('/api/teams/create', async (req, res) => {
 
     const teamId = insertRes.lastID || insertRes.rows?.[0]?.id;
 
-    await runAsync('UPDATE participants SET team_id = $1, category_id = NULL, category_confirmed = FALSE WHERE id = $2', [teamId, req.participantId]);
+    await runAsync('UPDATE participants SET team_id = NULL, category_id = NULL, category_confirmed = FALSE WHERE id = $1', [req.participantId]).catch(() => {
+      return runAsync('UPDATE participants SET team_id = NULL, category_id = NULL, category_confirmed = 0 WHERE id = $1', [req.participantId]);
+    });
 
     res.json({ ok: true, invite_code: inviteCode, team_id: teamId });
   } catch (e) {
@@ -161,7 +163,7 @@ router.post('/api/teams/join', async (req, res) => {
       });
     }
 
-    await runAsync('UPDATE participants SET team_id = $1, category_id = NULL, category_confirmed = FALSE WHERE id = $2', [team.id, req.participantId]);
+    await runAsync('UPDATE participants SET team_id = $1, category_id = NULL, category_confirmed = false WHERE id = $2', [team.id, req.participantId]);
 
     const newCount = memberCount + 1;
     if (newCount === 3) {
@@ -188,7 +190,7 @@ router.post('/api/teams/leave', async (req, res) => {
 
     const teamId = participant.team_id;
 
-    await runAsync('UPDATE participants SET team_id = NULL, category_id = NULL, category_confirmed = FALSE WHERE id = $1', [req.participantId]);
+    await runAsync('UPDATE participants SET team_id = NULL, category_id = NULL, category_confirmed = false WHERE id = $1', [req.participantId]);
 
     // Update team status back to forming if it was full or ready
     await runAsync("UPDATE teams SET status = 'forming' WHERE id = $1", [teamId]);
@@ -229,7 +231,9 @@ router.post('/api/teams/category', async (req, res) => {
       });
     }
 
-    await runAsync('UPDATE participants SET category_id = $1, category_confirmed = FALSE WHERE id = $2', [categoryId, req.participantId]);
+    await runAsync('UPDATE participants SET category_id = $1, category_confirmed = FALSE WHERE id = $2', [categoryId, req.participantId]).catch(() => {
+      return runAsync('UPDATE participants SET category_id = $1, category_confirmed = 0 WHERE id = $2', [categoryId, req.participantId]);
+    });
 
     // Reset team status to forming/full (not ready until re-confirmed)
     await runAsync("UPDATE teams SET status = 'full' WHERE id = $1 AND status = 'ready'", [participant.team_id]);
@@ -257,15 +261,19 @@ router.post('/api/teams/confirm', async (req, res) => {
       });
     }
 
-    const confirmed = req.body?.confirmed !== false;
+    
 
-    await runAsync('UPDATE participants SET category_confirmed = $1 WHERE id = $2', [confirmed, req.participantId]);
+    const confirmed = req.body?.confirmed !== false;
+    const confirmedVal = Boolean(confirmed);
+    await runAsync('UPDATE participants SET category_confirmed = $1 WHERE id = $2', [confirmed, req.participantId]).catch(() => {
+      return runAsync('UPDATE participants SET category_confirmed = $1 WHERE id = $2', [confirmed ? 1 : 0, req.participantId]);
+    });
 
     // Check if all team members (3) have confirmed
     const teammates = await allAsync('SELECT id, category_id, category_confirmed FROM participants WHERE team_id = $1', [participant.team_id]);
     
     if (teammates.length === 3) {
-      const allConfirmed = teammates.every(m => m.category_confirmed && m.category_id);
+      const allConfirmed = teammates.every(m => Boolean(m.category_confirmed) && m.category_id);
       const uniqueCats = new Set(teammates.map(m => m.category_id));
       
       if (allConfirmed && uniqueCats.size === 3) {
@@ -275,136 +283,113 @@ router.post('/api/teams/confirm', async (req, res) => {
       }
     }
 
-    res.json({ ok: true, confirmed });
+    res.json({ ok: true, confirmed: Boolean(confirmedVal) });
   } catch (e) {
     console.error('Confirm category error:', e);
     res.status(500).json({ error: e.message });
   }
 });
 
-// Update team profile
+// Rename team (from Team section)
+router.post('/api/teams/rename', async (req, res) => {
+  try {
+    const isKy = getReqLang(req) === 'ky';
+    const participant = await getAsync('SELECT team_id FROM participants WHERE id = $1', [req.participantId]);
+    if (!participant?.team_id) {
+      return res.status(400).json({ error: isKy ? 'Сиз командада жоксуз' : 'You are not in a team' });
+    }
+    const newName = String(req.body?.team_name || '').trim();
+    if (!newName) {
+      return res.status(400).json({ error: isKy ? 'Команданын аталышын жазыңыз' : 'Team name cannot be empty' });
+    }
+    await runAsync('UPDATE teams SET team_name = $1 WHERE id = $2', [newName, participant.team_id]);
+    res.json({ ok: true, team_name: newName });
+  } catch (e) {
+    console.error('Rename team error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Update participant profile (and team name if in team)
 router.put('/api/me', async (req, res) => {
   try {
+    const isKy = getReqLang(req) === 'ky';
     const b = req.body || {};
-    const updates = [];
-    const params = [];
+    const { full_name, email, grade, team_name } = b;
 
-    // Support flexible alias keys
-    const teamName = b.team_name !== undefined ? b.team_name : undefined;
-    const emailVal = b.team_email !== undefined ? b.team_email : b.email;
-    const phoneVal = b.phone !== undefined ? b.phone : undefined;
-    const schoolVal = b.school !== undefined ? b.school : b.branch;
-    const cityVal = b.city !== undefined ? b.city : undefined;
-    const categoryIdVal = b.category_id !== undefined ? b.category_id : undefined;
+    // 1. Update participant personal profile
+    const pUpdates = [];
+    const pParams = [];
 
-    if (teamName !== undefined) {
-      updates.push(`team_name = $${params.length + 1}`);
-      params.push(String(teamName).trim());
+    if (full_name !== undefined) {
+      const cleanName = String(full_name).trim();
+      if (!cleanName) {
+        return res.status(400).json({ error: isKy ? 'Аты-жөнүңүздү жазыңыз' : 'Full name cannot be empty' });
+      }
+      pUpdates.push(`full_name = $${pParams.length + 1}`);
+      pParams.push(cleanName);
     }
 
-    if (emailVal !== undefined) {
-      const email = String(emailVal).trim().toLowerCase();
+    if (grade !== undefined) {
+      const cleanGrade = String(grade).trim();
+      pUpdates.push(`grade = $${pParams.length + 1}`);
+      pParams.push(cleanGrade);
+    }
+
+    if (email !== undefined) {
+      const cleanEmail = String(email).trim().toLowerCase();
       const { isValidEmail } = require('../../utils/sanitization');
-      if (email && !isValidEmail(email)) {
-        return res.status(400).json({ error: 'Некорректный email адрес' });
+      if (!isValidEmail(cleanEmail)) {
+        return res.status(400).json({ error: isKy ? 'Email дареги туура эмес' : 'Invalid email address' });
       }
-      if (email) {
-        const existing = await getAsync(
-          'SELECT id FROM teams WHERE (LOWER(COALESCE(team_email, \'\')) = $1 OR LOWER(COALESCE(email, \'\')) = $1) AND id != $2',
-          [email, req.team.id]
-        );
-        if (existing) {
-          return res.status(400).json({ error: 'Этот email уже используется другой командой' });
-        }
-        updates.push(`team_email = $${params.length + 1}`);
-        params.push(email);
-        updates.push(`email = $${params.length + 1}`);
-        params.push(email);
+      const existing = await getAsync(
+        'SELECT id FROM participants WHERE LOWER(email) = $1 AND id != $2',
+        [cleanEmail, req.participantId]
+      );
+      if (existing) {
+        return res.status(400).json({ error: isKy ? 'Бул email мурунтан катталган' : 'This email is already in use by another participant' });
       }
+      pUpdates.push(`email = $${pParams.length + 1}`);
+      pParams.push(cleanEmail);
     }
 
-    if (phoneVal !== undefined) {
-      const p = String(phoneVal).trim();
-      updates.push(`phone = $${params.length + 1}`);
-      params.push(p);
+    if (pUpdates.length > 0) {
+      pParams.push(req.participantId);
+      await runAsync(`UPDATE participants SET ${pUpdates.join(', ')} WHERE id = $${pParams.length}`, pParams);
     }
 
-    if (schoolVal !== undefined) {
-      updates.push(`school = $${params.length + 1}`);
-      params.push(String(schoolVal).trim());
-    }
-
-    if (cityVal !== undefined) {
-      updates.push(`city = $${params.length + 1}`);
-      params.push(String(cityVal).trim());
-    }
-
-    if (categoryIdVal !== undefined) {
-      const catId = categoryIdVal ? parseInt(categoryIdVal, 10) || null : null;
-      updates.push(`category_id = $${params.length + 1}`);
-      params.push(catId);
-    }
-
-    if (b.members !== undefined) {
-      const ALLOWED_CLASSES = [
-        '7-A', '7-B', '7-C',
-        '8-A', '8-B', '8-C',
-        '9-A', '9-B', '9-C'
-      ];
-      const rawList = Array.isArray(b.members) ? b.members : [];
-      const members = rawList
-        .map((m) => ({ name: String(m?.name || '').trim(), class: String(m?.class || '').trim() }))
-        .filter((m) => m.name || m.class);
-
-      if (members.length > 0) {
-        if (members.length < 2) {
-          return res.status(400).json({ error: 'В команде должно быть минимум 2 участника' });
-        }
-        for (let i = 0; i < members.length; i++) {
-          const m = members[i];
-          if (!m.name) {
-            return res.status(400).json({ error: `Пожалуйста, укажите ФИО участника #${i + 1}` });
-          }
-          if (!m.class) {
-            return res.status(400).json({ error: `Пожалуйста, выберите класс для участника #${i + 1}` });
-          }
-          if (!ALLOWED_CLASSES.includes(m.class)) {
-            return res.status(400).json({
-              error: `Класс «${m.class}» недопустим. Выберите класс для участника #${i + 1} из списка (7-A ... 9-C).`
-            });
-          }
+    // 2. If team_name provided and participant is in a team, update team name
+    if (team_name !== undefined) {
+      const p = await getAsync('SELECT team_id FROM participants WHERE id = $1', [req.participantId]);
+      if (p?.team_id) {
+        const cleanTeamName = String(team_name).trim();
+        if (cleanTeamName) {
+          await runAsync('UPDATE teams SET team_name = $1 WHERE id = $2', [cleanTeamName, p.team_id]);
         }
       }
-      updates.push(`members = $${params.length + 1}`);
-      params.push(JSON.stringify(members));
     }
 
-    if (updates.length === 0) {
-      return res.status(400).json({ error: 'No fields to update' });
-    }
-
-    params.push(req.team.id);
-    await runAsync(`UPDATE teams SET ${updates.join(', ')} WHERE id = $${params.length}`, params);
-
-    const t = await getAsync(
-      `SELECT
-         t.id, t.team_name, t.login, t.team_email, t.email, t.phone,
-         t.members, t.school, t.city, t.category_id,
-         c.name_ru AS category_name_ru, c.name_ky AS category_name_ky
-       FROM teams t
-       LEFT JOIN categories c ON c.id = t.category_id
-       WHERE t.id = $1`,
-      [req.team.id]
+    const updatedParticipant = await getAsync(
+      'SELECT id, full_name, email, grade, school, city, team_id, category_id, category_confirmed FROM participants WHERE id = $1',
+      [req.participantId]
     );
-    if (t) {
-      t.team_email = t.team_email || t.email || '';
-      t.email = t.team_email;
-      t.phone = t.phone || '';
-      t.members = parseMembers(t.members);
+
+    let updatedTeam = null;
+    let teammates = [];
+    if (updatedParticipant?.team_id) {
+      updatedTeam = await getAsync('SELECT id, team_name, school, city, invite_code, status, created_at FROM teams WHERE id = $1', [updatedParticipant.team_id]);
+      teammates = await allAsync('SELECT id, full_name, email, grade, school, category_id, category_confirmed FROM participants WHERE team_id = $1', [updatedParticipant.team_id]);
     }
-    res.json({ ok: true, team: t });
+
+    res.json({
+      ok: true,
+      message: isKy ? 'Маалыматтар ийгиликтүү сакталды' : 'Profile updated successfully',
+      participant: updatedParticipant,
+      team: updatedTeam,
+      teammates
+    });
   } catch (e) {
-    console.error(e);
+    console.error('Update participant profile error:', e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -412,14 +397,15 @@ router.put('/api/me', async (req, res) => {
 // Verify old password
 router.post('/api/me/verify-password', async (req, res) => {
   try {
+    const isKy = getReqLang(req) === 'ky';
     const { password } = req.body || {};
     if (!password) return res.status(400).json({ error: 'Password required' });
 
-    const team = await getAsync('SELECT id, password FROM teams WHERE id = $1', [req.team.id]);
-    if (!team) return res.status(404).json({ error: 'Team not found' });
+    const participant = await getAsync('SELECT id, password_hash FROM participants WHERE id = $1', [req.participantId]);
+    if (!participant) return res.status(404).json({ error: 'Participant not found' });
 
-    const ok = await bcrypt.compare(password, team.password);
-    if (!ok) return res.status(400).json({ error: 'Неверный пароль' });
+    const ok = await bcrypt.compare(password, participant.password_hash);
+    if (!ok) return res.status(400).json({ error: isKy ? 'Учурдагы сырсөз туура эмес' : 'Current password is incorrect' });
 
     res.json({ ok: true });
   } catch (e) {
@@ -430,26 +416,31 @@ router.post('/api/me/verify-password', async (req, res) => {
 // Change password
 router.post('/api/me/change-password', async (req, res) => {
   try {
+    const isKy = getReqLang(req) === 'ky';
     const { oldPassword, newPassword } = req.body || {};
     if (!oldPassword || !newPassword) {
-      return res.status(400).json({ error: 'Old and new password required' });
+      return res.status(400).json({ error: isKy ? 'Эски жана жаңы сырсөздү жазыңыз' : 'Old and new password required' });
     }
 
     if (!isStrongPassword(newPassword)) {
-      return res.status(400).json({ error: 'Пароль не соответствует требованиям: минимум 8 символов, заглавная, строчная буква и цифра' });
+      return res.status(400).json({ 
+        error: isKy 
+          ? 'Сырсөз кеминде 8 белгиден туруп, чоң жана кичине тамгаларды жана санды камтышы керек' 
+          : 'Password must be at least 8 characters and include uppercase, lowercase, and numbers' 
+      });
     }
 
-    const team = await getAsync('SELECT id, password FROM teams WHERE id = $1', [req.team.id]);
-    if (!team) return res.status(404).json({ error: 'Team not found' });
+    const participant = await getAsync('SELECT id, password_hash FROM participants WHERE id = $1', [req.participantId]);
+    if (!participant) return res.status(404).json({ error: isKy ? 'Катышуучу табылган жок' : 'Participant not found' });
 
-    const ok = await bcrypt.compare(oldPassword, team.password);
-    if (!ok) return res.status(400).json({ error: 'Старый пароль неверен' });
+    const ok = await bcrypt.compare(oldPassword, participant.password_hash);
+    if (!ok) return res.status(400).json({ error: isKy ? 'Учурдагы эски сырсөз туура эмес' : 'Old password is incorrect' });
 
     const hashed = await bcrypt.hash(newPassword, 10);
-    await runAsync('UPDATE teams SET password = $1 WHERE id = $2', [hashed, req.team.id]);
-    res.json({ ok: true });
+    await runAsync('UPDATE participants SET password_hash = $1 WHERE id = $2', [hashed, req.participantId]);
+    res.json({ ok: true, message: isKy ? 'Сырсөз ийгиликтүү алмаштырылды' : 'Password changed successfully' });
   } catch (e) {
-    console.error(e);
+    console.error('Change password error:', e);
     res.status(500).json({ error: e.message });
   }
 });

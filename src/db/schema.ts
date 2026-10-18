@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean } from "drizzle-orm/pg-core";
 
 // Categories table
 export const categories = pgTable("categories", {
@@ -38,12 +38,11 @@ export const participants = pgTable("participants", {
   grade: text("grade"),
   school: text("school"),
   city: text("city"),
-  team_id: integer("team_id"),
-  category_id: integer("category_id"),
-  category_confirmed: integer("category_confirmed").default(0),
+  team_id: integer("team_id").references(() => teams.id, { onDelete: "set null" }),
+  category_id: integer("category_id").references(() => categories.id, { onDelete: "set null" }),
+  category_confirmed: boolean("category_confirmed").default(false),
   created_at: text("created_at"),
 });
-
 
 // Uploaded files table
 export const uploadedFiles = pgTable("uploaded_files", {

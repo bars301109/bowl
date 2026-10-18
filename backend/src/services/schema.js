@@ -69,9 +69,27 @@ async function ensureSchema() {
       city TEXT,
       team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
       category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
-      category_confirmed BOOLEAN DEFAULT FALSE,
+      category_confirmed BOOLEAN DEFAULT false,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
+    'ALTER TABLE participants ADD COLUMN IF NOT EXISTS category_confirmed BOOLEAN DEFAULT false',
+    `DO $$ 
+    BEGIN 
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'participants' AND column_name = 'category_confirmed' AND data_type != 'boolean'
+      ) THEN 
+        ALTER TABLE participants ALTER COLUMN category_confirmed DROP DEFAULT;
+        ALTER TABLE participants ALTER COLUMN category_confirmed TYPE boolean 
+          USING (
+            CASE 
+              WHEN category_confirmed::text IN ('1', 'true', 't', 'yes') THEN true 
+              ELSE false 
+            END
+          );
+        ALTER TABLE participants ALTER COLUMN category_confirmed SET DEFAULT false;
+      END IF;
+    END $$;`,
     'ALTER TABLE results ADD COLUMN IF NOT EXISTS participant_id INTEGER',
     'ALTER TABLE results ADD COLUMN IF NOT EXISTS category_id INTEGER',
 
@@ -274,6 +292,17 @@ async function ensureSchema() {
     'ALTER TABLE announcements DROP CONSTRAINT IF EXISTS announcements_target_category_id_fkey',
     'ALTER TABLE announcements DROP CONSTRAINT IF EXISTS announcements_target_category_id_categories_id_fk',
     'ALTER TABLE announcements ADD CONSTRAINT announcements_target_category_id_categories_id_fk FOREIGN KEY (target_category_id) REFERENCES categories(id) ON DELETE SET NULL',
+    'ALTER TABLE participants ALTER COLUMN category_confirmed TYPE BOOLEAN USING (CASE WHEN category_confirmed::text = \'1\' OR category_confirmed::text = \'true\' THEN TRUE ELSE FALSE END)',
+    'ALTER TABLE participants ALTER COLUMN category_confirmed SET DEFAULT FALSE',
+    'ALTER TABLE participants DROP CONSTRAINT IF EXISTS participants_team_id_fkey',
+    'ALTER TABLE participants DROP CONSTRAINT IF EXISTS participants_team_id_teams_id_fk',
+    'ALTER TABLE participants ADD CONSTRAINT participants_team_id_teams_id_fk FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE SET NULL',
+    'ALTER TABLE participants ALTER COLUMN category_confirmed DROP DEFAULT',
+    'ALTER TABLE participants ALTER COLUMN category_confirmed TYPE BOOLEAN USING (CASE WHEN category_confirmed::text = \'1\' OR category_confirmed::text = \'true\' THEN TRUE ELSE FALSE END)',
+    'ALTER TABLE participants ALTER COLUMN category_confirmed SET DEFAULT FALSE',
+    'ALTER TABLE participants DROP CONSTRAINT IF EXISTS participants_team_id_fkey',
+    'ALTER TABLE participants DROP CONSTRAINT IF EXISTS participants_team_id_teams_id_fk',
+    'ALTER TABLE participants ADD CONSTRAINT participants_team_id_teams_id_fk FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE SET NULL',
   ];
 
   for (const stmt of ddlList) {

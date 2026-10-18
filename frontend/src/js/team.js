@@ -215,16 +215,17 @@ function setActiveTab(btn) {
     const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
     const isKy = lang === 'ky';
     const titles = {
-      tabHome: isKy ? 'Кабинетти карап чыгуу' : 'Cabinet Overview',
-      tabTests: isKy ? 'Жеткиликтүү онлайн-тесттер' : 'Available Online Tests',
-      tabResults: isKy ? 'Тесттин жыйынтыктары' : 'Testing Results',
-      tabLeaderboard: isKy ? 'Турнирдин рейтинги' : 'Leaderboard',
-      tabAnnouncements: isKy ? 'Кулактандыруулар жана жаңылыктар' : 'Announcements & Updates',
-      tabSupport: isKy ? 'Команданы колдоо кызматы' : 'Team Support & Help Desk',
-      tabRules: isKy ? 'Регламент жана эрежелер' : 'Tournament Regulations & Rules',
-      tabSettings: isKy ? 'Команданын жөндөөлөрү жана паспорту' : 'Team Settings & Passport',
+      tabHome: isKy ? 'Башкы бет' : 'Обзор кабинета',
+      tabTeam: isKy ? 'Команда жана Категориялар' : 'Команда и Категории',
+      tabTests: isKy ? 'Жеткиликтүү онлайн-тесттер' : 'Доступные онлайн-тесты',
+      tabResults: isKy ? 'Тесттин жыйынтыктары' : 'Результаты тестирования',
+      tabLeaderboard: isKy ? 'Турнирдин рейтинги' : 'Рейтинг команд',
+      tabAnnouncements: isKy ? 'Кулактандыруулар жана жаңылыктар' : 'Объявления турнира',
+      tabSupport: isKy ? 'Колдоо кызматы' : 'Служба поддержки',
+      tabRules: isKy ? 'Регламент жана эрежелер' : 'Регламент и правила',
+      tabSettings: isKy ? 'Жеке жөндөөлөр' : 'Настройки профиля',
     };
-    topbarTitle.textContent = titles[btn.id] || (isKy ? 'Команданын кабинети' : 'Team Cabinet');
+    topbarTitle.textContent = titles[btn.id] || (isKy ? 'Жеке кабинет' : 'Личный кабинет');
   }
 
   // Close mobile sidebar if open
@@ -262,6 +263,227 @@ document.addEventListener('click', (e) => {
 
 async function renderHomeSection(btn) {
   if (btn) setActiveTab(btn);
+  else {
+    const hBtn = document.getElementById('tabHome');
+    if (hBtn) setActiveTab(hBtn);
+  }
+  const out = document.getElementById('tabContent');
+  out.setAttribute('aria-busy', 'true');
+  out.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <div class="app-skeleton" style="height: 110px; width: 100%;"></div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="app-skeleton" style="height: 250px;"></div>
+        <div class="app-skeleton" style="height: 250px;"></div>
+      </div>
+    </div>
+  `;
+
+  try {
+    const data = await apiFetch('/api/me');
+    if (data && data.ok) {
+      window.participantData = data.participant;
+      window.currentTeam = data.team;
+      window.teammatesList = data.teammates || [];
+      window.categoriesList = data.categories || [];
+      teamData = data.team ? { ...data.team, members: data.teammates } : null;
+      updateTeamNameHeader();
+    }
+  } catch (err) {
+    console.warn('Refresh me warning in renderHomeSection:', err);
+  }
+
+  out.setAttribute('aria-busy', 'false');
+
+  const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
+  const isKy = lang === 'ky';
+  const participant = window.participantData;
+  const team = window.currentTeam;
+  const teammates = window.teammatesList || [];
+  const pName = participant?.full_name || (isKy ? 'Катышуучу' : 'Participant');
+  const pSchool = participant?.school || (isKy ? 'Филиал көрсөтүлгөн эмес' : 'Branch not specified');
+  const pGrade = participant?.grade ? `${participant.grade} ${isKy ? 'класс' : 'Grade'}` : '';
+
+  let teamBannerHtml = '';
+  if (team) {
+    const memberCount = teammates.length;
+    const isReady = team.status === 'ready';
+    const isFull = memberCount === 3;
+    let statusText = isReady 
+      ? (isKy ? '🟢 Команда даяр (3/3)' : '🟢 Squad Ready (3/3)')
+      : (isFull 
+          ? (isKy ? '🔵 Категорияларды тандоо (3/3)' : '🔵 Category Selection (3/3)')
+          : (isKy ? `🟡 Курамды топтоо (${memberCount}/3)` : `🟡 Gathering Squad (${memberCount}/3)`));
+
+    teamBannerHtml = `
+      <div class="app-card card-blue-top" style="padding: 24px; margin-bottom: 24px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+          <div>
+            <div style="display:inline-flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span style="font-size:12px; font-weight:700; padding:4px 10px; background:#eff6ff; color:#1d4ed8; border-radius:6px;">${isKy ? 'Сиздин командаңыз' : 'Your Squad'}</span>
+              <span style="font-size:12px; font-weight:700;">${statusText}</span>
+            </div>
+            <h3 style="margin:0 0 8px 0; font-size:22px; color:var(--app-text-main);">«${escapeHtml(team.team_name || '')}»</h3>
+            <div style="font-size:13.5px; color:var(--ink-2); display:flex; flex-wrap:wrap; gap:14px;">
+              <span>📍 <strong>${isKy ? 'Филиал:' : 'Branch:'}</strong> ${escapeHtml(team.school || '')}</span>
+              <span>👥 <strong>${isKy ? 'Катышуучулар:' : 'Members:'}</strong> ${memberCount}/3</span>
+              <span>🔑 <strong>${isKy ? 'Код:' : 'Invite Code:'}</strong> <code style="background:var(--accent-wash); color:var(--accent); padding:2px 8px; border-radius:4px; font-weight:700;">${escapeHtml(team.invite_code || '')}</code></span>
+            </div>
+          </div>
+          <button type="button" id="homeGoTeamBtn" class="btn btn-primary" style="padding:10px 20px; font-weight:600; font-size:14px;">
+            👥 ${isKy ? 'Команда бөлүмүн ачуу' : 'Open Team Section'} →
+          </button>
+        </div>
+      </div>
+    `;
+  } else {
+    teamBannerHtml = `
+      <div class="app-card card-gold-top" style="padding: 24px; margin-bottom: 24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+          <div>
+            <div style="font-size:12px; font-weight:700; padding:4px 10px; background:#fef3c7; color:#b45309; border-radius:6px; display:inline-block; margin-bottom:8px;">
+              ${isKy ? 'Команда түзүлө элек' : 'No Team Yet'}
+            </div>
+            <h3 style="margin:0 0 6px 0; font-size:18px; color:var(--app-text-main);">
+              ${isKy ? 'Турнирге катышуу үчүн команда түзүңүз же кошулуңуз' : 'Create or join a team to compete'}
+            </h3>
+            <p style="margin:0; font-size:13.5px; color:var(--ink-2);">
+              ${isKy ? `Сиздин филиалыңыздан (${pSchool}) 3 катышуучу биригип, бир команданы түзүшү керек.` : `3 participants from your branch (${pSchool}) must join together in one squad.`}
+            </p>
+          </div>
+          <button type="button" id="homeGoTeamBtn" class="btn btn-primary" style="padding:10px 20px; font-weight:600; font-size:14px;">
+            🚀 ${isKy ? 'Команда түзүү / кошулуу' : 'Create or Join Team'} →
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  out.innerHTML = `
+    <!-- Personal Welcome Card -->
+    <div class="dashboard-hero-card" style="margin-bottom: 24px;">
+      <div class="hero-content">
+        <div class="hero-text-block">
+          <div style="display:inline-flex; align-items:center; gap:6px; padding:5px 14px; background:var(--app-primary-light); border:1px solid var(--app-primary-border); border-radius:9999px; color:var(--app-primary-dark); font-size:12.5px; font-weight:700; margin-bottom:12px;">
+            <span>🏆</span>
+            <span>Akylman Quiz Bowl · ${isKy ? 'Жеке кабинет' : 'Personal Cabinet'}</span>
+          </div>
+          <h2>${escapeHtml(pName)}</h2>
+          <ul class="hero-bullet-list">
+            <li class="hero-bullet-item">
+              <span class="hero-bullet-dot"></span>
+              <span><strong>${isKy ? 'Филиал:' : 'Branch:'}</strong> ${escapeHtml(pSchool)}</span>
+            </li>
+            ${pGrade ? `
+              <li class="hero-bullet-item">
+                <span class="hero-bullet-dot"></span>
+                <span><strong>${isKy ? 'Класс:' : 'Grade:'}</strong> ${escapeHtml(pGrade)}</span>
+              </li>
+            ` : ''}
+            <li class="hero-bullet-item">
+              <span class="hero-bullet-dot"></span>
+              <span><strong>${isKy ? 'Формат:' : 'Format:'}</strong> ${isKy ? '3 катышуучу (1 филиалдан)' : '3 members (same branch)'}</span>
+            </li>
+          </ul>
+        </div>
+        <!-- Animated Pixel Art Cat Mascot -->
+        <div class="hero-cat-container" id="teamCatMascot" title="${isKy ? 'Команданын талисманы 🐾' : 'Mascot 🐾'}">
+          <div class="hero-cat-speech-bubble" id="catMascotSpeech">${team ? (isKy ? 'Командаңыз менен алга! 🐾' : 'Good luck to your squad! 🐾') : (isKy ? 'Команда түз же коду менен кошул! 🐾' : 'Create a team or join by code! 🐾')}</div>
+          <div class="pixelart-cat-scaler">
+            <div class="pixelart-to-css" role="img" aria-label="Pixel art cat mascot"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${teamBannerHtml}
+
+    <!-- Quick Navigation Hub -->
+    <div class="quick-hub-section">
+      <div class="quick-hub-header">
+        <span>⚡</span>
+        <span>${isKy ? 'Негизги бөлүмдөр' : 'Quick Navigation'}</span>
+      </div>
+      <div class="quick-hub-grid">
+        <div class="quick-hub-card" id="hubTileTeam" role="button" tabindex="0">
+          <div class="quick-hub-card-body">
+            <div class="quick-hub-icon">👥</div>
+            <div>
+              <h4 class="quick-hub-title">${isKy ? 'Команда' : 'Team'}</h4>
+              <p class="quick-hub-desc">${isKy ? 'Катышуучулар жана категорияларды тандоо' : 'Team members and category selection'}</p>
+            </div>
+          </div>
+          <div class="quick-hub-action-row">
+            <span class="quick-hub-btn">${isKy ? 'Командага өтүү →' : 'Go to Team →'}</span>
+          </div>
+        </div>
+
+        <div class="quick-hub-card" id="hubTileTests" role="button" tabindex="0">
+          <div class="quick-hub-card-body">
+            <div class="quick-hub-icon">📝</div>
+            <div>
+              <h4 class="quick-hub-title">${isKy ? 'Тестирлөө' : 'Online Testing'}</h4>
+              <p class="quick-hub-desc">${isKy ? 'Сиздин категорияңыз боюнча тесттер' : 'Take your assigned category test'}</p>
+            </div>
+          </div>
+          <div class="quick-hub-action-row">
+            <span class="quick-hub-btn">${isKy ? 'Тесттерге өтүү →' : 'Go to tests →'}</span>
+          </div>
+        </div>
+
+        <div class="quick-hub-card" id="hubTileResults" role="button" tabindex="0">
+          <div class="quick-hub-card-body">
+            <div class="quick-hub-icon">📊</div>
+            <div>
+              <h4 class="quick-hub-title">${isKy ? 'Жыйынтыктар' : 'Results'}</h4>
+              <p class="quick-hub-desc">${isKy ? 'Упайлар жана сынак статистикасы' : 'Scores and answer statistics'}</p>
+            </div>
+          </div>
+          <div class="quick-hub-action-row">
+            <span class="quick-hub-btn">${isKy ? 'Жыйынтыктарды көрүү →' : 'View results →'}</span>
+          </div>
+        </div>
+
+        <div class="quick-hub-card" id="hubTileSettings" role="button" tabindex="0">
+          <div class="quick-hub-card-body">
+            <div class="quick-hub-icon">⚙️</div>
+            <div>
+              <h4 class="quick-hub-title">${isKy ? 'Жөндөөлөр' : 'Settings'}</h4>
+              <p class="quick-hub-desc">${isKy ? 'Аты-жөнүңүз, класс, email жана сырсөз' : 'Your name, grade, email and password'}</p>
+            </div>
+          </div>
+          <div class="quick-hub-action-row">
+            <span class="quick-hub-btn">${isKy ? 'Жөндөөлөргө өтүү →' : 'Open Settings →'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('homeGoTeamBtn')?.addEventListener('click', () => {
+    document.getElementById('tabTeam')?.click();
+  });
+  document.getElementById('hubTileTeam')?.addEventListener('click', () => {
+    document.getElementById('tabTeam')?.click();
+  });
+  document.getElementById('hubTileTests')?.addEventListener('click', () => {
+    document.getElementById('tabTests')?.click();
+  });
+  document.getElementById('hubTileResults')?.addEventListener('click', () => {
+    document.getElementById('tabResults')?.click();
+  });
+  document.getElementById('hubTileSettings')?.addEventListener('click', () => {
+    document.getElementById('tabSettings')?.click();
+  });
+}
+
+// Dedicated Team Section: Squad Roster, Creation, Joining, and Category Selection
+async function renderTeamSection(btn) {
+  if (btn) setActiveTab(btn);
+  else {
+    const tBtn = document.getElementById('tabTeam');
+    if (tBtn) setActiveTab(tBtn);
+  }
   const out = document.getElementById('tabContent');
   out.setAttribute('aria-busy', 'true');
   out.innerHTML = `
@@ -614,6 +836,9 @@ async function renderHomeSection(btn) {
             <button type="button" id="heroCopyCodeBtn" class="btn" style="background:var(--surface); border:1px solid var(--line); font-size:13px; font-weight:600; padding:8px 16px;">
               📋 ${isKy ? 'Чакыруу кодун көчүрүү' : 'Copy Invite Code'}
             </button>
+            <button type="button" id="renameTeamBtn" class="btn" style="background:var(--surface); border:1px solid var(--line); font-size:13px; font-weight:600; padding:8px 16px;">
+              ✏️ ${isKy ? 'Атын өзгөртүү' : 'Изменить название'}
+            </button>
             <button type="button" id="leaveTeamBtn" class="btn" style="background:transparent; border:1px solid #fecaca; color:#dc2626; font-size:13px; padding:8px 14px;">
               🚪 ${isKy ? 'Командадан чыгуу' : 'Leave Team'}
             </button>
@@ -770,6 +995,34 @@ async function renderHomeSection(btn) {
     }
   });
 
+  // Attach Rename Team handler
+  document.getElementById('renameTeamBtn')?.addEventListener('click', async () => {
+    const currentName = team.team_name || '';
+    const newName = prompt(isKy ? 'Команданын жаңы аталышын киргизиңиз:' : 'Введите новое название команды:', currentName);
+    if (!newName || !newName.trim() || newName.trim() === currentName) return;
+    try {
+      const res = await apiFetch('/api/teams/rename', {
+        method: 'POST',
+        body: JSON.stringify({ team_name: newName.trim() })
+      });
+      if (res && res.ok) {
+        team.team_name = newName.trim();
+        if (teamData) teamData.team_name = newName.trim();
+        updateTeamNameHeader();
+        if (typeof Toast !== 'undefined') {
+          Toast.success(isKy ? 'Команданын аты өзгөртүлдү!' : 'Название команды обновлено!');
+        }
+        renderTeamSection(document.getElementById('tabTeam'));
+      }
+    } catch (err) {
+      if (typeof Toast !== 'undefined') {
+        Toast.error(err.message || (isKy ? 'Атын өзгөртүүдө ката чыкты' : 'Ошибка изменения названия команды'));
+      } else {
+        alert(err.message || (isKy ? 'Атын өзгөртүүдө ката чыкты' : 'Ошибка изменения названия команды'));
+      }
+    }
+  });
+
   // Attach Leave Team handler
   document.getElementById('leaveTeamBtn')?.addEventListener('click', async () => {
     let ok = false;
@@ -861,7 +1114,7 @@ async function fetchCategoriesList(force = false) {
   return cachedCategoriesList || [];
 }
 
-// Dedicated Settings Section (Team Passport & Roster Management)
+// Dedicated Settings Section (Personal Profile & Password Management)
 async function renderSettingsSection(btn) {
   if (btn) setActiveTab(btn);
   const out = document.getElementById('tabContent');
@@ -869,264 +1122,165 @@ async function renderSettingsSection(btn) {
   out.innerHTML = `
     <div style="display: flex; flex-direction: column; gap: 20px;">
       <div class="app-skeleton" style="height: 90px; width: 100%;"></div>
-      <div class="app-skeleton" style="height: 380px; width: 100%;"></div>
-      <div class="app-skeleton" style="height: 250px; width: 100%;"></div>
+      <div class="app-skeleton" style="height: 320px; width: 100%;"></div>
+      <div class="app-skeleton" style="height: 180px; width: 100%;"></div>
     </div>
   `;
 
-  if (!teamData) {
-    try {
-      const j = await apiFetch('/api/me');
-      if (j.ok && j.team) {
-        teamData = j.team;
-        updateTeamNameHeader();
-      }
-    } catch (err) {
-      console.error(err);
-      out.setAttribute('aria-busy', 'false');
-      out.innerHTML = '<div class="modern-empty-state"><p style="color: var(--app-rose);">Ошибка загрузки данных.</p></div>';
-      return;
+  // Always refresh latest participant profile
+  try {
+    const data = await apiFetch('/api/me');
+    if (data && data.ok) {
+      window.participantData = data.participant;
+      window.currentTeam = data.team;
+      window.teammatesList = data.teammates || [];
+      window.categoriesList = data.categories || [];
+      teamData = data.team ? { ...data.team, members: data.teammates } : null;
+      updateTeamNameHeader();
     }
+  } catch (err) {
+    console.warn('Profile fetch warning in renderSettingsSection:', err);
   }
-
-  const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
-  const isKy = lang === 'ky';
-  const categories = await fetchCategoriesList(true);
 
   out.setAttribute('aria-busy', 'false');
 
-  const membersList = Array.isArray(teamData.members) 
-    ? teamData.members.filter(m => m && (m.name || m.class)) 
-    : [];
+  const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
+  const isKy = lang === 'ky';
+  const p = window.participantData || {};
+  const currentTeam = window.currentTeam;
 
-  const member1Name = membersList.length > 0 ? (membersList[0].name || '') : '';
-  const member1Class = membersList.length > 0 ? (membersList[0].class || '') : '';
-  const member2Name = membersList.length > 1 ? (membersList[1].name || '') : '';
-  const member2Class = membersList.length > 1 ? (membersList[1].class || '') : '';
-
-  // Build categories select options
-  const categoryOptions = categories.map(c => {
-    const isSelected = String(c.id) === String(teamData.category_id);
-    const catName = isKy ? (c.name_ky || c.name_en || c.name_ru) : (c.name_en || c.name_ru || c.name_ky);
-    return `<option value="${c.id}" ${isSelected ? 'selected' : ''}>${escapeHtml(catName)}</option>`;
-  }).join('');
-
-  // Extra members HTML (starting from index 2 in membersList, which is member 3+)
-  let extraMembersHtml = '';
-  if (membersList.length > 2) {
-    for (let i = 2; i < membersList.length; i++) {
-      const m = membersList[i];
-      const memNum = i + 1;
-      extraMembersHtml += `
-        <div class="settings-member-box extra-member-item" data-index="${memNum}">
-          <div class="settings-member-top">
-            <span style="font-size: 14px; font-weight: 700; color: var(--app-text-main); display: flex; align-items: center; gap: 8px;">
-              <span class="member-index-badge equal-badge" style="width: 26px; height: 26px; font-size: 12px;">${memNum}</span>
-              <span>${isKy ? `${memNum}-катышуучу` : `Member ${memNum}`}</span>
-            </span>
-            <button type="button" class="btn-remove-extra-member" style="background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.3); color: #f43f5e; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
-              🗑️ ${isKy ? 'Өчүрүү' : 'Remove'}
-            </button>
-          </div>
-          <div class="settings-grid">
-            <div class="settings-field">
-              <label class="settings-label">${isKy ? 'Аты-жөнү' : 'ФИО участника'} <span style="color:#ef4444">*</span></label>
-              <input type="text" class="settings-input extra-mem-name" placeholder="${isKy ? 'Асанов Үсөн' : 'Иванов Иван Иванович'}" value="${escapeHtml(m.name || '')}"/>
-            </div>
-            <div class="settings-field">
-              <label class="settings-label">${isKy ? 'Классы' : 'Grade'} <span style="color:#ef4444">*</span></label>
-              <select class="settings-select extra-mem-class" required>
-                ${buildClassSelectOptions(m.class || '', isKy)}
-              </select>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-  }
+  const fullNameVal = p.full_name || '';
+  const emailVal = p.email || '';
+  const gradeVal = p.grade || '';
+  const branchVal = p.school || p.city || (isKy ? 'Көрсөтүлгөн эмес' : 'Не указан');
 
   out.innerHTML = `
-    <div class="settings-container">
+    <div class="settings-container" style="max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
       
       <!-- Settings Header Banner -->
-      <div class="settings-header-card">
+      <div class="settings-header-card" style="display: flex; justify-content: space-between; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
         <div>
-          <h2 class="settings-header-title">⚙️ ${t('team.settings_title')}</h2>
-          <p class="settings-header-desc">
-            ${t('team.settings_subtitle')}
+          <h2 class="settings-header-title" style="margin: 0 0 6px 0; font-size: 22px; font-weight: 700; color: var(--app-text-main); display: flex; align-items: center; gap: 10px;">
+            <span>⚙️</span>
+            <span>${isKy ? 'Жеке жөндөөлөр' : 'Настройки профиля'}</span>
+          </h2>
+          <p class="settings-header-desc" style="margin: 0; font-size: 14px; color: var(--app-text-muted);">
+            ${isKy ? 'Жеке маалыматтарды, класс жана сырсөздү башкаруу' : 'Управление личными данными, своим классом и паролем'}
           </p>
         </div>
         <div>
           <span style="font-size: 12.5px; background: var(--app-primary-light); border: 1px solid var(--app-primary-border); color: var(--app-primary-dark); padding: 6px 14px; border-radius: 9999px; font-weight: 700;">
-            ${t('team.team_id')}: ${teamData.id || ''}
+            ID #${p.id || ''}
           </span>
         </div>
       </div>
 
-      <!-- Card 1: Team Passport (Full Editing) -->
-      <div class="settings-card card-blue-top">
-        <div class="settings-card-header">
-          <h3 class="settings-card-title">
-            <span>📋</span>
-            <span>${t('team.passport_card_title')}</span>
+      <!-- Card 1: Personal Data Editing -->
+      <div class="settings-card card-blue-top" style="background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+        <div class="settings-card-header" style="margin-bottom: 20px; border-bottom: 1px solid var(--line); padding-bottom: 14px;">
+          <h3 class="settings-card-title" style="margin: 0; font-size: 17px; font-weight: 700; color: var(--app-text-main); display: flex; align-items: center; gap: 8px;">
+            <span>👤</span>
+            <span>${isKy ? 'Жеке маалыматтар' : 'Личные данные участника'}</span>
           </h3>
-          <span style="font-size: 12px; color: var(--app-text-muted);">${t('team.passport_editable')}</span>
+          <span style="font-size: 12.5px; color: var(--app-text-muted);">${isKy ? 'Аты-жөнүңүздү, класс жана почтаңызды өзгөртө аласыз' : 'Изменение имени, почты и класса'}</span>
         </div>
 
-        <div class="settings-grid" style="margin-bottom: 20px;">
-          <!-- Team Name -->
-          <div class="settings-field">
-            <label class="settings-label" for="setTeamName">
-              <span>🏷️ ${t('team.team_name')}</span>
-              <span style="color:#ef4444">*</span>
-            </label>
-            <input type="text" id="setTeamName" class="settings-input" value="${escapeHtml(teamData.team_name || '')}" placeholder="${isKy ? 'Мисалы: Шумкарлар' : 'e.g. Shumkarlar'}" required/>
+        <form id="personalSettingsForm" style="display: flex; flex-direction: column; gap: 18px;">
+          <div class="settings-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+            <!-- Full Name -->
+            <div class="settings-field">
+              <label class="settings-label" for="setFullName" style="display: block; margin-bottom: 6px; font-size: 13.5px; font-weight: 600; color: var(--ink);">
+                <span>${isKy ? 'Аты-жөнү (ФИО)' : 'Свое имя (ФИО)'}</span> <span style="color:#ef4444">*</span>
+              </label>
+              <input type="text" id="setFullName" class="settings-input reg-input" value="${escapeHtml(fullNameVal)}" placeholder="${isKy ? 'Асанов Үсөн' : 'Иванов Иван Иванович'}" required style="width: 100%; min-height: 44px;"/>
+            </div>
+
+            <!-- Email -->
+            <div class="settings-field">
+              <label class="settings-label" for="setEmail" style="display: block; margin-bottom: 6px; font-size: 13.5px; font-weight: 600; color: var(--ink);">
+                <span>✉️ ${isKy ? 'Электрондук почта' : 'Почта (Email)'}</span> <span style="color:#ef4444">*</span>
+              </label>
+              <input type="email" id="setEmail" class="settings-input reg-input" value="${escapeHtml(emailVal)}" placeholder="example@email.com" required style="width: 100%; min-height: 44px;"/>
+            </div>
+
+            <!-- Grade / Class -->
+            <div class="settings-field">
+              <label class="settings-label" for="setGrade" style="display: block; margin-bottom: 6px; font-size: 13.5px; font-weight: 600; color: var(--ink);">
+                <span>🎓 ${isKy ? 'Сиздин класс' : 'Свой класс'}</span> <span style="color:#ef4444">*</span>
+              </label>
+              <select id="setGrade" class="settings-select reg-select" required style="width: 100%; min-height: 44px;">
+                ${buildClassSelectOptions(gradeVal, isKy)}
+              </select>
+            </div>
+
+            <!-- Branch (Fixed / Read-only) -->
+            <div class="settings-field">
+              <label class="settings-label" style="display: block; margin-bottom: 6px; font-size: 13.5px; font-weight: 600; color: var(--ink);">
+                <span>📍 ${isKy ? 'Филиал' : 'Филиал'}</span>
+              </label>
+              <div style="min-height: 44px; display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px;">
+                <span style="font-weight: 700; color: var(--app-primary-dark);">${escapeHtml(branchVal)}</span>
+                <span style="font-size: 11.5px; color: var(--ink-2); margin-left: auto;">${isKy ? 'Каттоого бекитилген' : 'Привязан к регистрации'}</span>
+              </div>
+            </div>
           </div>
 
-          <!-- Category -->
-          <div class="settings-field">
-            <label class="settings-label" for="setCategoryId">
-              <span>🏆 ${t('team.category')}</span>
-              <span style="color:#ef4444">*</span>
-            </label>
-            <select id="setCategoryId" class="settings-select">
-              <option value="">${isKy ? 'Категорияны тандаңыз' : 'Select category'}</option>
-              ${categoryOptions}
-            </select>
-          </div>
+          <!-- Status Feedback -->
+          <div id="settingsStatusMsg" style="display: none; padding: 12px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; width: 100%; box-sizing: border-box;"></div>
 
-          <!-- Branch -->
-          <div class="settings-field">
-            <label class="settings-label" for="setBranch">
-              <span>📍 ${t('register.branch')}</span>
-              <span style="color:#ef4444">*</span>
-            </label>
-            <select id="setBranch" class="settings-select">
-              <option value="Талас" ${(teamData.city === 'Талас' || teamData.school === 'Талас') ? 'selected' : ''}>Талас</option>
-              <option value="Манас" ${(teamData.city === 'Манас' || teamData.school === 'Манас') ? 'selected' : ''}>Манас</option>
-              <option value="Чолпон-Ата" ${(teamData.city === 'Чолпон-Ата' || teamData.school === 'Чолпон-Ата') ? 'selected' : ''}>Чолпон-Ата</option>
-            </select>
+          <!-- Save Button -->
+          <div style="display: flex; justify-content: flex-end; padding-top: 8px;">
+            <button type="submit" id="saveSettingsBtn" class="btn btn-primary" style="padding: 11px 24px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+              <span>💾</span>
+              <span>${isKy ? 'Өзгөртүүлөрдү сактоо' : 'Сохранить изменения'}</span>
+            </button>
           </div>
-
-          <!-- Email -->
-          <div class="settings-field">
-            <label class="settings-label" for="setEmail">
-              <span>✉️ ${t('team.email')}</span>
-              <span style="color:#ef4444">*</span>
-            </label>
-            <input type="email" id="setEmail" class="settings-input" value="${escapeHtml(teamData.email || '')}" placeholder="example@email.com" required/>
-          </div>
-        </div>
+        </form>
       </div>
 
-      <!-- Card 2: Team Members -->
-      <div class="settings-card card-blue-top">
-        <div class="settings-card-header">
-          <div>
-            <h3 class="settings-card-title">
-              <span>👥</span>
-              <span>${t('team.members')}</span>
-            </h3>
-            <div style="font-size: 12.5px; color: var(--app-text-muted); margin-top: 4px;">
-              ${t('team.members_composition_note')}
-            </div>
-          </div>
-          <button type="button" id="btnAddExtraMember" class="app-card-action-btn" style="background:#eff6ff; color:#1e40af; border-color:#bfdbfe; font-size:13px; padding:7px 14px;">
-            + ${t('team.add_member')}
-          </button>
-        </div>
-
-        <div id="settingsMembersListContainer">
-          <!-- Participant 1 -->
-          <div class="settings-member-box" style="border-left: 4px solid #3b82f6;">
-            <div class="settings-member-top">
-              <span style="font-size: 14.5px; font-weight: 700; color: var(--app-text-main); display: flex; align-items: center; gap: 8px;">
-                <span class="member-index-badge equal-badge" style="width: 26px; height: 26px; font-size: 12px; background:#3b82f6; color:#ffffff;">1</span>
-                <span>${isKy ? '1-катышуучу' : 'Member 1'}</span>
-              </span>
-            </div>
-            <div class="settings-grid">
-              <div class="settings-field">
-                <label class="settings-label" for="setMem1Name">
-                  ${t('team.member_name')} <span style="color:#ef4444">*</span>
-                </label>
-                <input type="text" id="setMem1Name" class="settings-input" placeholder="${isKy ? 'Асанов Үсөн' : 'Иванов Иван Иванович'}" value="${escapeHtml(member1Name)}" required/>
-              </div>
-              <div class="settings-field">
-                <label class="settings-label" for="setMem1Class">
-                  ${t('team.member_class')} <span style="color:#ef4444">*</span>
-                </label>
-                <select id="setMem1Class" class="settings-select" required>
-                  ${buildClassSelectOptions(member1Class, isKy)}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- Participant 2 -->
-          <div class="settings-member-box" style="border-left: 4px solid #3b82f6;">
-            <div class="settings-member-top">
-              <span style="font-size: 14.5px; font-weight: 700; color: var(--app-text-main); display: flex; align-items: center; gap: 8px;">
-                <span class="member-index-badge equal-badge" style="width: 26px; height: 26px; font-size: 12px; background:#3b82f6; color:#ffffff;">2</span>
-                <span>${isKy ? '2-катышуучу' : 'Member 2'}</span>
-              </span>
-            </div>
-            <div class="settings-grid">
-              <div class="settings-field">
-                <label class="settings-label" for="setMem2Name">
-                  ${t('team.member_name')} <span style="color:#ef4444">*</span>
-                </label>
-                <input type="text" id="setMem2Name" class="settings-input" placeholder="${isKy ? 'Беков Азамат' : 'Петров Петр Петрович'}" value="${escapeHtml(member2Name)}" required/>
-              </div>
-              <div class="settings-field">
-                <label class="settings-label" for="setMem2Class">
-                  ${t('team.member_class')} <span style="color:#ef4444">*</span>
-                </label>
-                <select id="setMem2Class" class="settings-select" required>
-                  ${buildClassSelectOptions(member2Class, isKy)}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- Extra Members (3, 4) Container -->
-          <div id="extraMembersContainer">
-            ${extraMembersHtml}
-          </div>
-        </div>
-      </div>
-
-      <!-- Card 3: Security & Password -->
-      <div class="settings-card">
-        <div class="settings-card-header">
-          <h3 class="settings-card-title">
+      <!-- Card 2: Security & Password -->
+      <div class="settings-card" style="background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+        <div class="settings-card-header" style="margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 14px;">
+          <h3 class="settings-card-title" style="margin: 0; font-size: 17px; font-weight: 700; color: var(--app-text-main); display: flex; align-items: center; gap: 8px;">
             <span>🔐</span>
-            <span>${t('team.security_title')}</span>
+            <span>${isKy ? 'Сырсөз жана коопсуздук' : 'Пароль и безопасность'}</span>
           </h3>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
           <div>
-            <div style="font-size: 14px; font-weight: 600; color: var(--app-text-main); margin-bottom: 2px;">
-              ${t('team.login_email_label')} <code>${escapeHtml(teamData.email || '')}</code>
+            <div style="font-size: 14px; font-weight: 600; color: var(--app-text-main); margin-bottom: 4px;">
+              ${isKy ? 'Аккаунтка кирүү сырсөзүн алмаштыруу' : 'Смена пароля от учетной записи'}
             </div>
-            <div style="font-size: 12.5px; color: var(--app-text-muted);">
-              ${t('team.security_note')}
+            <div style="font-size: 13px; color: var(--app-text-muted);">
+              ${isKy ? 'Сырсөз кеминде 8 белгиден турушу керек' : 'Пароль должен содержать не менее 8 символов'}
             </div>
           </div>
-          <button type="button" id="settingsChangePassBtn" class="btn-hero-secondary" style="background:#f8fafc; border:1px solid #cbd5e1; color:var(--app-text-main);">
-            🔐 ${t('team.change_password')}
+          <button type="button" id="settingsChangePassBtn" class="btn" style="background: var(--surface); border: 1px solid var(--line); color: var(--app-text-main); font-weight: 600; padding: 10px 20px; font-size: 13.5px;">
+            🔐 ${isKy ? 'Сырсөздү алмаштыруу' : 'Изменить пароль'}
           </button>
         </div>
       </div>
 
-      <!-- Save Action Bar & Toast Feedback -->
-      <div style="display: flex; flex-direction: column; gap: 12px; align-items: flex-start; padding-top: 8px;">
-        <div id="settingsStatusMsg" style="display: none; padding: 12px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; width: 100%; box-sizing: border-box;"></div>
-        
-        <button type="button" id="saveSettingsBtn" class="btn-save-settings">
-          <span>💾</span>
-          <span>${t('team.save_all_settings')}</span>
-        </button>
+      <!-- Card 3: Notice about Team Section -->
+      <div class="settings-card card-gold-top" style="background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+          <div>
+            <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #fef3c7; color: #b45309; border-radius: 6px; font-size: 12px; font-weight: 700; margin-bottom: 8px;">
+              👥 ${isKy ? 'Команда бөлүмү' : 'Раздел «Команда»'}
+            </div>
+            <h4 style="margin: 0 0 6px 0; font-size: 16px; color: var(--app-text-main); font-weight: 700;">
+              ${currentTeam ? (isKy ? `Сиз «${escapeHtml(currentTeam.team_name || '')}» командасындасыз` : `Вы состоите в команде «${escapeHtml(currentTeam.team_name || '')}»`) : (isKy ? 'Сиз азырынча командада жоксуз' : 'Вы пока не состоите в команде')}
+            </h4>
+            <p style="margin: 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.5;">
+              ${isKy 
+                ? 'Команда түзүү, атын өзгөртүү, катышуучуларды көрүү жана категорияларды тандоо — өзүнчө «Команда» бөлүмүндө жүргүзүлөт.' 
+                : 'Создание команды, изменение названия, просмотр участников и выбор категорий осуществляются в разделе «Команда».'}
+            </p>
+          </div>
+          <button type="button" id="settingsGoTeamBtn" class="btn btn-primary" style="padding: 10px 20px; font-size: 13.5px; font-weight: 600;">
+            👥 ${isKy ? '«Команда» бөлүмүнө өтүү' : 'Перейти в раздел «Команда»'} →
+          </button>
+        </div>
       </div>
 
     </div>
@@ -1134,59 +1288,15 @@ async function renderSettingsSection(btn) {
 
   // Attach dynamic handlers
   document.getElementById('settingsChangePassBtn')?.addEventListener('click', handlePasswordChange);
-
-  // Add extra member handler
-  document.getElementById('btnAddExtraMember')?.addEventListener('click', () => {
-    const container = document.getElementById('extraMembersContainer');
-    if (!container) return;
-    const currentExtra = container.querySelectorAll('.extra-member-item').length;
-    const totalNow = 2 + currentExtra;
-    if (totalNow >= 4) {
-      alert(isKy ? 'Эң көбү 4 катышуучу кошууга болот.' : 'Максимум 4 участника в команде.');
-      return;
-    }
-    const nextNum = totalNow + 1;
-    const div = document.createElement('div');
-    div.className = 'settings-member-box extra-member-item';
-    div.dataset.index = nextNum;
-    div.innerHTML = `
-      <div class="settings-member-top">
-        <span style="font-size: 14px; font-weight: 700; color: var(--app-text-main); display: flex; align-items: center; gap: 8px;">
-          <span class="member-index-badge equal-badge" style="width: 26px; height: 26px; font-size: 12px;">${nextNum}</span>
-          <span>${isKy ? `${nextNum}-катышуучу` : `Member ${nextNum}`}</span>
-        </span>
-        <button type="button" class="btn-remove-extra-member" style="background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.3); color: #f43f5e; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
-          🗑️ ${isKy ? 'Өчүрүү' : 'Удалить'}
-        </button>
-      </div>
-      <div class="settings-grid">
-        <div class="settings-field">
-          <label class="settings-label">${isKy ? 'Аты-жөнү' : 'ФИО участника'} <span style="color:#ef4444">*</span></label>
-          <input type="text" class="settings-input extra-mem-name" placeholder="${isKy ? 'Асанов Үсөн' : 'Иванов Иван Иванович'}"/>
-        </div>
-        <div class="settings-field">
-          <label class="settings-label">${isKy ? 'Классы' : 'Grade'} <span style="color:#ef4444">*</span></label>
-          <select class="settings-select extra-mem-class" required>
-            ${buildClassSelectOptions('', isKy)}
-          </select>
-        </div>
-      </div>
-    `;
-    div.querySelector('.btn-remove-extra-member')?.addEventListener('click', () => {
-      div.remove();
-    });
-    container.appendChild(div);
+  document.getElementById('settingsGoTeamBtn')?.addEventListener('click', () => {
+    document.getElementById('tabTeam')?.click();
   });
 
-  // Attach remove buttons to existing extra members
-  out.querySelectorAll('.btn-remove-extra-member').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.target.closest('.extra-member-item')?.remove();
-    });
+  const form = document.getElementById('personalSettingsForm');
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await savePersonalSettings();
   });
-
-  // Save settings handler
-  document.getElementById('saveSettingsBtn')?.addEventListener('click', saveAllSettings);
 }
 
 function showSettingsMessage(text, isError) {
@@ -1206,123 +1316,62 @@ function showSettingsMessage(text, isError) {
   el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-async function saveAllSettings() {
+async function savePersonalSettings() {
   const saveBtn = document.getElementById('saveSettingsBtn');
   const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
   const isKy = lang === 'ky';
 
-  const teamName = document.getElementById('setTeamName')?.value.trim();
-  const catId = document.getElementById('setCategoryId')?.value;
-  const branch = document.getElementById('setBranch')?.value || 'Talas';
+  const fullName = document.getElementById('setFullName')?.value.trim();
   const email = document.getElementById('setEmail')?.value.trim();
+  const grade = document.getElementById('setGrade')?.value.trim();
 
-  const mem1Name = document.getElementById('setMem1Name')?.value.trim();
-  const mem1Class = document.getElementById('setMem1Class')?.value.trim();
-  const mem2Name = document.getElementById('setMem2Name')?.value.trim();
-  const mem2Class = document.getElementById('setMem2Class')?.value.trim();
-
-  if (!teamName) {
-    showSettingsMessage(isKy ? 'Команданын атын жазыңыз' : 'Please specify a team name', true);
-    document.getElementById('setTeamName')?.focus();
+  if (!fullName) {
+    showSettingsMessage(isKy ? 'Аты-жөнүңүздү жазыңыз' : 'Введите свое имя (ФИО)', true);
+    document.getElementById('setFullName')?.focus();
     return;
   }
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showSettingsMessage(isKy ? 'Туура электрондук почтаны жазыңыз' : 'Please provide a valid email address', true);
+    showSettingsMessage(isKy ? 'Туура электрондук почтаны жазыңыз' : 'Укажите корректный адрес электронной почты', true);
     document.getElementById('setEmail')?.focus();
     return;
   }
 
-  if (!mem1Name) {
-    showSettingsMessage(isKy ? '1-катышуучунун аты-жөнүн жазыңыз' : 'Please enter full name of member #1', true);
-    document.getElementById('setMem1Name')?.focus();
-    return;
-  }
-
-  if (!mem1Class || !ALLOWED_CLASSES.includes(mem1Class)) {
-    showSettingsMessage(isKy ? '1-катышуучунун классын тизмеден тандаңыз' : 'Please select grade for member #1 from list', true);
-    document.getElementById('setMem1Class')?.focus();
-    return;
-  }
-
-  if (!mem2Name) {
-    showSettingsMessage(isKy ? '2-катышуучунун аты-жөнүн жазыңыз' : 'Please enter full name of member #2', true);
-    document.getElementById('setMem2Name')?.focus();
-    return;
-  }
-
-  if (!mem2Class || !ALLOWED_CLASSES.includes(mem2Class)) {
-    showSettingsMessage(isKy ? '2-катышуучунун классын тизмеден тандаңыз' : 'Please select grade for member #2 from list', true);
-    document.getElementById('setMem2Class')?.focus();
-    return;
-  }
-
-  const members = [
-    { name: mem1Name, class: mem1Class },
-    { name: mem2Name, class: mem2Class }
-  ];
-
-  // Extra members (3, 4)
-  let extraError = null;
-  const extraInputs = document.querySelectorAll('.extra-member-item');
-  extraInputs.forEach((row, rIdx) => {
-    const memNum = rIdx + 3;
-    const name = row.querySelector('.extra-mem-name')?.value.trim();
-    const cls = row.querySelector('.extra-mem-class')?.value.trim();
-    if (name || cls) {
-      if (!name) {
-        extraError = isKy ? `${memNum}-катышуучунун аты-жөнүн жазыңыз` : `Please enter full name of member #${memNum}`;
-        return;
-      }
-      if (!cls || !ALLOWED_CLASSES.includes(cls)) {
-        extraError = isKy ? `${memNum}-катышуучунун классын тизмеден тандаңыз` : `Please select grade for member #${memNum} from list`;
-        return;
-      }
-      members.push({ name: name || '', class: cls || '' });
-    }
-  });
-
-  if (extraError) {
-    showSettingsMessage(extraError, true);
+  if (!grade) {
+    showSettingsMessage(isKy ? 'Классты тизмеден тандаңыз' : 'Выберите свой класс из списка', true);
+    document.getElementById('setGrade')?.focus();
     return;
   }
 
   try {
     if (saveBtn) {
       saveBtn.disabled = true;
-      saveBtn.innerHTML = `<span>⏳</span> <span>${isKy ? 'Сакталууда...' : 'Saving...'}</span>`;
+      saveBtn.innerHTML = `<span>⏳</span> <span>${isKy ? 'Сакталууда...' : 'Сохранение...'}</span>`;
     }
-
-    const payload = {
-      team_name: teamName,
-      category_id: catId ? parseInt(catId, 10) : null,
-      school: branch,
-      city: branch,
-      branch: branch,
-      email: email,
-      members
-    };
 
     const res = await apiFetch('/api/me', {
       method: 'PUT',
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        full_name: fullName,
+        email: email,
+        grade: grade
+      })
     });
 
-    if (res && res.ok && res.team) {
-      teamData = res.team;
-      localStorage.setItem('team', JSON.stringify(teamData));
+    if (res && res.ok && res.participant) {
+      window.participantData = res.participant;
       updateTeamNameHeader();
-      showSettingsMessage(isKy ? '✓ Өзгөртүүлөр ийгиликтүү сакталды!' : '✓ All changes saved successfully!', false);
+      showSettingsMessage(isKy ? '✓ Өзгөртүүлөр ийгиликтүү сакталды!' : '✓ Личные данные успешно сохранены!', false);
     } else {
-      showSettingsMessage(res.error || (isKy ? 'Өзгөртүүлөрдү сактоо мүмкүн болбоду' : 'Failed to save changes'), true);
+      showSettingsMessage(res?.error || (isKy ? 'Сактоодо ката чыкты' : 'Не удалось сохранить изменения'), true);
     }
   } catch (err) {
-    console.error(err);
-    showSettingsMessage(err.message || (isKy ? 'Ката кетти' : 'An error occurred while saving'), true);
+    console.error('Save personal settings error:', err);
+    showSettingsMessage(err.message || (isKy ? 'Ката кетти' : 'Произошла ошибка при сохранении'), true);
   } finally {
     if (saveBtn) {
       saveBtn.disabled = false;
-      saveBtn.innerHTML = `<span>💾</span> <span>${isKy ? 'Бардык өзгөртүүлөрдү сактоо' : 'Save All Changes'}</span>`;
+      saveBtn.innerHTML = `<span>💾</span> <span>${isKy ? 'Өзгөртүүлөрдү сактоо' : 'Сохранить изменения'}</span>`;
     }
   }
 }
@@ -2840,6 +2889,7 @@ async function renderTicketThread(ticketId, isKy) {
 function attachTabHandlers() {
   const map = {
     tabHome: { section: 'main', render: renderHomeSection },
+    tabTeam: { section: 'team', render: renderTeamSection },
     tabTests: { section: 'tests', render: renderTestsSection },
     tabResults: { section: 'results', render: renderResultsSection },
     tabLeaderboard: { section: 'leaderboard', render: renderLeaderboardSection },
@@ -2864,13 +2914,14 @@ function attachTabHandlers() {
   });
 }
 
-// Router for subpages: /team, /team/main, /team/tests, /team/results, /team/leaderboard, /team/announcements, /team/support, /team/settings
+// Router for subpages: /team, /team/main, /team/team, /team/tests, /team/results, /team/leaderboard, /team/announcements, /team/support, /team/settings
 function initTeamSectionFromUrl() {
   const path = window.location.pathname || '';
   const match = path.match(/^\/team\/([^/]+)/);
   const section = match ? match[1] : 'main';
   const map = {
     main: 'tabHome',
+    team: 'tabTeam',
     tests: 'tabTests',
     results: 'tabResults',
     leaderboard: 'tabLeaderboard',

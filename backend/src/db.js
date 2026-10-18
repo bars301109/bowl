@@ -98,14 +98,43 @@ async function executeWithRetry(querySql, params = []) {
       
       const isTransient = isTransientConnError(err);
       const isMissingTable = (err && err.code === '42P01');
+      const isCategoryConfirmedMismatch = (err && typeof err.message === 'string' && err.message.includes('category_confirmed'));
 
-      if ((isTransient || isMissingTable) && attempts < maxAttempts) {
+      if ((isTransient || isMissingTable || isCategoryConfirmedMismatch) && attempts < maxAttempts) {
         if (isMissingTable) {
           try {
             const { ensureSchema } = require('./services/schema');
             await ensureSchema();
           } catch (schemaErr) {
             console.error('Auto schema ensure failed:', schemaErr.message);
+          }
+        }
+
+        if (isCategoryConfirmedMismatch) {
+          try {
+            console.log('🔄 Auto-healing category_confirmed column to boolean...');
+            await pool.query(`
+              DO $$ 
+              BEGIN 
+                IF EXISTS (
+                  SELECT 1 FROM information_schema.columns 
+                  WHERE table_name = 'participants' AND column_name = 'category_confirmed' AND data_type != 'boolean'
+                ) THEN 
+                  ALTER TABLE participants ALTER COLUMN category_confirmed DROP DEFAULT;
+                  ALTER TABLE participants ALTER COLUMN category_confirmed TYPE boolean 
+                    USING (
+                      CASE 
+                        WHEN category_confirmed::text IN ('1', 'true', 't', 'yes') THEN true 
+                        ELSE false 
+                      END
+                    );
+                  ALTER TABLE participants ALTER COLUMN category_confirmed SET DEFAULT false;
+                END IF;
+              END $$;
+            `);
+            console.log('✅ category_confirmed column successfully healed to boolean');
+          } catch (healErr) {
+            console.error('Auto heal category_confirmed failed:', healErr.message);
           }
         }
         
