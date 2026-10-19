@@ -322,11 +322,16 @@ function sendPage(res, pageName, next) {
 
 // --- Startup ---
 async function initializeApp() {
+  // Открываем порт немедленно, чтобы платформа деплоя сразу приняла приложение
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+
   try {
-    // Test DB connection
+    // Тест подключения к базе
     const connected = await db.testConnection();
     if (!connected) {
-      console.warn('⚠️  Database connection failed, but continuing startup...');
+      console.warn('⚠️  Database connection failed, but server is listening and continuing startup...');
     }
 
     await ensureSchema();
@@ -337,20 +342,13 @@ async function initializeApp() {
     console.log(`📍 Port: ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🗄️  Database: PostgreSQL (persistent)`);
-    console.log(`📧 Email: Resend (HTTP API)`);
+    console.log(`📧 Email: Resend / SMTP`);
     console.log(`🔗 URL: http://localhost:${PORT}`);
     console.log(`🔐 Admin: http://localhost:${PORT}/admin-login`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('');
-
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server listening on port ${PORT}`);
-    });
   } catch (err) {
-    console.error('❌ Database/schema init failed:', err);
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server listening on port ${PORT} (with schema warning)`);
-    });
+    console.error('❌ Database/schema init failed:', err.message);
   }
 }
 

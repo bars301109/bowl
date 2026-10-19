@@ -1,5 +1,10 @@
 /* Email service — Supports Gmail / SMTP (via Nodemailer) and Resend HTTP API */
-const nodemailer = require('nodemailer');
+let nodemailer = null;
+try {
+  nodemailer = require('nodemailer');
+} catch (e) {
+  nodemailer = null;
+}
 const {
   RESEND_API_KEY,
   RESEND_FROM,
@@ -49,6 +54,9 @@ function escapeHtml(str) {
 }
 
 async function sendViaNodemailer({ to, subject, html }) {
+  if (!nodemailer) {
+    return { ok: false, reason: 'Nodemailer module is not installed' };
+  }
   let transporter = null;
   let fromAddress = '';
 

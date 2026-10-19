@@ -57,7 +57,7 @@ if (sqlHost && sqlDbName && sqlUser) {
     const isLocalhost = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
 
     if (!isLocalhost && !connectionString.includes('sslmode=')) {
-      connectionString += (connectionString.includes('?') ? '&' : '?') + 'uselibpqcompat=true&sslmode=require';
+      connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
     }
 
     pool = new Pool({
