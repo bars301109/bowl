@@ -1620,7 +1620,9 @@ async function renderTestsSection(btn) {
     }
 
     out.querySelectorAll('.take').forEach(b => {
-      b.onclick = () => startTest(b.dataset.id);
+      const testCard = b.closest('.test-card-modern') || b.closest('.test-card');
+      const title = testCard?.querySelector('.test-card-title')?.textContent || '';
+      b.onclick = () => showProctorBriefingModal(b.dataset.id, title);
     });
   } catch (err) {
     console.error(err);
@@ -1779,7 +1781,109 @@ async function renderResultsSection(btn) {
   }
 }
 
-async function startTest(id) {
+function showProctorBriefingModal(testId, testTitle = '') {
+  const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
+  const isKy = lang === 'ky';
+  const isRu = lang === 'ru';
+
+  let modal = document.getElementById('proctorBriefModal');
+  if (modal) modal.remove();
+
+  modal = document.createElement('div');
+  modal.id = 'proctorBriefModal';
+  modal.className = 'proctor-brief-modal-overlay';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+
+  const titleText = isKy ? 'Тестти толук экранда тапшыруу' : (isRu ? 'Сдача теста в полноэкранном режиме' : 'Fullscreen Proctoring Mode');
+  const rule1Title = isKy ? 'Толук экран режими' : (isRu ? 'Полноэкранный режим' : 'Fullscreen Mode');
+  const rule1Desc = isKy 
+    ? 'Тест бүткөнгө чейин браузер толук экран режиминде болот. Чыгууга жана башка барактарга өтүүгө болбойт.' 
+    : (isRu ? 'Тест развернется на весь экран. Выход из полноэкранного режима и навигация по сайту заблокированы.' : 'The test opens in full screen. Exiting fullscreen and site navigation are locked until submitted.');
+
+  const rule2Title = isKy ? 'Өтмөктөрдү которууга тыюу салынат' : (isRu ? 'Запрет переключения вкладок' : 'Tab Switching Prohibited');
+  const rule2Desc = isKy 
+    ? 'Башка өтмөккө, терезеге же программага өтүү аракети эреже бузуу катары катталат.' 
+    : (isRu ? 'Попытки свернуть окно, переключиться на другие вкладки или сторонние приложения фиксируются.' : 'Attempts to switch tabs, minimize windows, or use other apps are recorded as violations.');
+
+  const rule3Title = isKy ? '3 эскертүү чеги' : (isRu ? 'Лимит в 3 предупреждения' : '3-Warning Maximum Limit');
+  const rule3Desc = isKy 
+    ? '3 эскертүүдөн кийин тест автоматтык түрдө аяктап, учурдагы жооптор жөнөтүлөт.' 
+    : (isRu ? 'После 3 предупреждений тест завершится автоматически с отправкой текущих ответов.' : 'After 3 warnings, the test is automatically ended and your answers are submitted.');
+
+  const cancelBtnText = isKy ? 'Артка' : (isRu ? 'Отмена' : 'Cancel');
+  const startBtnText = isKy ? '⛶ Эрежелерди кабыл алып баштоо' : (isRu ? '⛶ Принять правила и начать' : '⛶ Accept & Start Test');
+
+  modal.innerHTML = `
+    <div class="proctor-brief-card">
+      <div class="proctor-brief-header">
+        <span class="proctor-brief-icon">🔒</span>
+        <h3 class="proctor-brief-title">${titleText}</h3>
+      </div>
+      <p class="proctor-brief-subtitle">${escapeHtml(testTitle || '')}</p>
+
+      <div class="proctor-brief-rules">
+        <div class="proctor-rule-item">
+          <span class="proctor-rule-num">1</span>
+          <div>
+            <strong>${rule1Title}</strong>
+            <p>${rule1Desc}</p>
+          </div>
+        </div>
+        <div class="proctor-rule-item">
+          <span class="proctor-rule-num">2</span>
+          <div>
+            <strong>${rule2Title}</strong>
+            <p>${rule2Desc}</p>
+          </div>
+        </div>
+        <div class="proctor-rule-item">
+          <span class="proctor-rule-num">3</span>
+          <div>
+            <strong>${rule3Title}</strong>
+            <p>${rule3Desc}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="proctor-brief-actions">
+        <button type="button" class="btn btn-secondary" id="proctorCancelBtn">${cancelBtnText}</button>
+        <button type="button" class="btn btn-primary" id="proctorStartBtn">
+          <span>${startBtnText}</span>
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById('proctorCancelBtn').onclick = () => {
+    modal.remove();
+  };
+
+  document.getElementById('proctorStartBtn').onclick = async () => {
+    modal.remove();
+    // Synchronously request browser fullscreen on click user activation
+    try {
+      const el = document.documentElement;
+      if (el.requestFullscreen) {
+        await el.requestFullscreen().catch(() => {});
+      } else if (el.webkitRequestFullscreen) {
+        await el.webkitRequestFullscreen().catch(() => {});
+      } else if (el.mozRequestFullScreen) {
+        await el.mozRequestFullScreen().catch(() => {});
+      } else if (el.msRequestFullscreen) {
+        await el.msRequestFullscreen().catch(() => {});
+      }
+    } catch {}
+    executeStartTest(testId);
+  };
+}
+
+async function startTest(id, title = '') {
+  showProctorBriefingModal(id, title);
+}
+
+async function executeStartTest(id) {
   const out = document.getElementById('tabContent');
   const runner = new QuizRunner({
     testId: id,

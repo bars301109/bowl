@@ -23,7 +23,7 @@ const teamRoutes = require('./routes/public/team');
 const adminRoutes = require('./routes/admin');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend', 'src');
 
 // Disable server technology banner

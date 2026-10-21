@@ -170,13 +170,57 @@ const QUIZ_STRINGS = {
   },
   retry_submit: {
     en: 'Retry submission',
-    ky: 'Кайра жөнөтүү'
+    ky: 'Кайра жөнөтүү',
+    ru: 'Повторить отправку'
+  },
+  lockdown_badge: {
+    en: 'Fullscreen Active',
+    ky: 'Толук экран активдүү',
+    ru: 'Полноэкранный режим'
+  },
+  violations_short: {
+    en: 'Warnings',
+    ky: 'Эскертүүлөр',
+    ru: 'Предупреждения'
+  },
+  guard_title: {
+    en: 'Fullscreen Mode Required',
+    ky: 'Толук экран режими талап кылынат',
+    ru: 'Требуется полноэкранный режим'
+  },
+  guard_desc: {
+    en: 'You have exited fullscreen mode or switched windows. The test must be taken in fullscreen mode without switching tabs.',
+    ky: 'Сиз толук экран режиминен чыктыңыз же башка терезеге өттүңүз. Тестти башка тиркемелерге же өтмөктөргө өтпөстөн толук экранда тапшыруу керек.',
+    ru: 'Вы вышли из полноэкранного режима или переключили окно. Для соблюдения правил тест необходимо проходить на весь экран без переключения вкладок.'
+  },
+  guard_restore_btn: {
+    en: '⛶ Return to Fullscreen Mode',
+    ky: '⛶ Толук экранга кайтуу',
+    ru: '⛶ Вернуться в полноэкранный режим'
+  },
+  disqualified_title: {
+    en: 'Warning Limit Exceeded (3/3)',
+    ky: 'Эскертүүлөрдүн чеги ашты (3/3)',
+    ru: 'Превышен лимит нарушений (3/3)'
+  },
+  disqualified_desc: {
+    en: 'You have exited fullscreen or switched tabs 3 times. The test is now being automatically completed and submitted.',
+    ky: 'Сиз 3 жолу толук экрандан чыктыңыз же башка терезеге өттүңүз. Тест автоматтык түрдө аяктап, жооптор жөнөтүлүүдө.',
+    ru: 'Вы 3 раза вышли из полноэкранного режима или переключили вкладку. Тест автоматически завершается и отправляется.'
+  },
+  leave_warning: {
+    en: 'Your test is active! Leaving the page may cause your progress to be lost or automatically submitted.',
+    ky: 'Тест тапшыруу жүрүп жатат! Барактан чыксаңыз, жыйынтыктар жоголуп же автоматтык тапшырылышы мүмкүн.',
+    ru: 'Идет тестирование! При уходе со страницы результаты могут быть утеряны.'
   }
 };
 
 function qText(key, lang) {
-  const l = (lang === 'ky') ? 'ky' : 'en';
-  return (QUIZ_STRINGS[key] && QUIZ_STRINGS[key][l]) || (QUIZ_STRINGS[key] && QUIZ_STRINGS[key].en) || key;
+  const l = (lang === 'ky') ? 'ky' : (lang === 'ru' ? 'ru' : 'en');
+  if (QUIZ_STRINGS[key]) {
+    return QUIZ_STRINGS[key][l] || QUIZ_STRINGS[key].en || QUIZ_STRINGS[key].ky || QUIZ_STRINGS[key].ru || key;
+  }
+  return key;
 }
 
 class QuizRunner {
@@ -195,23 +239,337 @@ class QuizRunner {
     this.clientEndTime = null;
     this.remainingSec = 3600;
     this.isSubmitting = false;
+    this.isFinished = false;
 
-    this.onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        this.syncServerSession();
+    // Proctoring & Lockdown state
+    this.violationCount = 0;
+    this.maxViolations = 3;
+    this.lockdownShell = null;
+    this.activeContainer = options.container;
+    this.hiddenAt = null;
+
+    // Bound listeners for clean removal
+    this.boundFullscreenChange = this.handleFullscreenChange.bind(this);
+    this.boundVisibilityChange = this.handleVisibilityChange.bind(this);
+    this.boundWindowBlur = this.handleWindowBlur.bind(this);
+    this.boundBeforeUnload = this.handleBeforeUnload.bind(this);
+    this.boundPopState = this.handlePopState.bind(this);
+    this.boundKeyDown = this.handleKeyDown.bind(this);
+    this.boundContextMenu = this.handleContextMenu.bind(this);
+  }
+
+  async requestBrowserFullscreen() {
+    try {
+      const el = document.documentElement;
+      if (el.requestFullscreen) {
+        await el.requestFullscreen().catch(() => {});
+      } else if (el.webkitRequestFullscreen) {
+        await el.webkitRequestFullscreen().catch(() => {});
+      } else if (el.mozRequestFullScreen) {
+        await el.mozRequestFullScreen().catch(() => {});
+      } else if (el.msRequestFullscreen) {
+        await el.msRequestFullscreen().catch(() => {});
       }
-    };
+    } catch (e) {
+      console.warn('Native fullscreen request note:', e.message);
+    }
+  }
+
+  async exitBrowserFullscreen() {
+    try {
+      if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+          await document.webkitExitFullscreen().catch(() => {});
+        } else if (document.mozCancelFullScreen) {
+          await document.mozCancelFullScreen().catch(() => {});
+        } else if (document.msExitFullscreen) {
+          await document.msExitFullscreen().catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.warn('Native fullscreen exit note:', e.message);
+    }
+  }
+
+  setupLockdown() {
+    const lang = getQuizLang();
+    document.body.classList.add('quiz-lockdown-active');
+
+    // Remove any existing leftover shell
+    const oldShell = document.getElementById('quizLockdownShell');
+    if (oldShell) oldShell.remove();
+
+    this.lockdownShell = document.createElement('div');
+    this.lockdownShell.id = 'quizLockdownShell';
+    this.lockdownShell.className = 'quiz-lockdown-shell';
+    this.lockdownShell.setAttribute('role', 'dialog');
+    this.lockdownShell.setAttribute('aria-modal', 'true');
+    this.lockdownShell.setAttribute('aria-label', 'Akylman Quiz Bowl Proctoring Environment');
+
+    this.lockdownShell.innerHTML = `
+      <header class="quiz-lockdown-topbar">
+        <div class="quiz-lockdown-brand">
+          <img src="/images/лого.png" alt="Akylman" class="quiz-lockdown-logo" width="30" height="28" />
+          <span class="quiz-lockdown-title" id="quizLockdownTitle">${qText('default_title', lang)}</span>
+          <span class="quiz-lockdown-tag">🔒 ${qText('lockdown_badge', lang)}</span>
+        </div>
+        <div class="quiz-lockdown-center">
+          <span class="quiz-timer-badge" id="quizHudTimer">⏱ --:--</span>
+        </div>
+        <div class="quiz-lockdown-right">
+          <span class="quiz-violations-badge" id="quizViolationsBadge">⚠️ ${qText('violations_short', lang)}: 0/${this.maxViolations}</span>
+          <button type="button" class="btn btn-outline-success font-semibold" id="quizLockdownFinishBtn">
+            ${qText('finish_test', lang)}
+          </button>
+        </div>
+      </header>
+      <div class="quiz-lockdown-body" id="quizLockdownBody"></div>
+    `;
+
+    document.body.appendChild(this.lockdownShell);
+    this.activeContainer = document.getElementById('quizLockdownBody');
+
+    document.getElementById('quizLockdownFinishBtn')?.addEventListener('click', () => {
+      this.confirmAndSubmit();
+    });
+
+    // Attach proctoring event listeners
+    document.addEventListener('fullscreenchange', this.boundFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', this.boundFullscreenChange);
+    document.addEventListener('mozfullscreenchange', this.boundFullscreenChange);
+    document.addEventListener('MSFullscreenChange', this.boundFullscreenChange);
+    document.addEventListener('visibilitychange', this.boundVisibilityChange);
+    window.addEventListener('blur', this.boundWindowBlur);
+    window.addEventListener('beforeunload', this.boundBeforeUnload);
+    window.addEventListener('popstate', this.boundPopState);
+    document.addEventListener('keydown', this.boundKeyDown, true);
+    document.addEventListener('contextmenu', this.boundContextMenu, true);
+
+    // Browser history trap
+    try {
+      history.pushState({ akylmanQuizActive: true }, '', location.href);
+    } catch {}
+
+    // Request native fullscreen
+    this.requestBrowserFullscreen();
+  }
+
+  teardownLockdown() {
+    this.stopTimers();
+    document.body.classList.remove('quiz-lockdown-active');
+
+    // Remove event listeners
+    document.removeEventListener('fullscreenchange', this.boundFullscreenChange);
+    document.removeEventListener('webkitfullscreenchange', this.boundFullscreenChange);
+    document.removeEventListener('mozfullscreenchange', this.boundFullscreenChange);
+    document.removeEventListener('MSFullscreenChange', this.boundFullscreenChange);
+    document.removeEventListener('visibilitychange', this.boundVisibilityChange);
+    window.removeEventListener('blur', this.boundWindowBlur);
+    window.removeEventListener('beforeunload', this.boundBeforeUnload);
+    window.removeEventListener('popstate', this.boundPopState);
+    document.removeEventListener('keydown', this.boundKeyDown, true);
+    document.removeEventListener('contextmenu', this.boundContextMenu, true);
+
+    // Remove shells & guard overlays
+    if (this.lockdownShell) {
+      this.lockdownShell.remove();
+      this.lockdownShell = null;
+    }
+    const guard = document.getElementById('quizGuardOverlay');
+    if (guard) guard.remove();
+
+    this.exitBrowserFullscreen();
+  }
+
+  handleFullscreenChange() {
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    if (!isFs && !this.isFinished && !this.isSubmitting) {
+      this.recordViolation('fullscreen_exit');
+    } else if (isFs) {
+      // Re-entered fullscreen -> dismiss guard overlay if active and not disqualified
+      const guard = document.getElementById('quizGuardOverlay');
+      if (guard && this.violationCount < this.maxViolations) {
+        guard.remove();
+      }
+    }
+  }
+
+  handleVisibilityChange() {
+    if (this.isFinished || this.isSubmitting) return;
+    if (document.hidden) {
+      this.hiddenAt = Date.now();
+    } else {
+      if (this.hiddenAt && (Date.now() - this.hiddenAt > 600)) {
+        this.recordViolation('tab_switch');
+      }
+      this.hiddenAt = null;
+      this.syncServerSession();
+    }
+  }
+
+  handleWindowBlur() {
+    if (this.isFinished || this.isSubmitting) return;
+    this.recordViolation('window_blur');
+  }
+
+  handleBeforeUnload(e) {
+    if (!this.isFinished && !this.isSubmitting) {
+      const lang = getQuizLang();
+      const msg = qText('leave_warning', lang);
+      e.preventDefault();
+      e.returnValue = msg;
+      return msg;
+    }
+  }
+
+  handlePopState(e) {
+    if (!this.isFinished && !this.isSubmitting) {
+      try {
+        history.pushState({ akylmanQuizActive: true }, '', location.href);
+      } catch {}
+      this.confirmAndSubmit();
+    }
+  }
+
+  handleKeyDown(e) {
+    if (this.isFinished || this.isSubmitting) return;
+    const key = e.key;
+    const ctrl = e.ctrlKey || e.metaKey;
+
+    // Block F5 (reload), F11 (browser fullscreen toggle), F12 (devtools)
+    if (key === 'F5' || key === 'F11' || key === 'F12') {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+
+    // Block Ctrl+R (reload), Ctrl+U (source), Ctrl+P (print), Ctrl+S (save)
+    if (ctrl && (key === 'r' || key === 'R' || key === 'u' || key === 'U' || key === 'p' || key === 'P' || key === 's' || key === 'S')) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+
+    // Block Devtools combinations (Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C)
+    if (ctrl && e.shiftKey && (key === 'i' || key === 'I' || key === 'j' || key === 'J' || key === 'c' || key === 'C')) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+
+    // Prevent copy/cut on question text (allow typing in inputs)
+    if (ctrl && (key === 'c' || key === 'C' || key === 'x' || key === 'X')) {
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    }
+  }
+
+  handleContextMenu(e) {
+    if (!this.isFinished && !this.isSubmitting) {
+      e.preventDefault();
+      return false;
+    }
+  }
+
+  recordViolation(reason) {
+    if (this.isFinished || this.isSubmitting) return;
+
+    // Debounce rapid blur/fullscreen duplicate triggers within 500ms
+    const now = Date.now();
+    if (this.lastViolationAt && (now - this.lastViolationAt < 500)) return;
+    this.lastViolationAt = now;
+
+    this.violationCount++;
+    const lang = getQuizLang();
+
+    // Update topbar badge
+    const badge = document.getElementById('quizViolationsBadge');
+    if (badge) {
+      badge.textContent = `⚠️ ${qText('violations_short', lang)}: ${this.violationCount}/${this.maxViolations}`;
+      badge.classList.add('has-violations');
+    }
+
+    if (this.violationCount >= this.maxViolations) {
+      this.showDisqualifiedGuard();
+      this.submitAnswers(true);
+    } else {
+      this.showGuardOverlay();
+    }
+  }
+
+  showGuardOverlay() {
+    const lang = getQuizLang();
+    let guard = document.getElementById('quizGuardOverlay');
+    if (!guard) {
+      guard = document.createElement('div');
+      guard.id = 'quizGuardOverlay';
+      guard.className = 'quiz-guard-overlay';
+      guard.setAttribute('role', 'alertdialog');
+      guard.setAttribute('aria-modal', 'true');
+      document.body.appendChild(guard);
+    }
+
+    guard.innerHTML = `
+      <div class="quiz-guard-card">
+        <div class="quiz-guard-icon">⚠️</div>
+        <h3 class="quiz-guard-title">${qText('guard_title', lang)}</h3>
+        <p class="quiz-guard-desc">${qText('guard_desc', lang)}</p>
+        <div class="quiz-guard-badge" id="quizGuardBadge">
+          ${qText('violations_short', lang)}: <strong>${this.violationCount} / ${this.maxViolations}</strong>
+        </div>
+        <button type="button" class="quiz-guard-btn" id="quizGuardRestoreBtn">
+          ${qText('guard_restore_btn', lang)}
+        </button>
+      </div>
+    `;
+
+    document.getElementById('quizGuardRestoreBtn')?.addEventListener('click', async () => {
+      await this.requestBrowserFullscreen();
+      guard.remove();
+    });
+  }
+
+  showDisqualifiedGuard() {
+    const lang = getQuizLang();
+    let guard = document.getElementById('quizGuardOverlay');
+    if (!guard) {
+      guard = document.createElement('div');
+      guard.id = 'quizGuardOverlay';
+      guard.className = 'quiz-guard-overlay';
+      guard.setAttribute('role', 'alertdialog');
+      guard.setAttribute('aria-modal', 'true');
+      document.body.appendChild(guard);
+    }
+
+    guard.innerHTML = `
+      <div class="quiz-guard-card">
+        <div class="quiz-guard-icon">🚫</div>
+        <h3 class="quiz-guard-title">${qText('disqualified_title', lang)}</h3>
+        <p class="quiz-guard-desc">${qText('disqualified_desc', lang)}</p>
+        <div class="loading-spinner mt-3"></div>
+      </div>
+    `;
   }
 
   async start() {
     const lang = getQuizLang();
-    this.container.innerHTML = `
+
+    // 1. Activate Fullscreen Lockdown Shell
+    this.setupLockdown();
+
+    this.activeContainer.innerHTML = `
       <div class="loading-spinner" role="status"></div>
       <p class="text-center mt-3 font-semibold text-gray-700">${qText('syncing', lang)}</p>
     `;
 
     try {
-      // 1. Register or sync session with server
+      // 2. Register or sync session with server
       let sessionData = null;
       try {
         const sessionRes = await apiFetch(`/api/tests/${this.testId}/start`, {
@@ -228,7 +586,7 @@ class QuizRunner {
         console.warn('Session start note:', err.message);
       }
 
-      // 2. Fetch test questions
+      // 3. Fetch test questions
       const res = await apiFetch(`/api/tests/${this.testId}`);
       if (res.test && res.questions) {
         this.testData = res.test;
@@ -240,19 +598,28 @@ class QuizRunner {
         throw new Error(qText('invalid_format', lang));
       }
 
+      // Update test title in lockdown topbar
+      const titleEl = document.getElementById('quizLockdownTitle');
+      if (titleEl && this.testData?.title) {
+        titleEl.textContent = this.testData.title;
+      }
+
       if (!this.questions.length) {
-        this.container.innerHTML = `
+        this.activeContainer.innerHTML = `
           <div class="empty-state">
             <div class="empty-icon">📝</div>
             <p class="empty-message">${qText('no_questions', lang)}</p>
             <button class="btn btn-secondary mt-3" id="quizBackBtn">${qText('back_to_tests', lang)}</button>
           </div>
         `;
-        document.getElementById('quizBackBtn')?.addEventListener('click', this.onCancel);
+        document.getElementById('quizBackBtn')?.addEventListener('click', () => {
+          this.teardownLockdown();
+          this.onCancel();
+        });
         return;
       }
 
-      // 3. Fallback timer if session did not provide one
+      // 4. Fallback timer if session did not provide one
       if (!this.clientEndTime) {
         const durMins = this.testData.duration_minutes || 60;
         this.remainingSec = durMins * 60;
@@ -272,6 +639,7 @@ class QuizRunner {
       this.render();
     } catch (err) {
       console.error('Quiz start error:', err);
+      this.teardownLockdown();
       const lang = getQuizLang();
       this.container.innerHTML = `
         <div class="error-message" role="alert">
@@ -388,7 +756,7 @@ class QuizRunner {
     const progressPercent = Math.round((answeredCount / total) * 100);
     const q = this.questions[this.currentIndex];
 
-    this.container.innerHTML = `
+    (this.activeContainer || this.container).innerHTML = `
       <div class="quiz-sticky-hud" role="region" aria-label="${qText('hud_label', lang)}">
         <div class="quiz-hud-top">
           <div>
@@ -634,7 +1002,8 @@ class QuizRunner {
     this.stopTimers();
     const lang = getQuizLang();
 
-    this.container.innerHTML = `
+    const target = this.activeContainer || this.container;
+    target.innerHTML = `
       <div class="loading-spinner" role="status"></div>
       <p class="text-center mt-3 font-semibold text-gray-700">${qText('submitting', lang)}</p>
     `;
@@ -652,6 +1021,9 @@ class QuizRunner {
 
       // Clear draft on successful submission
       DraftManager.clear(this.testId);
+
+      this.isFinished = true;
+      this.teardownLockdown();
 
       const total = typeof result.total === 'number' ? result.total : this.questions.length;
       const score = typeof result.score === 'number' ? result.score : 0;
@@ -703,7 +1075,8 @@ class QuizRunner {
       const lang = getQuizLang();
       Toast.error(qText('submit_failed', lang) + ': ' + err.message);
 
-      this.container.innerHTML = `
+      const errorTarget = this.activeContainer || this.container;
+      errorTarget.innerHTML = `
         <div class="error-message" role="alert">
           <div class="error-icon">⚠️</div>
           <p class="error-text">${qText('submit_failed', lang)}: ${escapeHtml(err.message)}</p>
