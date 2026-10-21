@@ -7,7 +7,7 @@ function signTeamToken(participant) {
   return jwt.sign(
     { id: participant.id, email: participant.email, full_name: participant.full_name, team_id: participant.team_id },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
+    { expiresIn: JWT_EXPIRES_IN },
   );
 }
 
@@ -70,7 +70,7 @@ function signAdminToken(username = 'admin') {
   return jwt.sign(
     { role: 'admin', user: username },
     ADMIN_JWT_SECRET,
-    { expiresIn: ADMIN_JWT_EXPIRES_IN }
+    { expiresIn: ADMIN_JWT_EXPIRES_IN },
   );
 }
 

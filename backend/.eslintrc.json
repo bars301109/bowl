@@ -15,6 +15,7 @@
     "quotes": ["error", "single", { "avoidEscape": true }],
     "comma-dangle": ["error", "always-multiline"],
     "no-trailing-spaces": "error",
-    "eol-last": "error"
+    "eol-last": "error",
+    "no-empty": ["error", { "allowEmptyCatch": true }]
   }
 }

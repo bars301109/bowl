@@ -50,7 +50,7 @@ async function ensureFilesTable() {
 
 async function saveFileToDb({ filename, mimeType, dataBase64, sizeBytes }) {
   const safeMime = guessMimeType(filename, mimeType || 'image/png');
-  
+
   // Clean base64 string
   let cleanBase64 = String(dataBase64 || '').trim();
   if (cleanBase64.startsWith('data:')) {
@@ -58,7 +58,7 @@ async function saveFileToDb({ filename, mimeType, dataBase64, sizeBytes }) {
     if (commaIdx !== -1) cleanBase64 = cleanBase64.substring(commaIdx + 1);
   }
   cleanBase64 = cleanBase64.replace(/\s+/g, '');
-  
+
   const size = sizeBytes || Buffer.byteLength(cleanBase64, 'base64');
 
   // 1. Write to local disk uploads directory FIRST for guaranteed zero-failure serving
@@ -84,12 +84,12 @@ async function saveFileToDb({ filename, mimeType, dataBase64, sizeBytes }) {
     if (existing && existing.id) {
       await db.runAsync(
         'UPDATE public.uploaded_files SET mime_type = $1, data_base64 = $2, size_bytes = $3, created_at = NOW()::text WHERE id = $4',
-        [safeMime, cleanBase64, size, existing.id]
+        [safeMime, cleanBase64, size, existing.id],
       );
     } else {
       await db.runAsync(
         'INSERT INTO public.uploaded_files (filename, mime_type, data_base64, size_bytes, created_at) VALUES ($1,$2,$3,$4,NOW()::text) ON CONFLICT (filename) DO UPDATE SET mime_type = EXCLUDED.mime_type, data_base64 = EXCLUDED.data_base64, size_bytes = EXCLUDED.size_bytes',
-        [filename, safeMime, cleanBase64, size]
+        [filename, safeMime, cleanBase64, size],
       );
     }
   } catch (dbErr) {
@@ -116,7 +116,7 @@ async function getFileFromDb(filename) {
     // 2. Query Cloud SQL PostgreSQL
     const row = await db.getAsync('SELECT mime_type, data_base64, size_bytes FROM public.uploaded_files WHERE filename = $1', [filename]).catch(() => null);
     if (!row || !row.data_base64) return null;
-    
+
     let cleanBase64 = String(row.data_base64).trim().replace(/\s+/g, '');
     if (cleanBase64.startsWith('data:')) {
       const commaIdx = cleanBase64.indexOf(',');

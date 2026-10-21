@@ -153,78 +153,78 @@ app.get('/', async (req, res) => {
           title_en: '', title_ky: '', title_ru: '',
           content_en: 'For middle and high school students',
           content_ky: 'Орто жана жогорку класстын окуучулары үчүн',
-          content_ru: 'Для учеников средней и старшей школы'
+          content_ru: 'Для учеников средней и старшей школы',
         },
         stage_1: {
           badge_en: 'Round 1', badge_ky: 'Раунд 1', badge_ru: 'Раунд 1',
           title_en: 'Preliminary Round', title_ky: 'Алгачкы раунд', title_ru: 'Предварительный раунд',
           content_en: 'Online test: multiple choice and short answer questions',
           content_ky: 'Онлайн-тест: бир нече тандоо жана кыска жооп',
-          content_ru: 'Онлайн-тест: множественный выбор и короткий ответ'
+          content_ru: 'Онлайн-тест: множественный выбор и короткий ответ',
         },
         stage_2: {
           badge_en: 'Round 2', badge_ky: 'Раунд 2', badge_ru: 'Раунд 2',
           title_en: 'Semifinal', title_ky: 'Жарым финал', title_ru: 'Полуфинал',
           content_en: 'Live blitz questions in real time',
           content_ky: 'Реалдуу убакыт режиминде түз блиц-суроолор',
-          content_ru: 'Живые блиц-вопросы в режиме реального времени'
+          content_ru: 'Живые блиц-вопросы в режиме реального времени',
         },
         stage_3: {
           badge_en: 'Grand Final', badge_ky: 'Гранд-Финал', badge_ru: 'Гранд-Финал',
           title_en: 'Final', title_ky: 'Финал', title_ru: 'Финал',
           content_en: 'Final concluding round with top qualifying teams',
           content_ky: 'Эң мыкты командалар менен финалдык раунд',
-          content_ru: 'Финальный раунд с лучшими командами'
+          content_ru: 'Финальный раунд с лучшими командами',
         },
         team_composition: {
           badge_en: '01', badge_ky: '01', badge_ru: '01',
           title_en: 'Team Composition', title_ky: 'Команданын курамы', title_ru: 'О составе команды',
           content_en: '2–4 members from the same school',
           content_ky: 'Бир мектептен 2–4 адам',
-          content_ru: '2–4 человека из одной школы'
+          content_ru: '2–4 человека из одной школы',
         },
         categories_info: {
           badge_en: '02', badge_ky: '02', badge_ru: '02',
           title_en: 'Categories', title_ky: 'Категориялар', title_ru: 'Категории',
           content_en: 'Olympiad disciplines across subjects and tracks',
           content_ky: 'Предметтер жана багыттар боюнча олимпиадалык сабактар',
-          content_ru: 'Дисциплины олимпиады по предметам и направлениям'
+          content_ru: 'Дисциплины олимпиады по предметам и направлениям',
         },
         format_info: {
           badge_en: '03', badge_ky: '03', badge_ru: '03',
           title_en: 'Tournament Format', title_ky: 'Форматы', title_ru: 'Формат',
           content_en: 'Stages 1 and 2 are held online. Stage 3 (Final) is held offline at Akylman Presidential Lyceum.',
           content_ky: '1 жана 2-этаптар онлайн форматта өткөрүлөт. Үчүнчү этап оффлайн форматта өтөт.',
-          content_ru: 'Этапы 1 и 2 проводятся в онлайн-формате. Третий этап проводится в оффлайн-формате.'
+          content_ru: 'Этапы 1 и 2 проводятся в онлайн-формате. Третий этап проводится в оффлайн-формате.',
         },
         timeline_stage1: {
           badge_en: '🌐 Online Round', badge_ky: '🌐 Онлайн-тур', badge_ru: '🌐 Онлайн-тур',
           title_en: 'Stage 1 - Preliminary Round', title_ky: '1-этап - Тандоо туру', title_ru: 'Этап 1 - Отборочный тур',
           content_en: 'Teams take an online test in selected categories with multiple-choice and short-answer questions. Results determine teams advancing to the next round.',
           content_ky: 'Бул этапта командалар тандалган категориялар боюнча онлайн тестирлөөдөн өтүшөт. Катышуучулар бир нече тандоо жана кыска жооптуу суроолорго жооп беришет. Бул этаптын жыйынтыгы боюнча кийинки раундга чыга турган командалар аныкталат.',
-          content_ru: 'На этом этапе команды проходят онлайн-тестирование по выбранным категориям. Участники отвечают на вопросы с множественным выбором и короткими ответами. По результатам этого этапа определяются команды, которые пройдут в следующий раунд.'
+          content_ru: 'На этом этапе команды проходят онлайн-тестирование по выбранным категориям. Участники отвечают на вопросы с множественным выбором и короткими ответами. По результатам этого этапа определяются команды, которые пройдут в следующий раунд.',
         },
         timeline_stage2: {
           badge_en: '⚡ Semifinal • Online', badge_ky: '⚡ Жарым финал • Онлайн', badge_ru: '⚡ Полуфинал • Онлайн',
           title_en: 'Stage 2 - Semifinal', title_ky: '2-этап - Жарым финал', title_ru: 'Этап 2 - Полуфинал',
           content_en: 'This stage highlights the best teams among successful qualifiers. Teams compete in real time with challenging blitz questions across various domains.',
           content_ky: 'Бул этап ийгиликтүү командалардын арасынан эң мыктыларды аныктайт. Бул этапта татаалыраак суроолор камтылган онлайн тестирлөө өткөрүлөт. Командалар билимдин ар кандай категориялары боюнча блиц-суроолорго реалдуу убакытта жооп берип күч сынашышат.',
-          content_ru: 'Этап выявляет лучшие команды среди уже успешных. На этом этапе проводится онлайн-тестирование с более сложными вопросами. Команды соревнуются в режиме реального времени, отвечая на блиц-вопросы по различным категориям знаний.'
+          content_ru: 'Этап выявляет лучшие команды среди уже успешных. На этом этапе проводится онлайн-тестирование с более сложными вопросами. Команды соревнуются в режиме реального времени, отвечая на блиц-вопросы по различным категориям знаний.',
         },
         timeline_stage3: {
           badge_en: '🏆 Grand Final • Offline', badge_ky: '🏆 Гранд-Финал • Оффлайн', badge_ru: '🏆 Гранд-Финал • Оффлайн',
           title_en: 'Stage 3 - Final', title_ky: '3-этап - Финал', title_ru: 'Этап 3 - Финал',
           content_en: 'The Final is held offline at Akylman Presidential Lyceum (Cholpon-Ata). Concluding test among top teams from semifinals determines winners by total score.',
           content_ky: 'Финал «Акылман» Президенттик лицейинде (Чолпон-Ата ш.) оффлайн форматта өткөрүлөт. Жарым финалдын жыйынтыгы боюнча эң мыкты командалардын ортосунда жыйынтыктоочу тест. Жеңүүчүлөр топтолгон жалпы упайлардын саны боюнча аныкталат.',
-          content_ru: 'Финал проводится в оффлайн формате в Президентском лицее «Акылман» (Чолпон-Ата). Итоговый тест между лучшими командами по результатам полуфинала. Победители определяются по общему количеству набранных баллов.'
+          content_ru: 'Финал проводится в оффлайн формате в Президентском лицее «Акылман» (Чолпон-Ата). Итоговый тест между лучшими командами по результатам полуфинала. Победители определяются по общему количеству набранных баллов.',
         },
         footer_desc: {
           badge_en: '', badge_ky: '', badge_ru: '',
           title_en: '', title_ky: '', title_ru: '',
           content_en: 'Join the intellectual tournament for school students and unlock new opportunities for your team.',
           content_ky: 'Орто жана жогорку класстын окуучулары үчүн интеллектуалдык турнирге кошулуңуз жана командаңыз менен жаңы мүмкүнчүлүктөрдү ачкыла.',
-          content_ru: 'Присоединяйтесь к интеллектуальному турниру для школьников и откройте новые возможности для своей команды.'
-        }
+          content_ru: 'Присоединяйтесь к интеллектуальному турниру для школьников и откройте новые возможности для своей команды.',
+        },
       };
 
       const finalMap = Object.assign({}, FALLBACK_BLOCKS, blockMap);
@@ -321,14 +321,29 @@ function sendPage(res, pageName, next) {
 
 
 // --- Startup ---
+let initializationStarted = false;
+let serverInstance = null;
+
 async function initializeApp() {
-  // Открываем порт немедленно, чтобы платформа деплоя сразу приняла приложение
-  app.listen(PORT, '0.0.0.0', () => {
+  if (initializationStarted) {
+    return serverInstance;
+  }
+  initializationStarted = true;
+
+  // Bind port immediately so deployment startup probe succeeds
+  serverInstance = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
   });
 
+  serverInstance.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`⚠️ Port ${PORT} already in use`);
+    } else {
+      console.error('Server listen error:', err);
+    }
+  });
+
   try {
-    // Тест подключения к базе
     const connected = await db.testConnection();
     if (!connected) {
       console.warn('⚠️  Database connection failed, but server is listening and continuing startup...');
@@ -341,8 +356,8 @@ async function initializeApp() {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`📍 Port: ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🗄️  Database: PostgreSQL (persistent)`);
-    console.log(`📧 Email: Resend / SMTP`);
+    console.log('🗄️  Database: PostgreSQL (persistent)');
+    console.log('📧 Email: Resend / SMTP');
     console.log(`🔗 URL: http://localhost:${PORT}`);
     console.log(`🔐 Admin: http://localhost:${PORT}/admin-login`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -350,6 +365,8 @@ async function initializeApp() {
   } catch (err) {
     console.error('❌ Database/schema init failed:', err.message);
   }
+
+  return serverInstance;
 }
 
 // Graceful shutdown
@@ -365,8 +382,10 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-if (require.main === module) {
-  initializeApp();
+if (process.env.NODE_ENV !== 'test') {
+  initializeApp().catch((err) => {
+    console.error('Fatal initialization error:', err);
+  });
 }
 
 module.exports = app;

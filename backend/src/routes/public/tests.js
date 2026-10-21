@@ -1,7 +1,9 @@
 /* Public routes: tests, categories, settings */
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const db = require('../../db');
 const { teamAuth } = require('../../middleware/auth');
+const { JWT_SECRET } = require('../../config');
 
 const router = express.Router();
 const { allAsync, getAsync, runAsync } = db;
@@ -19,7 +21,24 @@ function computeAutoStatus(test) {
 // List available tests (filtered by status=published, time windows, category)
 router.get('/api/tests', async (req, res) => {
   try {
-    const categoryId = req.query.category_id ? parseInt(req.query.category_id, 10) || null : null;
+    let categoryId = req.query.category_id ? parseInt(req.query.category_id, 10) || null : null;
+
+    // If category_id not explicitly given, check authenticated participant's assigned category
+    if (!categoryId) {
+      const authHeader = req.headers['authorization'] || '';
+      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.cookies?.team_token || null);
+      if (token) {
+        try {
+          const payload = jwt.verify(token, JWT_SECRET);
+          if (payload && payload.id) {
+            const part = await getAsync('SELECT category_id FROM participants WHERE id = $1', [payload.id]);
+            if (part && part.category_id) {
+              categoryId = part.category_id;
+            }
+          }
+        } catch {}
+      }
+    }
     let tests;
     if (categoryId) {
       tests = await allAsync(
@@ -29,7 +48,7 @@ router.get('/api/tests', async (req, res) => {
          LEFT JOIN categories c ON c.id = t.category_id
          WHERE t.category_id = $1
          ORDER BY t.id`,
-        [categoryId]
+        [categoryId],
       );
     } else {
       tests = await allAsync(
@@ -37,7 +56,7 @@ router.get('/api/tests', async (req, res) => {
                 c.name_ru AS category_name_ru, c.name_ky AS category_name_ky, c.name_ru AS category_name
          FROM tests t
          LEFT JOIN categories c ON c.id = t.category_id
-         ORDER BY t.id`
+         ORDER BY t.id`,
       );
     }
 
@@ -79,7 +98,7 @@ router.get('/api/tests/:id', async (req, res) => {
     // Check test exists and is published
     const test = await getAsync(
       'SELECT id, title, description, preview_text, lang, duration_minutes, window_start, window_end, status FROM tests WHERE id = $1',
-      [testId]
+      [testId],
     );
     if (!test) return res.status(404).json({ error: 'Test not found' });
     if (test.status !== 'published') return res.status(403).json({ error: 'Тест ещё не опубликован' });
@@ -93,7 +112,7 @@ router.get('/api/tests/:id', async (req, res) => {
 
     const rows = await allAsync(
       'SELECT id, ordinal, text, options, points, type, attachment_url, category_id, lang FROM questions WHERE test_id=$1 ORDER BY ordinal',
-      [testId]
+      [testId],
     );
 
     rows.forEach((r) => {
@@ -131,11 +150,19 @@ router.post('/api/tests/:id/start', teamAuth, async (req, res) => {
     const now = Date.now();
 
     const test = await getAsync(
-      'SELECT id, title, duration_minutes, window_start, window_end, status FROM tests WHERE id = $1',
-      [testId]
+      'SELECT id, title, duration_minutes, window_start, window_end, status, category_id FROM tests WHERE id = $1',
+      [testId],
     );
     if (!test) return res.status(404).json({ error: 'Тест не найден' });
     if (test.status !== 'published') return res.status(403).json({ error: 'Тест ещё не опубликован' });
+
+    // Validate that participant is taking the test for their chosen category!
+    if (req.participantId && test.category_id) {
+      const part = await getAsync('SELECT category_id FROM participants WHERE id = $1', [req.participantId]);
+      if (part && part.category_id && part.category_id !== test.category_id) {
+        return res.status(403).json({ error: 'Бул тест сиздин тандаган предметтик категорияңызга дал келбейт' });
+      }
+    }
 
     // Time window check
     const start = test.window_start ? new Date(test.window_start).getTime() : null;
@@ -145,10 +172,19 @@ router.post('/api/tests/:id/start', teamAuth, async (req, res) => {
 
     // Check if already submitted
     const settings = await getAsync('SELECT one_submission_allowed FROM settings WHERE id=1');
-    const existingResult = await getAsync(
-      'SELECT id FROM results WHERE team_id = $1 AND test_id = $2',
-      [teamId, testId]
-    );
+    let existingResult = null;
+    try {
+      existingResult = await getAsync(
+        'SELECT id FROM results WHERE team_id = $1 AND test_id = $2 AND (participant_id = $3 OR participant_id IS NULL)',
+        [teamId, testId, req.participantId || null],
+      );
+    } catch {
+      await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS participant_id INTEGER').catch(() => {});
+      existingResult = await getAsync(
+        'SELECT id FROM results WHERE team_id = $1 AND test_id = $2',
+        [teamId, testId],
+      ).catch(() => null);
+    }
     if (existingResult && settings && settings.one_submission_allowed) {
       return res.status(400).json({ error: 'Вы уже сдали этот тест' });
     }
@@ -158,7 +194,7 @@ router.post('/api/tests/:id/start', teamAuth, async (req, res) => {
     // Check existing session
     let session = await getAsync(
       'SELECT * FROM test_sessions WHERE team_id = $1 AND test_id = $2',
-      [teamId, testId]
+      [teamId, testId],
     );
 
     // If no session exists, or session is expired, or session was completed:
@@ -173,12 +209,12 @@ router.post('/api/tests/:id/start', teamAuth, async (req, res) => {
       if (!session) {
         await runAsync(
           'INSERT INTO test_sessions (team_id, test_id, started_at, status, expires_at) VALUES ($1,$2,$3,$4,$5)',
-          [teamId, testId, startedAtIso, 'in_progress', expiresAtIso]
+          [teamId, testId, startedAtIso, 'in_progress', expiresAtIso],
         );
       } else {
         await runAsync(
           'UPDATE test_sessions SET started_at = $1, status = $2, expires_at = $3 WHERE team_id = $4 AND test_id = $5',
-          [startedAtIso, 'in_progress', expiresAtIso, teamId, testId]
+          [startedAtIso, 'in_progress', expiresAtIso, teamId, testId],
         );
       }
       session = {
@@ -221,11 +257,11 @@ router.get('/api/tests/:id/session', teamAuth, async (req, res) => {
 
     const session = await getAsync(
       'SELECT * FROM test_sessions WHERE team_id = $1 AND test_id = $2',
-      [teamId, testId]
+      [teamId, testId],
     );
     const result = await getAsync(
       'SELECT id, score, taken_at FROM results WHERE team_id = $1 AND test_id = $2',
-      [teamId, testId]
+      [teamId, testId],
     );
 
     if (!session) {
@@ -256,6 +292,58 @@ router.get('/api/tests/:id/session', teamAuth, async (req, res) => {
   }
 });
 
+// Check if any test session is currently active for this participant/team (for page reload recovery)
+router.get('/api/active-test-session', teamAuth, async (req, res) => {
+  try {
+    const teamId = parseInt(req.team.id, 10);
+    const now = Date.now();
+    const session = await getAsync(
+      "SELECT * FROM test_sessions WHERE team_id = $1 AND status = 'in_progress' ORDER BY id DESC LIMIT 1",
+      [teamId],
+    );
+    if (!session) {
+      return res.json({ active: false });
+    }
+    const test = await getAsync('SELECT id, title, duration_minutes, category_id FROM tests WHERE id = $1', [session.test_id]);
+    if (!test) {
+      return res.json({ active: false });
+    }
+    // Check if participant matches test category
+    if (req.participantId && test.category_id) {
+      const part = await getAsync('SELECT category_id FROM participants WHERE id = $1', [req.participantId]);
+      if (part && part.category_id && part.category_id !== test.category_id) {
+        return res.json({ active: false });
+      }
+    }
+    const durationSec = ((test?.duration_minutes) || 60) * 60;
+    const sessionStartMs = new Date(session.started_at).getTime();
+    const elapsedSec = Math.max(0, Math.floor((now - sessionStartMs) / 1000));
+    const remainingSec = Math.max(0, durationSec - elapsedSec);
+
+    if (remainingSec <= 0) {
+      await runAsync("UPDATE test_sessions SET status = 'completed' WHERE id = $1", [session.id]).catch(() => {});
+      return res.json({ active: false, expired: true });
+    }
+
+    res.json({
+      active: true,
+      test_id: session.test_id,
+      session: {
+        started_at: session.started_at,
+        duration_seconds: durationSec,
+        remaining_seconds: remainingSec,
+        expires_at: session.expires_at,
+      },
+      test: {
+        id: test.id,
+        title: test.title,
+      },
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Submit answers
 router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
   try {
@@ -266,11 +354,19 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
 
     // Check test exists and is published
     const test = await getAsync(
-      'SELECT id, duration_minutes, window_start, window_end, status FROM tests WHERE id = $1',
-      [testId]
+      'SELECT id, duration_minutes, window_start, window_end, status, category_id FROM tests WHERE id = $1',
+      [testId],
     );
     if (!test) return res.status(404).json({ error: 'Test not found' });
     if (test.status !== 'published') return res.status(403).json({ error: 'Тест не опубликован' });
+
+    // Validate that participant is submitting the test for their chosen category!
+    if (req.participantId && test.category_id) {
+      const part = await getAsync('SELECT category_id FROM participants WHERE id = $1', [req.participantId]);
+      if (part && part.category_id && part.category_id !== test.category_id) {
+        return res.status(403).json({ error: 'Бул тест сиздин тандаган предметтик категорияңызга дал келбейт' });
+      }
+    }
 
     // Check time window
     const now = Date.now();
@@ -281,10 +377,19 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
 
     // Check one-time submission / duplicate prevention
     const settings = await getAsync('SELECT one_submission_allowed FROM settings WHERE id=1');
-    const existing = await getAsync(
-      'SELECT id FROM results WHERE team_id = $1 AND test_id = $2',
-      [teamId, testId]
-    );
+    let existing = null;
+    try {
+      existing = await getAsync(
+        'SELECT id FROM results WHERE team_id = $1 AND test_id = $2 AND (participant_id = $3 OR participant_id IS NULL)',
+        [teamId, testId, req.participantId || null],
+      );
+    } catch {
+      await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS participant_id INTEGER').catch(() => {});
+      existing = await getAsync(
+        'SELECT id FROM results WHERE team_id = $1 AND test_id = $2',
+        [teamId, testId],
+      ).catch(() => null);
+    }
     if (existing && settings && settings.one_submission_allowed) {
       return res.status(400).json({ error: 'Вы уже сдали этот тест' });
     }
@@ -292,7 +397,7 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
     // Include correct in query!
     const qs = await allAsync(
       'SELECT id, ordinal, text, options, correct, points, type, category_id, lang FROM questions WHERE test_id=$1 ORDER BY ordinal',
-      [testId]
+      [testId],
     );
 
     if (!qs.length) {
@@ -302,7 +407,7 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
     // Check session in server DB
     const session = await getAsync(
       'SELECT * FROM test_sessions WHERE team_id = $1 AND test_id = $2',
-      [teamId, testId]
+      [teamId, testId],
     );
 
     let startedAt = session ? session.started_at : (clientStartTime ? (isNaN(Number(clientStartTime)) ? clientStartTime : new Date(Number(clientStartTime)).toISOString()) : new Date().toISOString());
@@ -359,22 +464,55 @@ router.post('/api/tests/:id/submit', teamAuth, async (req, res) => {
     // Record results atomically (update existing if retaking, or insert)
     const participantId = req.participantId || null;
     const catId = test.category_id || null;
-    if (existing) {
-      await runAsync(
-        'UPDATE results SET score = $1, answers = $2, taken_at = NOW(), started_at = $3, time_taken_sec = $4, participant_id = COALESCE($5, participant_id), category_id = COALESCE($6, category_id) WHERE id = $7',
-        [score, answersJson, startedAt, recordedTimeSec, participantId, catId, existing.id]
-      );
-    } else {
-      await runAsync(
-        'INSERT INTO results (team_id, test_id, score, answers, taken_at, started_at, time_taken_sec, participant_id, category_id) VALUES ($1,$2,$3,$4,NOW(),$5,$6,$7,$8)',
-        [teamId, testId, score, answersJson, startedAt, recordedTimeSec, participantId, catId]
-      );
+    try {
+      if (existing) {
+        await runAsync(
+          'UPDATE results SET score = $1, answers = $2, taken_at = NOW(), started_at = $3, time_taken_sec = $4, participant_id = COALESCE($5, participant_id), category_id = COALESCE($6, category_id) WHERE id = $7',
+          [score, answersJson, startedAt, recordedTimeSec, participantId, catId, existing.id],
+        );
+      } else {
+        await runAsync(
+          'INSERT INTO results (team_id, test_id, score, answers, taken_at, started_at, time_taken_sec, participant_id, category_id) VALUES ($1,$2,$3,$4,NOW(),$5,$6,$7,$8)',
+          [teamId, testId, score, answersJson, startedAt, recordedTimeSec, participantId, catId],
+        );
+      }
+    } catch (saveErr) {
+      console.warn('Initial result save notice:', saveErr.message);
+      // Auto-add columns if missing
+      await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS participant_id INTEGER').catch(() => {});
+      await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS category_id INTEGER').catch(() => {});
+      try {
+        if (existing) {
+          await runAsync(
+            'UPDATE results SET score = $1, answers = $2, taken_at = NOW(), started_at = $3, time_taken_sec = $4, participant_id = COALESCE($5, participant_id), category_id = COALESCE($6, category_id) WHERE id = $7',
+            [score, answersJson, startedAt, recordedTimeSec, participantId, catId, existing.id],
+          );
+        } else {
+          await runAsync(
+            'INSERT INTO results (team_id, test_id, score, answers, taken_at, started_at, time_taken_sec, participant_id, category_id) VALUES ($1,$2,$3,$4,NOW(),$5,$6,$7,$8)',
+            [teamId, testId, score, answersJson, startedAt, recordedTimeSec, participantId, catId],
+          );
+        }
+      } catch (finalRetryErr) {
+        console.warn('Fallback result save without participant_id/category_id:', finalRetryErr.message);
+        if (existing) {
+          await runAsync(
+            'UPDATE results SET score = $1, answers = $2, taken_at = NOW(), started_at = $3, time_taken_sec = $4 WHERE id = $5',
+            [score, answersJson, startedAt, recordedTimeSec, existing.id],
+          );
+        } else {
+          await runAsync(
+            'INSERT INTO results (team_id, test_id, score, answers, taken_at, started_at, time_taken_sec) VALUES ($1,$2,$3,$4,NOW(),$5,$6)',
+            [teamId, testId, score, answersJson, startedAt, recordedTimeSec],
+          );
+        }
+      }
     }
 
     // Update test_sessions status
     await runAsync(
       'UPDATE test_sessions SET status = $1 WHERE team_id = $2 AND test_id = $3',
-      ['completed', teamId, testId]
+      ['completed', teamId, testId],
     ).catch(() => {});
 
     console.log(`✓ Test submitted: team_id=${teamId}, test_id=${testId}, score=${score}/${qs.reduce((s, q) => s + (q.points || 1), 0)}, time=${recordedTimeSec}s`);
@@ -437,7 +575,7 @@ router.get('/api/homepage-blocks', async (req, res) => {
       await runAsync(`ALTER TABLE homepage_blocks ADD COLUMN IF NOT EXISTS ${c} TEXT DEFAULT ''`).catch(() => {});
     }
 
-    const blocks = await allAsync(`SELECT * FROM homepage_blocks`);
+    const blocks = await allAsync('SELECT * FROM homepage_blocks');
     const result = {};
     (blocks || []).forEach((b) => {
       result[b.block_key] = {

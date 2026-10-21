@@ -1,5 +1,5 @@
 {
-  "name": "akylman-quiz-backend",
+  "name": "akylman-quiz-backend-core",
   "version": "2.0.0",
   "description": "Akylman Quiz Bowl backend — modular, PostgreSQL-only",
   "main": "src/server.js",

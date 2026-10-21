@@ -113,6 +113,32 @@ async function load() {
     }
 
     updateTeamNameHeader();
+
+    // Check if there is an active test session to resume automatically on page reload / navigation
+    let activeTestToResume = localStorage.getItem('active_quiz_test_id');
+    if (!activeTestToResume) {
+      try {
+        const serverActive = await apiFetch('/api/active-test-session');
+        if (serverActive && serverActive.active && serverActive.test_id) {
+          activeTestToResume = String(serverActive.test_id);
+        }
+      } catch {}
+    }
+
+    if (activeTestToResume) {
+      try {
+        const check = await apiFetch(`/api/tests/${activeTestToResume}/session`);
+        if (check && check.active) {
+          await startTest(activeTestToResume);
+          return;
+        } else {
+          exitQuizMode();
+        }
+      } catch {
+        exitQuizMode();
+      }
+    }
+
     try {
       await renderHomeSection(document.getElementById('tabHome'));
     } catch (renderErr) {
@@ -197,6 +223,9 @@ document.getElementById('logout').onclick = async () => {
 };
 
 function setActiveTab(btn) {
+  if (document.body.classList.contains('in-active-test-mode') || localStorage.getItem('active_quiz_test_id')) {
+    return;
+  }
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.remove('active');
     b.setAttribute('aria-selected', 'false');
@@ -1524,10 +1553,29 @@ async function renderTestsSection(btn) {
   `;
   
   try {
-    let url = '/api/tests';
-    if (teamData && teamData.category_id) {
-      url += `?category_id=${encodeURIComponent(teamData.category_id)}`;
+    const participant = window.participantData;
+    const participantCatId = participant ? participant.category_id : null;
+
+    if (!participantCatId) {
+      out.setAttribute('aria-busy', 'false');
+      out.innerHTML = `
+        <div class="modern-empty-state">
+          <div class="modern-empty-icon">🎯</div>
+          <h3 class="modern-empty-title">${isKy ? 'Предметтик категория тандала элек' : 'Предметная категория не выбрана'}</h3>
+          <p class="modern-empty-desc">${isKy ? 'Сизге тиешелүү тест чыгышы үчүн, адегенде «Команда» бөлүмүнөн предметтик категорияңызды тандап, бекитиңиз.' : 'Чтобы получить тест, сначала выберите и подтвердите свою предметную категорию во вкладке «Команда».'}</p>
+          <button class="btn-hero-primary" id="btnGoToTeamCat" type="button" style="margin-top: 14px;">
+            ${isKy ? 'Команда бөлүмүнө өтүү →' : 'Перейти в раздел Команда →'}
+          </button>
+        </div>
+      `;
+      document.getElementById('btnGoToTeamCat')?.addEventListener('click', () => {
+        const teamTab = document.getElementById('tabTeam');
+        if (teamTab) teamTab.click();
+      });
+      return;
     }
+
+    const url = `/api/tests?category_id=${encodeURIComponent(participantCatId)}`;
     const tests = await apiFetch(url);
     out.setAttribute('aria-busy', 'false');
     
@@ -1538,12 +1586,17 @@ async function renderTestsSection(btn) {
       badgeEl.style.display = tests.length ? 'inline-block' : 'none';
     }
 
+    const myCatObj = window.categoriesList?.find(c => c.id === participantCatId);
+    const myCatName = myCatObj
+      ? (isKy ? myCatObj.name_ky : myCatObj.name_ru)
+      : (isKy ? 'Тандалган категория' : 'Выбранная категория');
+
     if (!tests.length) {
       out.innerHTML = `
         <div class="modern-empty-state">
           <div class="modern-empty-icon">📝</div>
-          <h3 class="modern-empty-title" data-i18n="team.no_tests">${isKy ? 'Азыркы учурда тесттер жок' : 'No tests currently available'}</h3>
-          <p class="modern-empty-desc">${isKy ? 'Тесттер регламент жана жадыбалга ылайык жеткиликтүү болот.' : 'Tests will become available according to the tournament schedule and rules.'}</p>
+          <h3 class="modern-empty-title" data-i18n="team.no_tests">${isKy ? `«${escapeHtml(myCatName)}» боюнча азыркы учурда тесттер жок` : `По категории «${escapeHtml(myCatName)}» тестов пока нет`}</h3>
+          <p class="modern-empty-desc">${isKy ? 'Тесттер регламент жана жадыбалга ылайык жеткиликтүү болот.' : 'Тесты станут доступны согласно регламенту и расписанию турнира.'}</p>
         </div>
       `;
       if (typeof AkylI18n !== 'undefined' && AkylI18n.applyI18n) {
@@ -1555,11 +1608,11 @@ async function renderTestsSection(btn) {
     out.innerHTML = `
       <div style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
         <div>
-          <h2 style="font-size: 22px; font-weight: 800; color: var(--app-text-main); margin: 0 0 4px 0;">${isKy ? 'Жеткиликтүү онлайн-тесттер' : 'Available Online Tests'}</h2>
-          <p style="font-size: 14px; color: var(--app-text-muted); margin: 0;">${isKy ? 'Тапшыруу үчүн тестти тандаңыз. Таймер баскычты баскандан кийин дароо эсептей баштайт.' : 'Select a test to begin. The countdown timer starts immediately once started.'}</p>
+          <h2 style="font-size: 22px; font-weight: 800; color: var(--app-text-main); margin: 0 0 4px 0;">${isKy ? `Сиздин категория боюнча онлайн-тест: ${escapeHtml(myCatName)}` : `Онлайн-тест по вашей категории: ${escapeHtml(myCatName)}`}</h2>
+          <p style="font-size: 14px; color: var(--app-text-muted); margin: 0;">${isKy ? 'Сиз тандаган предмет боюнча тест. Баштагандан кийин убакыт эсептей баштайт.' : 'Тест по выбранному вами предмету. Таймер запускается сразу после нажатия кнопки начала.'}</p>
         </div>
         <div style="font-size: 13px; font-weight: 700; color: #0d9488; background: rgba(13,148,136,0.1); padding: 6px 14px; border-radius: 999px; border: 1px solid rgba(13,148,136,0.25);">
-          ${isKy ? 'Жалпы тесттер:' : 'Total tests:'} ${tests.length}
+          ${isKy ? 'Жалпы тесттер:' : 'Всего тестов:'} ${tests.length}
         </div>
       </div>
 
@@ -1620,9 +1673,7 @@ async function renderTestsSection(btn) {
     }
 
     out.querySelectorAll('.take').forEach(b => {
-      const testCard = b.closest('.test-card-modern') || b.closest('.test-card');
-      const title = testCard?.querySelector('.test-card-title')?.textContent || '';
-      b.onclick = () => showProctorBriefingModal(b.dataset.id, title);
+      b.onclick = () => startTest(b.dataset.id);
     });
   } catch (err) {
     console.error(err);
@@ -1781,117 +1832,56 @@ async function renderResultsSection(btn) {
   }
 }
 
-function showProctorBriefingModal(testId, testTitle = '') {
-  const lang = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang) ? AkylI18n.getLang() : 'en';
-  const isKy = lang === 'ky';
-  const isRu = lang === 'ru';
+function enterQuizMode(testId) {
+  document.body.classList.add('in-active-test-mode');
+  localStorage.setItem('active_quiz_test_id', String(testId));
 
-  let modal = document.getElementById('proctorBriefModal');
-  if (modal) modal.remove();
+  // Push history state to trap browser Back and Forward buttons
+  try {
+    history.pushState({ inQuiz: true, testId: String(testId) }, document.title, window.location.href);
+  } catch {}
 
-  modal = document.createElement('div');
-  modal.id = 'proctorBriefModal';
-  modal.className = 'proctor-brief-modal-overlay';
-  modal.setAttribute('role', 'dialog');
-  modal.setAttribute('aria-modal', 'true');
-
-  const titleText = isKy ? 'Тестти толук экранда тапшыруу' : (isRu ? 'Сдача теста в полноэкранном режиме' : 'Fullscreen Proctoring Mode');
-  const rule1Title = isKy ? 'Толук экран режими' : (isRu ? 'Полноэкранный режим' : 'Fullscreen Mode');
-  const rule1Desc = isKy 
-    ? 'Тест бүткөнгө чейин браузер толук экран режиминде болот. Чыгууга жана башка барактарга өтүүгө болбойт.' 
-    : (isRu ? 'Тест развернется на весь экран. Выход из полноэкранного режима и навигация по сайту заблокированы.' : 'The test opens in full screen. Exiting fullscreen and site navigation are locked until submitted.');
-
-  const rule2Title = isKy ? 'Өтмөктөрдү которууга тыюу салынат' : (isRu ? 'Запрет переключения вкладок' : 'Tab Switching Prohibited');
-  const rule2Desc = isKy 
-    ? 'Башка өтмөккө, терезеге же программага өтүү аракети эреже бузуу катары катталат.' 
-    : (isRu ? 'Попытки свернуть окно, переключиться на другие вкладки или сторонние приложения фиксируются.' : 'Attempts to switch tabs, minimize windows, or use other apps are recorded as violations.');
-
-  const rule3Title = isKy ? '3 эскертүү чеги' : (isRu ? 'Лимит в 3 предупреждения' : '3-Warning Maximum Limit');
-  const rule3Desc = isKy 
-    ? '3 эскертүүдөн кийин тест автоматтык түрдө аяктап, учурдагы жооптор жөнөтүлөт.' 
-    : (isRu ? 'После 3 предупреждений тест завершится автоматически с отправкой текущих ответов.' : 'After 3 warnings, the test is automatically ended and your answers are submitted.');
-
-  const cancelBtnText = isKy ? 'Артка' : (isRu ? 'Отмена' : 'Cancel');
-  const startBtnText = isKy ? '⛶ Эрежелерди кабыл алып баштоо' : (isRu ? '⛶ Принять правила и начать' : '⛶ Accept & Start Test');
-
-  modal.innerHTML = `
-    <div class="proctor-brief-card">
-      <div class="proctor-brief-header">
-        <span class="proctor-brief-icon">🔒</span>
-        <h3 class="proctor-brief-title">${titleText}</h3>
-      </div>
-      <p class="proctor-brief-subtitle">${escapeHtml(testTitle || '')}</p>
-
-      <div class="proctor-brief-rules">
-        <div class="proctor-rule-item">
-          <span class="proctor-rule-num">1</span>
-          <div>
-            <strong>${rule1Title}</strong>
-            <p>${rule1Desc}</p>
-          </div>
-        </div>
-        <div class="proctor-rule-item">
-          <span class="proctor-rule-num">2</span>
-          <div>
-            <strong>${rule2Title}</strong>
-            <p>${rule2Desc}</p>
-          </div>
-        </div>
-        <div class="proctor-rule-item">
-          <span class="proctor-rule-num">3</span>
-          <div>
-            <strong>${rule3Title}</strong>
-            <p>${rule3Desc}</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="proctor-brief-actions">
-        <button type="button" class="btn btn-secondary" id="proctorCancelBtn">${cancelBtnText}</button>
-        <button type="button" class="btn btn-primary" id="proctorStartBtn">
-          <span>${startBtnText}</span>
-        </button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-
-  document.getElementById('proctorCancelBtn').onclick = () => {
-    modal.remove();
-  };
-
-  document.getElementById('proctorStartBtn').onclick = async () => {
-    modal.remove();
-    // Synchronously request browser fullscreen on click user activation
-    try {
-      const el = document.documentElement;
-      if (el.requestFullscreen) {
-        await el.requestFullscreen().catch(() => {});
-      } else if (el.webkitRequestFullscreen) {
-        await el.webkitRequestFullscreen().catch(() => {});
-      } else if (el.mozRequestFullScreen) {
-        await el.mozRequestFullScreen().catch(() => {});
-      } else if (el.msRequestFullscreen) {
-        await el.msRequestFullscreen().catch(() => {});
+  window.onpopstate = function () {
+    if (localStorage.getItem('active_quiz_test_id')) {
+      try {
+        history.pushState({ inQuiz: true, testId: String(testId) }, document.title, window.location.href);
+      } catch {}
+      const isKy = (typeof AkylI18n !== 'undefined' && AkylI18n.getLang && AkylI18n.getLang() === 'ky');
+      if (typeof Toast !== 'undefined' && Toast.warning) {
+        Toast.warning(isKy ? 'Тест аяктаганга чейин чыгууга болбойт! Тестти аяктоо үчүн «Тестти бүтүрүү» баскычын колдонуңуз.' : 'Вы не можете выйти из теста до его завершения! Используйте кнопку «Завершить тест».');
       }
-    } catch {}
-    executeStartTest(testId);
+    }
+  };
+
+  // Warn on accidental tab close / reload
+  window.onbeforeunload = function (e) {
+    if (localStorage.getItem('active_quiz_test_id')) {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
   };
 }
 
-async function startTest(id, title = '') {
-  showProctorBriefingModal(id, title);
+function exitQuizMode() {
+  document.body.classList.remove('in-active-test-mode');
+  localStorage.removeItem('active_quiz_test_id');
+  window.onbeforeunload = null;
+  window.onpopstate = null;
 }
 
-async function executeStartTest(id) {
+async function startTest(id) {
+  enterQuizMode(id);
   const out = document.getElementById('tabContent');
   const runner = new QuizRunner({
     testId: id,
     container: out,
     onFinish: () => {
+      exitQuizMode();
       renderResultsSection(document.getElementById('tabResults'));
     },
     onCancel: () => {
+      exitQuizMode();
       renderTestsSection(document.getElementById('tabTests'));
     },
   });
@@ -3007,6 +2997,10 @@ function attachTabHandlers() {
     if (!btn) return;
     const { section, render } = map[id];
     btn.onclick = (e) => {
+      if (document.body.classList.contains('in-active-test-mode') || localStorage.getItem('active_quiz_test_id')) {
+        e.preventDefault();
+        return;
+      }
       const targetBtn = e.currentTarget;
       // Change URL without reloading the page
       const newPath = section === 'main' ? '/team/main' : `/team/${section}`;
@@ -3020,6 +3014,9 @@ function attachTabHandlers() {
 
 // Router for subpages: /team, /team/main, /team/team, /team/tests, /team/results, /team/leaderboard, /team/announcements, /team/support, /team/settings
 function initTeamSectionFromUrl() {
+  if (document.body.classList.contains('in-active-test-mode') || localStorage.getItem('active_quiz_test_id')) {
+    return;
+  }
   const path = window.location.pathname || '';
   const match = path.match(/^\/team\/([^/]+)/);
   const section = match ? match[1] : 'main';

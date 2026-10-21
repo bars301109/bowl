@@ -25,7 +25,7 @@ router.get('/api/me', async (req, res) => {
     const participant = await getAsync(
       `SELECT id, full_name, email, grade, school, city, team_id, category_id, category_confirmed
        FROM participants WHERE id = $1`,
-      [req.participantId]
+      [req.participantId],
     );
     if (!participant) return res.status(404).json({ error: 'Participant not found' });
 
@@ -33,12 +33,12 @@ router.get('/api/me', async (req, res) => {
     let teammates = [];
     if (participant.team_id) {
       team = await getAsync(
-        `SELECT id, team_name, school, city, invite_code, status, created_at FROM teams WHERE id = $1`,
-        [participant.team_id]
+        'SELECT id, team_name, school, city, invite_code, status, created_at FROM teams WHERE id = $1',
+        [participant.team_id],
       );
       teammates = await allAsync(
-        `SELECT id, full_name, email, grade, school, category_id, category_confirmed FROM participants WHERE team_id = $1`,
-        [participant.team_id]
+        'SELECT id, full_name, email, grade, school, category_id, category_confirmed FROM participants WHERE team_id = $1',
+        [participant.team_id],
       );
     }
 
@@ -51,7 +51,7 @@ router.get('/api/me', async (req, res) => {
       teammates,
       categories,
       // For legacy frontend compatibility:
-      teamData: team ? { ...team, members: teammates } : null
+      teamData: team ? { ...team, members: teammates } : null,
     });
   } catch (e) {
     console.error('Get me error:', e);
@@ -78,8 +78,8 @@ router.post('/api/teams/create', async (req, res) => {
     const isKy = getReqLang(req) === 'ky';
     const { team_name } = req.body || {};
     if (!team_name || !String(team_name).trim()) {
-      return res.status(400).json({ 
-        error: isKy ? 'Команданын атын жазыңыз' : 'Please enter team name' 
+      return res.status(400).json({
+        error: isKy ? 'Команданын атын жазыңыз' : 'Please enter team name',
       });
     }
 
@@ -88,8 +88,8 @@ router.post('/api/teams/create', async (req, res) => {
       return res.status(401).json({ error: isKy ? 'Авторизация талап кылынат' : 'Authentication required' });
     }
     if (participant.team_id) {
-      return res.status(400).json({ 
-        error: isKy ? 'Сиз мурунтан эле командада барсыз. Алгач командадан чыгыңыз.' : 'You are already in a team. Please leave your current team first.' 
+      return res.status(400).json({
+        error: isKy ? 'Сиз мурунтан эле командада барсыз. Алгач командадан чыгыңыз.' : 'You are already in a team. Please leave your current team first.',
       });
     }
 
@@ -99,7 +99,7 @@ router.post('/api/teams/create', async (req, res) => {
     const insertRes = await runAsync(
       `INSERT INTO teams (team_name, school, city, invite_code, status, created_at)
        VALUES ($1, $2, $3, $4, 'forming', NOW()) RETURNING id`,
-      [String(team_name).trim(), branch, branch, inviteCode]
+      [String(team_name).trim(), branch, branch, inviteCode],
     );
 
     const teamId = insertRes.lastID || insertRes.rows?.[0]?.id;
@@ -121,8 +121,8 @@ router.post('/api/teams/join', async (req, res) => {
     const isKy = getReqLang(req) === 'ky';
     const inviteCode = String(req.body?.invite_code || '').trim().toUpperCase();
     if (!inviteCode) {
-      return res.status(400).json({ 
-        error: isKy ? 'Чакыруу кодун киргизиңиз' : 'Please enter invite code' 
+      return res.status(400).json({
+        error: isKy ? 'Чакыруу кодун киргизиңиз' : 'Please enter invite code',
       });
     }
 
@@ -131,15 +131,15 @@ router.post('/api/teams/join', async (req, res) => {
       return res.status(401).json({ error: isKy ? 'Авторизация талап кылынат' : 'Authentication required' });
     }
     if (participant.team_id) {
-      return res.status(400).json({ 
-        error: isKy ? 'Сиз буга чейин командада барсыз' : 'You are already in a team' 
+      return res.status(400).json({
+        error: isKy ? 'Сиз буга чейин командада барсыз' : 'You are already in a team',
       });
     }
 
     const team = await getAsync('SELECT id, team_name, school, city, status FROM teams WHERE UPPER(invite_code) = $1', [inviteCode]);
     if (!team) {
-      return res.status(404).json({ 
-        error: isKy ? 'Бул код менен команда табылган жок' : 'Team with this invite code was not found' 
+      return res.status(404).json({
+        error: isKy ? 'Бул код менен команда табылган жок' : 'Team with this invite code was not found',
       });
     }
 
@@ -147,10 +147,10 @@ router.post('/api/teams/join', async (req, res) => {
     const pBranch = canonicalBranch(participant.school || participant.city);
     const tBranch = canonicalBranch(team.school || team.city);
     if (pBranch && tBranch && pBranch !== tBranch) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: isKy
           ? `Команданын катышуучулары бир гана филиалдан (${tBranch}) боло алышат. Сиз ${pBranch} филиалынансыз.`
-          : `Team members must be from the same branch (${tBranch}). You are registered under ${pBranch}.`
+          : `Team members must be from the same branch (${tBranch}). You are registered under ${pBranch}.`,
       });
     }
 
@@ -158,8 +158,8 @@ router.post('/api/teams/join', async (req, res) => {
     const memberCount = parseInt(countRes?.cnt || 0, 10);
 
     if (memberCount >= 3) {
-      return res.status(400).json({ 
-        error: isKy ? 'Командада орундар толду (максимум 3 катышуучу)' : 'Team is already full (maximum 3 members)' 
+      return res.status(400).json({
+        error: isKy ? 'Командада орундар толду (максимум 3 катышуучу)' : 'Team is already full (maximum 3 members)',
       });
     }
 
@@ -185,8 +185,8 @@ router.post('/api/teams/leave', async (req, res) => {
     const isKy = getReqLang(req) === 'ky';
     const participant = await getAsync('SELECT team_id FROM participants WHERE id = $1', [req.participantId]);
     if (!participant?.team_id) {
-      return res.status(400).json({ 
-        error: isKy ? 'Сиз командада жоксуз' : 'You are not in a team' 
+      return res.status(400).json({
+        error: isKy ? 'Сиз командада жоксуз' : 'You are not in a team',
       });
     }
 
@@ -212,26 +212,26 @@ router.post('/api/teams/category', async (req, res) => {
     const isKy = getReqLang(req) === 'ky';
     const categoryId = parseInt(req.body?.category_id, 10);
     if (!categoryId) {
-      return res.status(400).json({ 
-        error: isKy ? 'Категорияны тандаңыз' : 'Please select a category' 
+      return res.status(400).json({
+        error: isKy ? 'Категорияны тандаңыз' : 'Please select a category',
       });
     }
 
     const participant = await getAsync('SELECT team_id FROM participants WHERE id = $1', [req.participantId]);
     if (!participant?.team_id) {
-      return res.status(400).json({ 
-        error: isKy ? 'Сиз командада жоксуз' : 'You are not in a team' 
+      return res.status(400).json({
+        error: isKy ? 'Сиз командада жоксуз' : 'You are not in a team',
       });
     }
 
     // Check if category is already taken by another teammate
     const taken = await getAsync(
       'SELECT id FROM participants WHERE team_id = $1 AND category_id = $2 AND id != $3',
-      [participant.team_id, categoryId, req.participantId]
+      [participant.team_id, categoryId, req.participantId],
     );
     if (taken) {
-      return res.status(400).json({ 
-        error: isKy ? 'Бул категорияны командалашыңыз тандап алган' : 'This category is already chosen by a teammate' 
+      return res.status(400).json({
+        error: isKy ? 'Бул категорияны командалашыңыз тандап алган' : 'This category is already chosen by a teammate',
       });
     }
 
@@ -255,17 +255,17 @@ router.post('/api/teams/confirm', async (req, res) => {
     const isKy = getReqLang(req) === 'ky';
     const participant = await getAsync('SELECT team_id, category_id FROM participants WHERE id = $1', [req.participantId]);
     if (!participant?.team_id) {
-      return res.status(400).json({ 
-        error: isKy ? 'Сиз командада жоксуз' : 'You are not in a team' 
+      return res.status(400).json({
+        error: isKy ? 'Сиз командада жоксуз' : 'You are not in a team',
       });
     }
     if (!participant.category_id) {
-      return res.status(400).json({ 
-        error: isKy ? 'Алгач өз категорияңызды тандаңыз' : 'Please select your category first' 
+      return res.status(400).json({
+        error: isKy ? 'Алгач өз категорияңызды тандаңыз' : 'Please select your category first',
       });
     }
 
-    
+
 
     const confirmed = req.body?.confirmed !== false;
     const confirmedVal = Boolean(confirmed);
@@ -275,11 +275,11 @@ router.post('/api/teams/confirm', async (req, res) => {
 
     // Check if all team members (3) have confirmed
     const teammates = await allAsync('SELECT id, category_id, category_confirmed FROM participants WHERE team_id = $1', [participant.team_id]);
-    
+
     if (teammates.length === 3) {
       const allConfirmed = teammates.every(m => Boolean(m.category_confirmed) && m.category_id);
       const uniqueCats = new Set(teammates.map(m => m.category_id));
-      
+
       if (allConfirmed && uniqueCats.size === 3) {
         await runAsync("UPDATE teams SET status = 'ready' WHERE id = $1", [participant.team_id]);
       } else {
@@ -348,7 +348,7 @@ router.put('/api/me', async (req, res) => {
       }
       const existing = await getAsync(
         'SELECT id FROM participants WHERE LOWER(email) = $1 AND id != $2',
-        [cleanEmail, req.participantId]
+        [cleanEmail, req.participantId],
       );
       if (existing) {
         return res.status(400).json({ error: isKy ? 'Бул email мурунтан катталган' : 'This email is already in use by another participant' });
@@ -375,7 +375,7 @@ router.put('/api/me', async (req, res) => {
 
     const updatedParticipant = await getAsync(
       'SELECT id, full_name, email, grade, school, city, team_id, category_id, category_confirmed FROM participants WHERE id = $1',
-      [req.participantId]
+      [req.participantId],
     );
 
     let updatedTeam = null;
@@ -390,7 +390,7 @@ router.put('/api/me', async (req, res) => {
       message: isKy ? 'Маалыматтар ийгиликтүү сакталды' : 'Profile updated successfully',
       participant: updatedParticipant,
       team: updatedTeam,
-      teammates
+      teammates,
     });
   } catch (e) {
     console.error('Update participant profile error:', e);
@@ -427,10 +427,10 @@ router.post('/api/me/change-password', async (req, res) => {
     }
 
     if (!isStrongPassword(newPassword)) {
-      return res.status(400).json({ 
-        error: isKy 
-          ? 'Сырсөз кеминде 8 белгиден туруп, чоң жана кичине тамгаларды жана санды камтышы керек' 
-          : 'Password must be at least 8 characters and include uppercase, lowercase, and numbers' 
+      return res.status(400).json({
+        error: isKy
+          ? 'Сырсөз кеминде 8 белгиден туруп, чоң жана кичине тамгаларды жана санды камтышы керек'
+          : 'Password must be at least 8 characters and include uppercase, lowercase, and numbers',
       });
     }
 
@@ -466,7 +466,7 @@ router.get('/api/me/results', async (req, res) => {
        LEFT JOIN categories c ON c.id = t.category_id
        WHERE r.team_id = $1
        ORDER BY r.taken_at DESC`,
-      [req.team.id]
+      [req.team.id],
     );
 
     res.json(processResults(rows));
@@ -611,7 +611,7 @@ router.get('/api/announcements', async (req, res) => {
              ELSE 3 
            END,
            a.created_at DESC`,
-        [categoryId]
+        [categoryId],
       );
     } else {
       rows = await allAsync(
@@ -625,7 +625,7 @@ router.get('/api/announcements', async (req, res) => {
              WHEN a.priority = 'important' THEN 2 
              ELSE 3 
            END,
-           a.created_at DESC`
+           a.created_at DESC`,
       );
     }
 
@@ -649,7 +649,7 @@ router.get('/api/team/support/tickets', teamAuth, async (req, res) => {
        FROM support_tickets t
        WHERE t.team_id = $1
        ORDER BY t.updated_at DESC, t.id DESC`,
-      [teamId]
+      [teamId],
     );
 
     res.json({ ok: true, tickets: tickets || [] });
@@ -682,7 +682,7 @@ router.post('/api/team/support/tickets', teamAuth, async (req, res) => {
     const insertTicket = await runAsync(
       `INSERT INTO support_tickets (team_id, subject, category, status, created_at, updated_at)
        VALUES ($1, $2, $3, 'open', NOW(), NOW()) RETURNING id`,
-      [teamId, cleanSubject, cleanCategory]
+      [teamId, cleanSubject, cleanCategory],
     );
 
     const ticketId = insertTicket.lastID || insertTicket.id || (insertTicket.rows && insertTicket.rows[0]?.id);
@@ -690,7 +690,7 @@ router.post('/api/team/support/tickets', teamAuth, async (req, res) => {
     await runAsync(
       `INSERT INTO support_messages (ticket_id, sender_type, sender_name, message, created_at)
        VALUES ($1, 'team', $2, $3, NOW())`,
-      [ticketId, teamName, cleanMessage]
+      [ticketId, teamName, cleanMessage],
     );
 
     res.json({ ok: true, ticket_id: ticketId, message: 'Обращение успешно создано' });
@@ -709,13 +709,13 @@ router.get('/api/team/support/tickets/:id', teamAuth, async (req, res) => {
 
     const ticket = await getAsync(
       'SELECT * FROM support_tickets WHERE id = $1 AND team_id = $2',
-      [ticketId, teamId]
+      [ticketId, teamId],
     );
     if (!ticket) return res.status(404).json({ error: 'Обращение не найдено' });
 
     const messages = await allAsync(
       'SELECT * FROM support_messages WHERE ticket_id = $1 ORDER BY id ASC',
-      [ticketId]
+      [ticketId],
     );
 
     res.json({ ok: true, ticket, messages: messages || [] });
@@ -739,7 +739,7 @@ router.post('/api/team/support/tickets/:id/reply', teamAuth, async (req, res) =>
 
     const ticket = await getAsync(
       'SELECT * FROM support_tickets WHERE id = $1 AND team_id = $2',
-      [ticketId, teamId]
+      [ticketId, teamId],
     );
     if (!ticket) return res.status(404).json({ error: 'Обращение не найдено' });
 
@@ -750,12 +750,12 @@ router.post('/api/team/support/tickets/:id/reply', teamAuth, async (req, res) =>
     await runAsync(
       `INSERT INTO support_messages (ticket_id, sender_type, sender_name, message, created_at)
        VALUES ($1, 'team', $2, $3, NOW())`,
-      [ticketId, teamName, cleanMessage]
+      [ticketId, teamName, cleanMessage],
     );
 
     await runAsync(
-      `UPDATE support_tickets SET updated_at = NOW(), status = CASE WHEN status = 'resolved' THEN 'open' ELSE status END WHERE id = $1`,
-      [ticketId]
+      'UPDATE support_tickets SET updated_at = NOW(), status = CASE WHEN status = \'resolved\' THEN \'open\' ELSE status END WHERE id = $1',
+      [ticketId],
     );
 
     res.json({ ok: true, message: 'Сообщение отправлено' });

@@ -14,7 +14,7 @@ module.exports = function securityHeaders(req, res, next) {
     "font-src 'self' https://fonts.gstatic.com data:; " +
     "img-src 'self' data: https: blob:; " +
     "connect-src 'self' https:; " +
-    "frame-ancestors 'self' https://*.run.app https://*.google.com https://*.aistudio.google.com;"
+    "frame-ancestors 'self' https://*.run.app https://*.google.com https://*.aistudio.google.com;",
   );
 
   // CORS — allow origin with credentials support

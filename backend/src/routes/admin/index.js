@@ -28,7 +28,7 @@ const imageUpload = multer({
     } else {
       cb(new Error('Разрешены только файлы изображений (JPG, PNG, GIF, WEBP, SVG, BMP, AVIF, ICO)'));
     }
-  }
+  },
 });
 
 const upload = multer({
@@ -45,7 +45,7 @@ router.post('/api/admin/login', rateLimit(RATE_LIMITS.adminLogin), async (req, r
     }
     const cleanUser = String(username).trim();
     const cleanPass = String(password).trim();
-    
+
     // Accept user182102, admin, mypcomputer9@gmail.com with standard or configured passwords
     const validPairs = [
       { user: 'user182102', pass: 'Fish!2493' },
@@ -107,7 +107,7 @@ router.get('/api/admin/tests', async (req, res) => {
     const tests = await allAsync(
       `SELECT t.*, c.name_ru AS category_name_ru, c.name_ky AS category_name_ky,
               (SELECT COUNT(*)::int FROM questions q WHERE q.test_id = t.id) AS questions_count
-       FROM tests t LEFT JOIN categories c ON c.id = t.category_id ORDER BY t.id DESC`
+       FROM tests t LEFT JOIN categories c ON c.id = t.category_id ORDER BY t.id DESC`,
     );
     res.json(tests);
   } catch (e) {
@@ -138,7 +138,7 @@ router.post('/api/admin/tests', async (req, res) => {
 
     const result = await runAsync(
       'INSERT INTO tests (title, description, preview_text, lang, duration_minutes, window_start, window_end, status, category_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING id',
-      [titleClean, description, preview_text, lang || 'ru', dur, ws, we, testStatus, catId]
+      [titleClean, description, preview_text, lang || 'ru', dur, ws, we, testStatus, catId],
     );
     res.json({ ok: true, id: result.rows?.[0]?.id });
   } catch (e) {
@@ -275,7 +275,7 @@ async function handleBase64Save(base64Data, res) {
     let ext = '.png';
     let rawBase64 = String(base64Data).trim();
     let mimeType = 'image/png';
-    
+
     // Support data:image/...;base64, prefix with any mime type and newlines
     const match = rawBase64.match(/^data:([a-zA-Z0-9_.+-]+\/[a-zA-Z0-9_.+-]+);base64,([\s\S]+)$/i);
     if (match) {
@@ -333,7 +333,7 @@ router.get('/api/admin/tests/:id/questions', async (req, res) => {
   try {
     const rows = await allAsync(
       'SELECT id, test_id, ordinal, text, options, correct, points, category_id, lang, type, attachment_url FROM questions WHERE test_id=$1 ORDER BY ordinal',
-      [req.params.id]
+      [req.params.id],
     );
     rows.forEach((r) => {
       try { r.options = JSON.parse(r.options || '[]'); } catch { r.options = []; }
@@ -352,7 +352,7 @@ router.post('/api/admin/tests/:id/questions', async (req, res) => {
     const finalAttachment = (attachment_url || image_url || '').trim() || null;
     const result = await runAsync(
       'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type, attachment_url) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id',
-      [parseInt(req.params.id, 10), ordinal || 0, text || '', optsJson, correct ?? '', points || 1, lang || 'ru', category_id ? parseInt(category_id, 10) || null : null, qType, finalAttachment]
+      [parseInt(req.params.id, 10), ordinal || 0, text || '', optsJson, correct ?? '', points || 1, lang || 'ru', category_id ? parseInt(category_id, 10) || null : null, qType, finalAttachment],
     );
     res.json({ ok: true, id: result.rows?.[0]?.id });
   } catch (e) {
@@ -406,7 +406,7 @@ router.get('/api/admin/tests/export-csv', async (req, res) => {
     const tests = await allAsync(
       `SELECT t.id, t.title, t.description, t.preview_text, t.lang, t.duration_minutes, t.window_start, t.window_end, t.status, c.name_ru AS category_name_ru,
               (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS questions_count
-       FROM tests t LEFT JOIN categories c ON c.id = t.category_id ORDER BY t.id ASC`
+       FROM tests t LEFT JOIN categories c ON c.id = t.category_id ORDER BY t.id ASC`,
     );
     const header = ['ID', 'Название теста', 'Категория', 'Статус', 'Язык', 'Длительность (мин)', 'Кол-во вопросов', 'Начало окна доступа', 'Конец окна доступа', 'Превью', 'Описание'].map(toCsvValue).join(',');
     if (!tests?.length) {
@@ -428,7 +428,7 @@ router.get('/api/admin/tests/export-csv', async (req, res) => {
         t.window_start || '',
         t.window_end || '',
         t.preview_text || '',
-        t.description || ''
+        t.description || '',
       ].map(toCsvValue).join(',');
     });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -444,7 +444,7 @@ router.get('/api/admin/tests/questions/export-all-csv', async (req, res) => {
   try {
     const qs = await allAsync(
       `SELECT q.id, q.test_id, q.ordinal, q.text, q.options, q.correct, q.points, q.type, q.attachment_url, q.lang, t.title AS test_title
-       FROM questions q LEFT JOIN tests t ON t.id = q.test_id ORDER BY q.test_id ASC, q.ordinal ASC`
+       FROM questions q LEFT JOIN tests t ON t.id = q.test_id ORDER BY q.test_id ASC, q.ordinal ASC`,
     );
     const header = ['№', 'ID', 'Тест ID', 'Название теста', 'Текст вопроса', 'Тип вопроса', 'Варианты ответов', 'Правильный ответ', 'Баллы', 'Изображение (URL)', 'Язык'].map(toCsvValue).join(',');
     if (!qs?.length) {
@@ -473,7 +473,7 @@ router.get('/api/admin/tests/questions/export-all-csv', async (req, res) => {
         q.correct || '',
         q.points || 1,
         q.attachment_url || '',
-        q.lang || 'ru'
+        q.lang || 'ru',
       ].map(toCsvValue).join(',');
     });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -491,7 +491,7 @@ router.get('/api/admin/tests/:id/questions/export-csv', async (req, res) => {
     const test = await getAsync('SELECT title FROM tests WHERE id=$1', [testId]);
     const qs = await allAsync(
       'SELECT id, ordinal, text, options, correct, points, category_id, lang, type, attachment_url FROM questions WHERE test_id=$1 ORDER BY ordinal ASC',
-      [testId]
+      [testId],
     );
     const header = ['№', 'ID', 'Текст вопроса', 'Тип вопроса', 'Варианты ответов', 'Правильный ответ', 'Баллы', 'Изображение (URL)', 'Язык'].map(toCsvValue).join(',');
     if (!qs?.length) {
@@ -518,7 +518,7 @@ router.get('/api/admin/tests/:id/questions/export-csv', async (req, res) => {
         q.correct || '',
         q.points || 1,
         q.attachment_url || '',
-        q.lang || 'ru'
+        q.lang || 'ru',
       ].map(toCsvValue).join(',');
     });
     const cleanTitle = (test?.title || `test_${testId}`).trim();
@@ -567,7 +567,7 @@ router.post('/api/admin/tests/:id/questions/import-csv', upload.single('file'), 
       }
       await runAsync(
         'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-        [testId, ordinal, textv, JSON.stringify(options), correct, points, 'ru', catId || null]
+        [testId, ordinal, textv, JSON.stringify(options), correct, points, 'ru', catId || null],
       );
       imported++;
     }
@@ -632,7 +632,7 @@ router.post('/api/admin/tests/import-csv', upload.single('file'), async (req, re
     // Create the test
     const testResult = await runAsync(
       'INSERT INTO tests (title, description, preview_text, lang, duration_minutes, window_start, window_end, status, category_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING id',
-      [title, meta.test_description || null, previewText, lang, dur, ws, we, status, categoryId]
+      [title, meta.test_description || null, previewText, lang, dur, ws, we, status, categoryId],
     );
     const testId = testResult.rows?.[0]?.id;
 
@@ -654,7 +654,7 @@ router.post('/api/admin/tests/import-csv', upload.single('file'), async (req, re
       }
       await runAsync(
         'INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-        [testId, ordinal, textv, JSON.stringify(options), correct, points, lang, qType]
+        [testId, ordinal, textv, JSON.stringify(options), correct, points, lang, qType],
       );
       imported++;
     }
@@ -685,7 +685,7 @@ async function resolveAttachmentToBase64(attUrl) {
   try {
     const fileRow = await getAsync(
       'SELECT mime_type, data_base64 FROM public.uploaded_files WHERE filename = $1',
-      [filename]
+      [filename],
     );
     if (fileRow && fileRow.data_base64) {
       const mime = fileRow.mime_type || 'image/png';
@@ -708,12 +708,12 @@ async function storeAttachmentIfBase64(attachment) {
         const base64Data = attStr.substring(commaIdx + 1);
         const ext = mime.includes('jpeg') || mime.includes('jpg') ? 'jpg' : mime.includes('webp') ? 'webp' : 'png';
         const filename = `img_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
-        
+
         await runAsync(
           `INSERT INTO public.uploaded_files (filename, mime_type, data_base64, size_bytes, created_at)
            VALUES ($1, $2, $3, $4, NOW()::text)
            ON CONFLICT (filename) DO UPDATE SET mime_type = EXCLUDED.mime_type, data_base64 = EXCLUDED.data_base64`,
-          [filename, mime, base64Data, Buffer.byteLength(base64Data, 'base64')]
+          [filename, mime, base64Data, Buffer.byteLength(base64Data, 'base64')],
         ).catch(() => {});
 
         try {
@@ -735,14 +735,14 @@ router.get('/api/admin/tests/:id/export-json', async (req, res) => {
       `SELECT t.*, c.name_ru AS category_name_ru, c.name_ky AS category_name_ky
        FROM tests t LEFT JOIN categories c ON c.id = t.category_id
        WHERE t.id = $1`,
-      [testId]
+      [testId],
     );
     if (!test) return res.status(404).json({ error: 'Тест не найден' });
 
     const rawQuestions = await allAsync(
       `SELECT id, ordinal, text, options, correct, points, lang, type, attachment_url
        FROM questions WHERE test_id = $1 ORDER BY ordinal ASC`,
-      [testId]
+      [testId],
     );
 
     const questions = [];
@@ -766,7 +766,7 @@ router.get('/api/admin/tests/:id/export-json', async (req, res) => {
         correct: q.correct ?? '',
         points: q.points || 1,
         lang: q.lang || test.lang || 'ru',
-        attachment_url: base64Att || null
+        attachment_url: base64Att || null,
       });
     }
 
@@ -783,10 +783,10 @@ router.get('/api/admin/tests/:id/export-json', async (req, res) => {
         status: test.status || 'published',
         window_start: test.window_start || null,
         window_end: test.window_end || null,
-        category_name: test.category_name_ru || test.category_name_ky || 'Общая'
+        category_name: test.category_name_ru || test.category_name_ky || 'Общая',
       },
       questions_count: questions.length,
-      questions
+      questions,
     };
 
     const cleanTitle = (test.title || `test_${testId}`).replace(/[/\\?%*:|"<>]/g, '_').trim();
@@ -805,12 +805,12 @@ router.get('/api/admin/tests/export-all-json', async (req, res) => {
     const tests = await allAsync(
       `SELECT t.*, c.name_ru AS category_name_ru, c.name_ky AS category_name_ky
        FROM tests t LEFT JOIN categories c ON c.id = t.category_id
-       ORDER BY t.id ASC`
+       ORDER BY t.id ASC`,
     );
 
     const allQs = await allAsync(
       `SELECT id, test_id, ordinal, text, options, correct, points, lang, type, attachment_url
-       FROM questions ORDER BY test_id ASC, ordinal ASC`
+       FROM questions ORDER BY test_id ASC, ordinal ASC`,
     );
 
     const qsByTest = {};
@@ -835,7 +835,7 @@ router.get('/api/admin/tests/export-all-json', async (req, res) => {
         correct: q.correct ?? '',
         points: q.points || 1,
         lang: q.lang || 'ru',
-        attachment_url: base64Att || null
+        attachment_url: base64Att || null,
       });
     }
 
@@ -849,9 +849,9 @@ router.get('/api/admin/tests/export-all-json', async (req, res) => {
         status: t.status || 'published',
         window_start: t.window_start || null,
         window_end: t.window_end || null,
-        category_name: t.category_name_ru || t.category_name_ky || 'Общая'
+        category_name: t.category_name_ru || t.category_name_ky || 'Общая',
       },
-      questions: qsByTest[t.id] || []
+      questions: qsByTest[t.id] || [],
     }));
 
     const totalQuestions = (allQs || []).length;
@@ -861,7 +861,7 @@ router.get('/api/admin/tests/export-all-json', async (req, res) => {
       exported_at: new Date().toISOString(),
       tests_count: exportedTests.length,
       questions_count: totalQuestions,
-      tests: exportedTests
+      tests: exportedTests,
     };
 
     const dateStr = new Date().toISOString().slice(0, 10);
@@ -880,7 +880,7 @@ async function resolveCategoryId(categoryName, fallbackCategoryId = null) {
     const cleanName = categoryName.trim();
     const existing = await getAsync(
       'SELECT id FROM categories WHERE LOWER(name_ru) = LOWER($1) OR LOWER(name_ky) = LOWER($1)',
-      [cleanName]
+      [cleanName],
     );
     if (existing) return existing.id;
   }
@@ -895,7 +895,7 @@ async function resolveCategoryId(categoryName, fallbackCategoryId = null) {
   // Create default category if none exists
   const newCat = await runAsync(
     'INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES ($1,$2,$3,$4,NOW()) RETURNING id',
-    ['Общая', 'Жалпы', 'Категория по умолчанию', 'Негизги категория']
+    ['Общая', 'Жалпы', 'Категория по умолчанию', 'Негизги категория'],
   );
   return newCat.rows?.[0]?.id || newCat.lastID;
 }
@@ -960,7 +960,7 @@ router.post('/api/admin/tests/import-json', upload.single('file'), async (req, r
       const insTest = await runAsync(
         `INSERT INTO tests (title, description, preview_text, lang, duration_minutes, status, window_start, window_end, category_id, created_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()::text) RETURNING id`,
-        [title, desc, preview, lang, duration, status, winStart, winEnd, categoryId]
+        [title, desc, preview, lang, duration, status, winStart, winEnd, categoryId],
       );
       const testId = insTest.rows?.[0]?.id || insTest.lastID;
       createdTests++;
@@ -991,7 +991,7 @@ router.post('/api/admin/tests/import-json', upload.single('file'), async (req, r
         await runAsync(
           `INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type, attachment_url)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-          [testId, ord, qText, JSON.stringify(options), correct, points, qLang, categoryId, qType, attachment]
+          [testId, ord, qText, JSON.stringify(options), correct, points, qLang, categoryId, qType, attachment],
         );
         createdQuestions++;
         qOrdinal++;
@@ -1004,7 +1004,7 @@ router.post('/api/admin/tests/import-json', upload.single('file'), async (req, r
       ok: true,
       imported_tests: createdTests,
       imported_questions: createdQuestions,
-      tests: createdList
+      tests: createdList,
     });
   } catch (e) {
     console.error('import-json error:', e);
@@ -1072,7 +1072,7 @@ router.post('/api/admin/tests/:id/import-questions-json', upload.single('file'),
       await runAsync(
         `INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, category_id, type, attachment_url)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [testId, ord, qText, JSON.stringify(options), correct, points, qLang, test.category_id, qType, attachment]
+        [testId, ord, qText, JSON.stringify(options), correct, points, qLang, test.category_id, qType, attachment],
       );
       imported++;
       nextOrd++;
@@ -1099,7 +1099,7 @@ router.get('/api/admin/categories', async (req, res) => {
     const enriched = (rows || []).map(c => ({
       ...c,
       tests_count: testCounts[c.id] || 0,
-      teams_count: teamCounts[c.id] || 0
+      teams_count: teamCounts[c.id] || 0,
     }));
     res.json(enriched);
   } catch (e) {
@@ -1122,7 +1122,7 @@ router.post('/api/admin/categories', async (req, res) => {
 
     const result = await runAsync(
       'INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at) VALUES ($1,$2,$3,$4,NOW()) RETURNING id',
-      [cleanRu, cleanKy, sanitizeString(desc_ru || '', 1000), sanitizeString(desc_ky || '', 1000)]
+      [cleanRu, cleanKy, sanitizeString(desc_ru || '', 1000), sanitizeString(desc_ky || '', 1000)],
     );
     res.json({ ok: true, id: result.rows?.[0]?.id || result.lastID });
   } catch (e) {
@@ -1148,7 +1148,7 @@ router.put('/api/admin/categories/:id', async (req, res) => {
 
     await runAsync(
       'UPDATE categories SET name_ru=$1, name_ky=$2, desc_ru=$3, desc_ky=$4 WHERE id=$5',
-      [cleanRu, cleanKy, sanitizeString(desc_ru || '', 1000), sanitizeString(desc_ky || '', 1000), catId]
+      [cleanRu, cleanKy, sanitizeString(desc_ru || '', 1000), sanitizeString(desc_ky || '', 1000), catId],
     );
     res.json({ ok: true });
   } catch (e) {
@@ -1218,7 +1218,7 @@ router.get('/api/admin/storage/status', async (req, res) => {
 router.get('/api/admin/storage/backup', async (req, res) => {
   try {
     const rawQuestions = await allAsync('SELECT id, test_id, ordinal, text, options, correct, points, category_id, lang, type, attachment_url FROM questions ORDER BY id ASC').catch(() => []);
-    
+
     // Embed question image files as base64 so backup is completely portable
     const imagesMap = {};
     for (const q of rawQuestions) {
@@ -1257,7 +1257,7 @@ router.get('/api/admin/storage/backup', async (req, res) => {
       images: imagesMap,
       version: 2,
       database: 'Cloud SQL PostgreSQL',
-      exported_at: new Date().toISOString()
+      exported_at: new Date().toISOString(),
     };
 
     res.setHeader('Content-Type', 'application/json');
@@ -1488,7 +1488,7 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
               filename: safeName,
               mimeType: 'image/png',
               dataBase64: buf.toString('base64'),
-              sizeBytes: buf.length
+              sizeBytes: buf.length,
             }).catch(() => {});
           }
         } catch (imgRestoreErr) {
@@ -1511,11 +1511,11 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
     // Helper to safely reset serial sequences
     const resetSeq = async (tbl) => {
       try {
-        const seqRow = await getAsync(`SELECT pg_get_serial_sequence($1, 'id') AS seq`, [tbl]);
+        const seqRow = await getAsync('SELECT pg_get_serial_sequence($1, \'id\') AS seq', [tbl]);
         if (seqRow && seqRow.seq) {
           await runAsync(
             `SELECT setval($1::regclass, COALESCE((SELECT MAX(id) FROM ${tbl}), 1), (SELECT COUNT(*) > 0 FROM ${tbl}))`,
-            [seqRow.seq]
+            [seqRow.seq],
           );
         }
       } catch (e) {
@@ -1541,13 +1541,13 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
               `INSERT INTO categories (id, name_ru, name_ky, desc_ru, desc_ky, created_at)
                VALUES ($1, $2, $3, $4, $5, $6)
                ON CONFLICT (id) DO UPDATE SET name_ru=$2, name_ky=$3, desc_ru=$4, desc_ky=$5`,
-              [id, nameRu, nameKy, descRu, descKy, createdAt]
+              [id, nameRu, nameKy, descRu, descKy, createdAt],
             );
           } else {
             await runAsync(
               `INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at)
                VALUES ($1, $2, $3, $4, $5)`,
-              [nameRu, nameKy, descRu, descKy, createdAt]
+              [nameRu, nameKy, descRu, descKy, createdAt],
             );
           }
           counts.categories++;
@@ -1570,8 +1570,8 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
           [
             s.day1_date || null, s.day2_date || null, s.day3_date || null,
             s.final_place_ru || null, s.final_place_ky || null,
-            s.results_published ? 1 : 0, s.one_submission_allowed ? 1 : 0
-          ]
+            s.results_published ? 1 : 0, s.one_submission_allowed ? 1 : 0,
+          ],
         );
         counts.settings = 1;
       } catch (err) {
@@ -1609,13 +1609,13 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
               `INSERT INTO teams (id, team_name, login, password, team_email, email, phone, members, school, city, category_id, created_at)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                ON CONFLICT (id) DO UPDATE SET team_name=$2, login=$3, password=$4, team_email=$5, email=$6, phone=$7, members=$8, school=$9, city=$10, category_id=$11`,
-              [id, teamName, login, t.password || null, teamEmail, teamEmail, teamPhone || null, membersStr, school, city, catId, createdAt]
+              [id, teamName, login, t.password || null, teamEmail, teamEmail, teamPhone || null, membersStr, school, city, catId, createdAt],
             );
           } else {
             await runAsync(
               `INSERT INTO teams (team_name, login, password, team_email, email, phone, members, school, city, category_id, created_at)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-              [teamName, login, t.password || null, teamEmail, teamEmail, teamPhone || null, membersStr, school, city, catId, createdAt]
+              [teamName, login, t.password || null, teamEmail, teamEmail, teamPhone || null, membersStr, school, city, catId, createdAt],
             );
           }
           counts.teams++;
@@ -1643,13 +1643,13 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
               `INSERT INTO tests (id, title, description, preview_text, lang, duration_minutes, window_start, window_end, status, category_id, created_at)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                ON CONFLICT (id) DO UPDATE SET title=$2, description=$3, preview_text=$4, lang=$5, duration_minutes=$6, window_start=$7, window_end=$8, status=$9, category_id=$10`,
-              [id, title, t.description || t.desc || '', t.preview_text || t.preview || '', t.lang || 'ru', dur, t.window_start || null, t.window_end || null, t.status || 'published', catId, createdAt]
+              [id, title, t.description || t.desc || '', t.preview_text || t.preview || '', t.lang || 'ru', dur, t.window_start || null, t.window_end || null, t.status || 'published', catId, createdAt],
             );
           } else {
             await runAsync(
               `INSERT INTO tests (title, description, preview_text, lang, duration_minutes, window_start, window_end, status, category_id, created_at)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-              [title, t.description || t.desc || '', t.preview_text || t.preview || '', t.lang || 'ru', dur, t.window_start || null, t.window_end || null, t.status || 'published', catId, createdAt]
+              [title, t.description || t.desc || '', t.preview_text || t.preview || '', t.lang || 'ru', dur, t.window_start || null, t.window_end || null, t.status || 'published', catId, createdAt],
             );
           }
           counts.tests++;
@@ -1704,7 +1704,7 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
 
         const pts = (q.points !== undefined && !isNaN(parseInt(q.points, 10))) ? parseInt(q.points, 10) : 1;
         const catId = (q.category_id !== undefined && !isNaN(parseInt(q.category_id, 10))) ? parseInt(q.category_id, 10) : null;
-        
+
         // Handle embedded image in question
         let attachmentUrl = (q.attachment_url || q.image_url || q.image || q.img || q.photo || '').trim() || null;
         if (q.image_base64 || q.image_data) {
@@ -1720,7 +1720,7 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
                 filename: safeName,
                 mimeType: ext === '.jpg' ? 'image/jpeg' : 'image/' + ext.replace('.', ''),
                 dataBase64: buf.toString('base64'),
-                sizeBytes: buf.length
+                sizeBytes: buf.length,
               }).catch(() => {});
               attachmentUrl = '/uploads/' + safeName;
             }
@@ -1737,13 +1737,13 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
               `INSERT INTO questions (id, test_id, ordinal, text, options, correct, points, lang, type, attachment_url, category_id)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                ON CONFLICT (id) DO UPDATE SET test_id=$2, ordinal=$3, text=$4, options=$5, correct=$6, points=$7, lang=$8, type=$9, attachment_url=$10, category_id=$11`,
-              [id, testId, ord, text, optsStr, correct, pts, q.lang || 'ru', qType, attachmentUrl, catId]
+              [id, testId, ord, text, optsStr, correct, pts, q.lang || 'ru', qType, attachmentUrl, catId],
             );
           } else {
             await runAsync(
               `INSERT INTO questions (test_id, ordinal, text, options, correct, points, lang, type, attachment_url, category_id)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-              [testId, ord, text, optsStr, correct, pts, q.lang || 'ru', qType, attachmentUrl, catId]
+              [testId, ord, text, optsStr, correct, pts, q.lang || 'ru', qType, attachmentUrl, catId],
             );
           }
           counts.questions++;
@@ -1769,13 +1769,13 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
               `INSERT INTO test_sessions (id, team_id, test_id, started_at, status, expires_at)
                VALUES ($1, $2, $3, $4, $5, $6)
                ON CONFLICT (id) DO UPDATE SET team_id=$2, test_id=$3, started_at=$4, status=$5, expires_at=$6`,
-              [id, teamId, testId, s.started_at || null, s.status || 'in_progress', s.expires_at || null]
+              [id, teamId, testId, s.started_at || null, s.status || 'in_progress', s.expires_at || null],
             );
           } else {
             await runAsync(
               `INSERT INTO test_sessions (team_id, test_id, started_at, status, expires_at)
                VALUES ($1, $2, $3, $4, $5)`,
-              [teamId, testId, s.started_at || null, s.status || 'in_progress', s.expires_at || null]
+              [teamId, testId, s.started_at || null, s.status || 'in_progress', s.expires_at || null],
             );
           }
           counts.test_sessions++;
@@ -1805,13 +1805,13 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
               `INSERT INTO results (id, team_id, test_id, score, answers, taken_at, started_at, time_taken_sec)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                ON CONFLICT (id) DO UPDATE SET team_id=$2, test_id=$3, score=$4, answers=$5, taken_at=$6, started_at=$7, time_taken_sec=$8`,
-              [id, teamId, testId, score, ansStr, takenAt, r.started_at || null, timeSec]
+              [id, teamId, testId, score, ansStr, takenAt, r.started_at || null, timeSec],
             );
           } else {
             await runAsync(
               `INSERT INTO results (team_id, test_id, score, answers, taken_at, started_at, time_taken_sec)
                VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-              [teamId, testId, score, ansStr, takenAt, r.started_at || null, timeSec]
+              [teamId, testId, score, ansStr, takenAt, r.started_at || null, timeSec],
             );
           }
           counts.results++;
@@ -1870,13 +1870,13 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
                    content_en = $7, content_ky = $8, content_ru = $9,
                    updated_at = NOW()
                WHERE block_key = $10`,
-              [badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, b.block_key]
+              [badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, b.block_key],
             );
           } else {
             await runAsync(
               `INSERT INTO homepage_blocks (block_key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, updated_at)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
-              [b.block_key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru]
+              [b.block_key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru],
             );
           }
           counts.homepage_blocks++;
@@ -1893,7 +1893,7 @@ router.post('/api/admin/storage/restore', upload.single('file'), async (req, res
     if (counts.teams) summaryParts.push(`${counts.teams} команд`);
     if (counts.results) summaryParts.push(`${counts.results} результатов`);
     if (counts.homepage_blocks) summaryParts.push(`${counts.homepage_blocks} блоков сайта`);
-    if (counts.settings) summaryParts.push(`настройки`);
+    if (counts.settings) summaryParts.push('настройки');
 
     const summaryMsg = summaryParts.length > 0
       ? `Успешно восстановлено в Cloud SQL: ${summaryParts.join(', ')}`
@@ -1934,7 +1934,7 @@ router.get('/api/admin/participants', async (req, res) => {
        FROM participants p
        LEFT JOIN teams t ON t.id = p.team_id
        LEFT JOIN categories c ON c.id = p.category_id
-       ORDER BY p.id DESC`
+       ORDER BY p.id DESC`,
     );
 
     const formatted = (participants || []).map((p) => {
@@ -1948,7 +1948,7 @@ router.get('/api/admin/participants', async (req, res) => {
               month: '2-digit',
               day: '2-digit',
               hour: '2-digit',
-              minute: '2-digit'
+              minute: '2-digit',
             });
           } else {
             createdAtFormatted = String(p.created_at);
@@ -2031,7 +2031,7 @@ router.get('/api/admin/participants/export-csv', async (req, res) => {
        FROM participants p
        LEFT JOIN teams t ON t.id = p.team_id
        LEFT JOIN categories c ON c.id = p.category_id
-       ORDER BY p.id ASC`
+       ORDER BY p.id ASC`,
     );
 
     const header = [
@@ -2045,7 +2045,7 @@ router.get('/api/admin/participants/export-csv', async (req, res) => {
       'Команда',
       'Категория',
       'Статус категории',
-      'Дата регистрации'
+      'Дата регистрации',
     ].map(toCsvValue).join(',');
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -2077,7 +2077,7 @@ router.get('/api/admin/participants/export-csv', async (req, res) => {
         p.team_name || 'Без команды',
         p.category_name_ru || (p.category_id ? `ID #${p.category_id}` : 'Не выбрана'),
         p.category_confirmed ? 'Подтверждена' : 'Не подтверждена',
-        createdAtStr
+        createdAtStr,
       ].map(toCsvValue).join(',');
     });
 
@@ -2095,7 +2095,7 @@ router.get('/api/admin/teams', async (req, res) => {
       `SELECT t.id, t.team_name, t.team_email, t.email, t.phone, t.members, t.school, t.city, t.category_id, t.created_at, c.name_ru AS category_name_ru
        FROM teams t
        LEFT JOIN categories c ON c.id = t.category_id
-       ORDER BY t.id DESC`
+       ORDER BY t.id DESC`,
     );
     const formatted = (teams || []).map((t) => {
       let membersList = [];
@@ -2226,7 +2226,7 @@ router.post('/api/admin/danger/wipe-all', async (req, res) => {
           const seqs = [
             'teams_id_seq', 'categories_id_seq', 'tests_id_seq',
             'questions_id_seq', 'results_id_seq', 'test_sessions_id_seq',
-            'password_reset_codes_id_seq'
+            'password_reset_codes_id_seq',
           ];
           for (const s of seqs) {
             await client.query(`SELECT setval('${s}', 1, false)`).catch(() => {});
@@ -2310,7 +2310,7 @@ router.get('/api/admin/teams/export-csv', async (req, res) => {
   try {
     const teams = await allAsync(
       `SELECT t.id, t.team_name, t.team_email, t.email, t.phone, t.members, t.school, t.city, t.created_at, c.name_ru AS category_name_ru
-       FROM teams t LEFT JOIN categories c ON c.id = t.category_id ORDER BY t.id ASC`
+       FROM teams t LEFT JOIN categories c ON c.id = t.category_id ORDER BY t.id ASC`,
     );
     const header = ['№', 'ID', 'Название команды', 'Email команды', 'Участники', 'Школа / Организация', 'Город / Регион', 'Категория', 'Дата регистрации'].map(toCsvValue).join(',');
     if (!teams?.length) {
@@ -2332,7 +2332,7 @@ router.get('/api/admin/teams/export-csv', async (req, res) => {
         t.school || '',
         t.city || '',
         t.category_name_ru || 'Без категории',
-        t.created_at || ''
+        t.created_at || '',
       ].map(toCsvValue).join(',');
     });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -2358,7 +2358,7 @@ router.post('/api/admin/teams/import-csv', upload.single('file'), async (req, re
     }
 
     const header = rows.shift().map(h => String(h || '').trim().toLowerCase());
-    
+
     // Find column indexes
     const findCol = (...keywords) => {
       return header.findIndex(h => keywords.some(k => h.includes(k)));
@@ -2418,7 +2418,7 @@ router.post('/api/admin/teams/import-csv', upload.single('file'), async (req, re
         const found = existingCategories.find(c =>
           c.name_ru.toLowerCase().includes(catRaw.toLowerCase()) ||
           catRaw.toLowerCase().includes(c.name_ru.toLowerCase()) ||
-          String(c.id) === catRaw
+          String(c.id) === catRaw,
         );
         if (found) categoryId = found.id;
       }
@@ -2441,8 +2441,8 @@ router.post('/api/admin/teams/import-csv', upload.single('file'), async (req, re
             JSON.stringify(membersList),
             school,
             city,
-            categoryId
-          ]
+            categoryId,
+          ],
         );
         imported++;
       } catch (insertErr) {
@@ -2466,7 +2466,7 @@ router.get('/api/admin/results', async (req, res) => {
        LEFT JOIN tests t ON t.id = r.test_id
        LEFT JOIN teams tm ON tm.id = r.team_id
        LEFT JOIN categories c ON c.id = t.category_id
-       ORDER BY r.taken_at DESC`
+       ORDER BY r.taken_at DESC`,
     );
     res.json(processResults(results));
   } catch (e) {
@@ -2482,7 +2482,7 @@ router.get('/api/admin/results/export-csv', async (req, res) => {
        LEFT JOIN tests t ON t.id = r.test_id
        LEFT JOIN teams tm ON tm.id = r.team_id
        LEFT JOIN categories c ON c.id = t.category_id
-       ORDER BY r.taken_at DESC`
+       ORDER BY r.taken_at DESC`,
     );
     const processed = processResults(results);
     const header = ['№ результата', 'Имя команды', 'Баллы', 'Время прохождения', 'Категория теста'].map(toCsvValue).join(',');
@@ -2501,7 +2501,7 @@ router.put('/api/admin/settings', async (req, res) => {
     const s = req.body || {};
     await runAsync(
       'UPDATE settings SET day1_date=$1, day2_date=$2, day3_date=$3, final_place_ru=$4, final_place_ky=$5, results_published=$6, one_submission_allowed=$7, updated_at=NOW() WHERE id=1',
-      [s.day1_date || null, s.day2_date || null, s.day3_date || null, s.final_place_ru || null, s.final_place_ky || null, s.results_published ? 1 : 0, s.one_submission_allowed ? 1 : 0]
+      [s.day1_date || null, s.day2_date || null, s.day3_date || null, s.final_place_ru || null, s.final_place_ky || null, s.results_published ? 1 : 0, s.one_submission_allowed ? 1 : 0],
     );
     res.json({ ok: true });
   } catch (e) {
@@ -2515,7 +2515,7 @@ router.post('/api/admin/settings/publish-results', async (req, res) => {
     const { publish } = req.body || {};
     await runAsync(
       'UPDATE settings SET results_published=$1, updated_at=NOW() WHERE id=1',
-      [publish ? 1 : 0]
+      [publish ? 1 : 0],
     );
     res.json({ ok: true, results_published: publish ? 1 : 0 });
   } catch (e) {
@@ -2537,7 +2537,7 @@ router.post('/api/admin/tests/update-statuses', async (req, res) => {
       if (start && now < start) newStatus = 'scheduled';
       else if (end && now > end) newStatus = 'closed';
       else newStatus = 'active';
-      
+
       if (newStatus !== t.status) {
         await runAsync('UPDATE tests SET status=$1 WHERE id=$2', [newStatus, t.id]);
         updated++;
@@ -2563,7 +2563,7 @@ router.get('/api/admin/results/team/:teamId/export-csv', async (req, res) => {
        LEFT JOIN categories c ON c.id = t.category_id
        WHERE r.team_id = $1
        ORDER BY r.taken_at DESC`,
-      [teamId]
+      [teamId],
     );
 
     const header = ['№', 'Тест', 'Баллы', 'Время прохождения', 'Затрачено секунд', 'Категория'].map(toCsvValue).join(',');
@@ -2585,7 +2585,7 @@ router.get('/api/admin/tests/questions/export-all-csv', async (req, res) => {
        FROM questions q
        LEFT JOIN tests t ON t.id = q.test_id
        LEFT JOIN categories c ON c.id = q.category_id OR c.id = t.category_id
-       ORDER BY q.test_id ASC, q.ordinal ASC`
+       ORDER BY q.test_id ASC, q.ordinal ASC`,
     );
     const header = ['ID вопроса', 'ID теста', 'Название теста', '№', 'Текст вопроса', 'Тип вопроса', 'Варианты ответов', 'Правильный ответ', 'Баллы', 'Изображение (URL)', 'Категория', 'Язык'].map(toCsvValue).join(',');
     if (!qs?.length) {
@@ -2615,7 +2615,7 @@ router.get('/api/admin/tests/questions/export-all-csv', async (req, res) => {
         q.points || 1,
         q.attachment_url || '',
         q.category_name || '',
-        q.lang || 'ru'
+        q.lang || 'ru',
       ].map(toCsvValue).join(',');
     });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -2705,7 +2705,7 @@ const DEFAULT_HOMEPAGE_BLOCKS = [
     title_ru: 'Предварительный раунд',
     content_en: 'Online test: multiple choice and short answer questions',
     content_ky: 'Онлайн-тест: бир нече тандоо жана кыска жооп',
-    content_ru: 'Онлайн-тест: множественный выбор и короткий ответ'
+    content_ru: 'Онлайн-тест: множественный выбор и короткий ответ',
   },
   {
     block_key: 'stage_2',
@@ -2717,7 +2717,7 @@ const DEFAULT_HOMEPAGE_BLOCKS = [
     title_ru: 'Полуфинал',
     content_en: 'Live blitz questions in real time',
     content_ky: 'Реалдуу убакыт режиминде түз блиц-суроолор',
-    content_ru: 'Живые блиц-вопросы в режиме реального времени'
+    content_ru: 'Живые блиц-вопросы в режиме реального времени',
   },
   {
     block_key: 'stage_3',
@@ -2729,7 +2729,7 @@ const DEFAULT_HOMEPAGE_BLOCKS = [
     title_ru: 'Финал',
     content_en: 'Final concluding round with top qualifying teams',
     content_ky: 'Эң мыкты командалар менен финалдык раунд',
-    content_ru: 'Финальный раунд с лучшими командами'
+    content_ru: 'Финальный раунд с лучшими командами',
   },
   {
     block_key: 'team_composition',
@@ -2741,7 +2741,7 @@ const DEFAULT_HOMEPAGE_BLOCKS = [
     title_ru: 'О составе команды',
     content_en: '2–4 students from the same school',
     content_ky: 'Бир мектептен 2–4 адам',
-    content_ru: '2–4 человека из одной школы'
+    content_ru: '2–4 человека из одной школы',
   },
   {
     block_key: 'categories_info',
@@ -2753,7 +2753,7 @@ const DEFAULT_HOMEPAGE_BLOCKS = [
     title_ru: 'Категории',
     content_en: 'Olympiad disciplines across subjects and academic tracks',
     content_ky: 'Предметтер жана багыттар боюнча олимпиадалык сабактар',
-    content_ru: 'Дисциплины олимпиады по предметам и направлениям'
+    content_ru: 'Дисциплины олимпиады по предметам и направлениям',
   },
   {
     block_key: 'format_info',
@@ -2765,7 +2765,7 @@ const DEFAULT_HOMEPAGE_BLOCKS = [
     title_ru: 'Формат',
     content_en: 'Stages 1 and 2 are held online. Stage 3 (Final) is held offline at Akylman Presidential Lyceum.',
     content_ky: '1 жана 2-этаптар онлайн форматта өткөрүлөт. Үчүнчү этап оффлайн форматта өтөт.',
-    content_ru: 'Этапы 1 и 2 проводятся в онлайн-формате. Третий этап проводится в оффлайн-формате.'
+    content_ru: 'Этапы 1 и 2 проводятся в онлайн-формате. Третий этап проводится в оффлайн-формате.',
   },
   {
     block_key: 'timeline_stage1',
@@ -2777,7 +2777,7 @@ const DEFAULT_HOMEPAGE_BLOCKS = [
     title_ru: 'Этап 1 - Отборочный тур',
     content_en: 'Teams take an online test in selected categories with multiple-choice and short-answer questions. Results determine teams advancing to the next round.',
     content_ky: 'Бул этапта командалар тандалган категориялар боюнча онлайн тестирлөөдөн өтүшөт. Катышуучулар бир нече тандоо жана кыска жооптуу суроолорго жооп беришет. Бул этаптын жыйынтыгы боюнча кийинки раундга чыга турган командалар аныкталат.',
-    content_ru: 'На этом этапе команды проходят онлайн-тестирование по выбранным категориям. Участники отвечают на вопросы с множественным выбором и короткими ответами. По результатам этого этапа определяются команды, которые пройдут в следующий раунд.'
+    content_ru: 'На этом этапе команды проходят онлайн-тестирование по выбранным категориям. Участники отвечают на вопросы с множественным выбором и короткими ответами. По результатам этого этапа определяются команды, которые пройдут в следующий раунд.',
   },
   {
     block_key: 'timeline_stage2',
@@ -2789,7 +2789,7 @@ const DEFAULT_HOMEPAGE_BLOCKS = [
     title_ru: 'Этап 2 - Полуфинал',
     content_en: 'This stage highlights the best teams among successful qualifiers. Teams compete in real time with challenging blitz questions across various domains.',
     content_ky: 'Бул этап ийгиликтүү командалардын арасынан эң мыктыларды аныктайт. Бул этапта татаалыраак суроолор камтылган онлайн тестирлөө өткөрүлөт. Командалар билимдин ар кандай категориялары боюнча блиц-суроолорго реалдуу убакытта жооп берип күч сынашышат.',
-    content_ru: 'Этап выявляет лучшие команды среди уже успешных. На этом этапе проводится онлайн-тестирование с более сложными вопросами. Команды соревнуются в режиме реального времени, отвечая на блиц-вопросы по различным категориям знаний.'
+    content_ru: 'Этап выявляет лучшие команды среди уже успешных. На этом этапе проводится онлайн-тестирование с более сложными вопросами. Команды соревнуются в режиме реального времени, отвечая на блиц-вопросы по различным категориям знаний.',
   },
   {
     block_key: 'timeline_stage3',
@@ -2801,7 +2801,7 @@ const DEFAULT_HOMEPAGE_BLOCKS = [
     title_ru: 'Этап 3 - Финал',
     content_en: 'The Final is held offline at Akylman Presidential Lyceum (Cholpon-Ata). Concluding test among top teams from semifinals determines winners by total score.',
     content_ky: 'Финал «Акылман» Президенттик лицейинде (Чолпон-Ата ш.) оффлайн форматта өткөрүлөт. Жарым финалдын жыйынтыгы боюнча эң мыкты командалардын ортосунда жыйынтыктоочу тест. Жеңүүчүлөр топтолгон жалпы упайлардын саны боюнча аныкталат.',
-    content_ru: 'Финал проводится в оффлайн формате в Президентском лицее «Акылман» (Чолпон-Ата). Итоговый тест между лучшими командами по результатам полуфинала. Победители определяются по общему количеству набранных баллов.'
+    content_ru: 'Финал проводится в оффлайн формате в Президентском лицее «Акылман» (Чолпон-Ата). Итоговый тест между лучшими командами по результатам полуфинала. Победители определяются по общему количеству набранных баллов.',
   },
   {
     block_key: 'hero_subtitle',
@@ -2813,7 +2813,7 @@ const DEFAULT_HOMEPAGE_BLOCKS = [
     title_ru: '',
     content_en: 'For middle and high school students',
     content_ky: 'Орто жана жогорку класстын окуучулары үчүн',
-    content_ru: 'Для учеников средней и старшей школы'
+    content_ru: 'Для учеников средней и старшей школы',
   },
   {
     block_key: 'footer_desc',
@@ -2825,8 +2825,8 @@ const DEFAULT_HOMEPAGE_BLOCKS = [
     title_ru: '',
     content_en: 'Join the intellectual tournament for school students and unlock new opportunities for your team.',
     content_ky: 'Орто жана жогорку класстын окуучулары үчүн интеллектуалдык турнирге кошулуңуз жана командаңыз менен жаңы мүмкүнчүлүктөрдү ачкыла.',
-    content_ru: 'Присоединяйтесь к интеллектуальному турниру для школьников и откройте новые возможности для своей команды.'
-  }
+    content_ru: 'Присоединяйтесь к интеллектуальному турниру для школьников и откройте новые возможности для своей команды.',
+  },
 ];
 
 async function ensureHomepageBlocksTable() {
@@ -2877,10 +2877,10 @@ router.get('/api/admin/homepage-blocks', async (req, res) => {
           `INSERT INTO homepage_blocks (block_key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
            ON CONFLICT (block_key) DO NOTHING`,
-          [b.block_key, b.badge_en, b.badge_ky, b.badge_ru, b.title_en, b.title_ky, b.title_ru, b.content_en, b.content_ky, b.content_ru]
+          [b.block_key, b.badge_en, b.badge_ky, b.badge_ru, b.title_en, b.title_ky, b.title_ru, b.content_en, b.content_ky, b.content_ru],
         ).catch(() => {});
       }
-      blocks = await allAsync(`SELECT * FROM homepage_blocks ORDER BY id ASC`);
+      blocks = await allAsync('SELECT * FROM homepage_blocks ORDER BY id ASC');
     }
 
     const normalized = (blocks || []).map(b => {
@@ -2931,20 +2931,20 @@ router.put('/api/admin/homepage-blocks/:key', async (req, res) => {
              content_en = $7, content_ky = $8, content_ru = $9,
              updated_at = NOW()
          WHERE block_key = $10`,
-        [badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, key]
+        [badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, key],
       );
     } else {
       await runAsync(
         `INSERT INTO homepage_blocks (block_key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
-        [key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru]
+        [key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru],
       );
     }
-    
+
     const updated = await getAsync('SELECT * FROM homepage_blocks WHERE block_key = $1', [key]);
     res.json({
       ok: true,
-      block: updated
+      block: updated,
     });
   } catch (e) {
     console.error('Homepage block put error:', e);
@@ -2982,18 +2982,18 @@ router.post('/api/admin/homepage-blocks/batch', async (req, res) => {
                content_en = $7, content_ky = $8, content_ru = $9,
                updated_at = NOW()
            WHERE block_key = $10`,
-          [badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, b.block_key]
+          [badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, b.block_key],
         );
       } else {
         await runAsync(
           `INSERT INTO homepage_blocks (block_key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
-          [b.block_key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru]
+          [b.block_key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru],
         );
       }
     }
 
-    const all = await allAsync(`SELECT * FROM homepage_blocks ORDER BY id ASC`);
+    const all = await allAsync('SELECT * FROM homepage_blocks ORDER BY id ASC');
     res.json({ ok: true, blocks: all || [] });
   } catch (e) {
     console.error('Homepage blocks batch error:', e);
@@ -3015,13 +3015,13 @@ router.post('/api/admin/homepage-blocks/reset-defaults', async (req, res) => {
                content_en = $7, content_ky = $8, content_ru = $9,
                updated_at = NOW()
            WHERE block_key = $10`,
-          [b.badge_en, b.badge_ky, b.badge_ru, b.title_en, b.title_ky, b.title_ru, b.content_en, b.content_ky, b.content_ru, b.block_key]
+          [b.badge_en, b.badge_ky, b.badge_ru, b.title_en, b.title_ky, b.title_ru, b.content_en, b.content_ky, b.content_ru, b.block_key],
         );
       } else {
         await runAsync(
           `INSERT INTO homepage_blocks (block_key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
-          [b.block_key, b.badge_en, b.badge_ky, b.badge_ru, b.title_en, b.title_ky, b.title_ru, b.content_en, b.content_ky, b.content_ru]
+          [b.block_key, b.badge_en, b.badge_ky, b.badge_ru, b.title_en, b.title_ky, b.title_ru, b.content_en, b.content_ky, b.content_ru],
         );
       }
     }
@@ -3041,7 +3041,7 @@ router.get('/api/admin/announcements', adminAuth, async (req, res) => {
       `SELECT a.*, c.name_ru AS category_name_ru, c.name_ky AS category_name_ky
        FROM announcements a
        LEFT JOIN categories c ON c.id = a.target_category_id
-       ORDER BY a.created_at DESC`
+       ORDER BY a.created_at DESC`,
     );
     res.json({ ok: true, announcements: list || [] });
   } catch (e) {
@@ -3074,7 +3074,7 @@ router.post('/api/admin/announcements', adminAuth, async (req, res) => {
     const result = await runAsync(
       `INSERT INTO announcements (title_ru, title_ky, title_en, content_ru, content_ky, content_en, target_type, target_category_id, priority, is_published, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()) RETURNING id`,
-      [titleRu, titleKy, titleEn, contentRu, contentKy, contentEn, targetType, targetCategoryId, priority, isPublished]
+      [titleRu, titleKy, titleEn, contentRu, contentKy, contentEn, targetType, targetCategoryId, priority, isPublished],
     );
 
     const newId = result.lastID || result.id || (result.rows && result.rows[0]?.id);
@@ -3109,7 +3109,7 @@ router.put('/api/admin/announcements/:id', adminAuth, async (req, res) => {
            target_type = $7, target_category_id = $8, priority = $9,
            is_published = $10, updated_at = NOW()
        WHERE id = $11`,
-      [titleRu, titleKy, titleEn, contentRu, contentKy, contentEn, targetType, targetCategoryId, priority, isPublished, id]
+      [titleRu, titleKy, titleEn, contentRu, contentKy, contentEn, targetType, targetCategoryId, priority, isPublished, id],
     );
 
     res.json({ ok: true, message: 'Объявление обновлено' });
@@ -3165,7 +3165,7 @@ router.get('/api/admin/support/tickets', adminAuth, async (req, res) => {
     const params = [];
 
     if (statusFilter && ['open', 'in_progress', 'resolved'].includes(statusFilter)) {
-      query += ` WHERE t.status = $1`;
+      query += ' WHERE t.status = $1';
       params.push(statusFilter);
     }
 
@@ -3193,13 +3193,13 @@ router.get('/api/admin/support/tickets/:id', adminAuth, async (req, res) => {
        LEFT JOIN teams tm ON tm.id = t.team_id
        LEFT JOIN categories c ON c.id = tm.category_id
        WHERE t.id = $1`,
-      [ticketId]
+      [ticketId],
     );
     if (!ticket) return res.status(404).json({ error: 'Обращение не найдено' });
 
     const messages = await allAsync(
       'SELECT * FROM support_messages WHERE ticket_id = $1 ORDER BY id ASC',
-      [ticketId]
+      [ticketId],
     );
 
     res.json({ ok: true, ticket, messages: messages || [] });
@@ -3228,12 +3228,12 @@ router.post('/api/admin/support/tickets/:id/reply', adminAuth, async (req, res) 
     await runAsync(
       `INSERT INTO support_messages (ticket_id, sender_type, sender_name, message, created_at)
        VALUES ($1, 'admin', 'Администрация турнира', $2, NOW())`,
-      [ticketId, cleanMessage]
+      [ticketId, cleanMessage],
     );
 
     await runAsync(
       'UPDATE support_tickets SET status = $1, updated_at = NOW() WHERE id = $2',
-      [newStatus, ticketId]
+      [newStatus, ticketId],
     );
 
     res.json({ ok: true, message: 'Ответ отправлен' });

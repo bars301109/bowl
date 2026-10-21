@@ -1,26 +1,21 @@
 {
-  "name": "akylman-quiz-complete",
+  "name": "akylman-quiz-backend",
   "version": "2.0.0",
-  "description": "Akylman Quiz Bowl — quiz competition platform for Kyrgyzstan schools",
-  "private": true,
+  "description": "Akylman Quiz Bowl backend — modular, PostgreSQL-only",
+  "main": "server.js",
   "scripts": {
-    "dev": "node backend/src/server.js",
-    "start": "node backend/src/server.js",
+    "start": "node server.js",
+    "dev": "node server.js",
     "build": "echo 'Build complete'",
-    "backend:start": "node backend/src/server.js",
-    "backend:dev": "NODE_ENV=development node backend/src/server.js",
-    "backend:lint": "cd backend && npm run lint",
-    "backend:lint:fix": "cd backend && npm run lint:fix",
-    "backend:test": "cd backend && npm test",
-    "test": "node --test || true",
-    "lint": "echo 'Linting complete'"
+    "lint": "eslint backend/src/",
+    "lint:fix": "eslint backend/src/ --fix",
+    "test": "jest --forceExit --detectOpenHandles",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.5",
-    "drizzle-kit": "^0.31.11",
-    "drizzle-orm": "^0.45.3",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
@@ -35,6 +30,5 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "license": "MIT"
+  }
 }

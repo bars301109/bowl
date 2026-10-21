@@ -156,11 +156,17 @@ async function ensureSchema() {
       score INTEGER,
       answers TEXT,
       taken_at TEXT,
+      started_at TEXT,
+      time_taken_sec INTEGER,
+      participant_id INTEGER,
+      category_id INTEGER,
       FOREIGN KEY(team_id) REFERENCES teams(id),
       FOREIGN KEY(test_id) REFERENCES tests(id)
     )`,
     'ALTER TABLE results ADD COLUMN IF NOT EXISTS started_at TEXT',
     'ALTER TABLE results ADD COLUMN IF NOT EXISTS time_taken_sec INTEGER',
+    'ALTER TABLE results ADD COLUMN IF NOT EXISTS participant_id INTEGER',
+    'ALTER TABLE results ADD COLUMN IF NOT EXISTS category_id INTEGER',
 
     // Test sessions
     `CREATE TABLE IF NOT EXISTS test_sessions (
@@ -315,8 +321,8 @@ async function ensureSchema() {
 
   // Sync team_email
   try {
-    await runAsync(`UPDATE teams SET team_email = COALESCE(team_email, email) WHERE team_email IS NULL OR team_email = ''`);
-    await runAsync(`UPDATE teams SET email = COALESCE(email, team_email) WHERE email IS NULL OR email = ''`);
+    await runAsync('UPDATE teams SET team_email = COALESCE(team_email, email) WHERE team_email IS NULL OR team_email = \'\'');
+    await runAsync('UPDATE teams SET email = COALESCE(email, team_email) WHERE email IS NULL OR email = \'\'');
   } catch (err) {}
 
     // Migrate any existing files on disk into uploaded_files table in Cloud SQL
@@ -342,7 +348,7 @@ async function ensureSchema() {
                 : 'application/octet-stream';
               await runAsync(
                 'INSERT INTO uploaded_files (filename, mime_type, data_base64, size_bytes, created_at) VALUES ($1,$2,$3,$4,NOW())',
-                [fname, mime, buf.toString('base64'), buf.length]
+                [fname, mime, buf.toString('base64'), buf.length],
               ).catch(() => {});
             }
           }
@@ -357,7 +363,7 @@ async function ensureSchema() {
           const pdfBuf = fs.readFileSync(rulesPdfPath);
           await runAsync(
             'INSERT INTO uploaded_files (filename, mime_type, data_base64, size_bytes, created_at) VALUES ($1,$2,$3,$4,NOW())',
-            ['rules.pdf', 'application/pdf', pdfBuf.toString('base64'), pdfBuf.length]
+            ['rules.pdf', 'application/pdf', pdfBuf.toString('base64'), pdfBuf.length],
           ).catch(() => {});
         }
       }
@@ -371,6 +377,8 @@ async function ensureSchema() {
     await runAsync('ALTER TABLE questions ADD COLUMN IF NOT EXISTS attachment_url TEXT').catch(() => {});
     await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS started_at TEXT').catch(() => {});
     await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS time_taken_sec INTEGER').catch(() => {});
+    await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS participant_id INTEGER').catch(() => {});
+    await runAsync('ALTER TABLE results ADD COLUMN IF NOT EXISTS category_id INTEGER').catch(() => {});
     await runAsync('ALTER TABLE settings ADD COLUMN IF NOT EXISTS results_published INTEGER DEFAULT 0').catch(() => {});
     await runAsync('ALTER TABLE settings ADD COLUMN IF NOT EXISTS one_submission_allowed INTEGER DEFAULT 0').catch(() => {});
 
@@ -398,7 +406,7 @@ async function ensureSchema() {
         title_ru: 'Предварительный раунд',
         content_en: 'Online test: multiple choice and short answer questions',
         content_ky: 'Онлайн-тест: бир нече тандоо жана кыска жооп',
-        content_ru: 'Онлайн-тест: множественный выбор и короткий ответ'
+        content_ru: 'Онлайн-тест: множественный выбор и короткий ответ',
       },
       {
         block_key: 'stage_2',
@@ -410,7 +418,7 @@ async function ensureSchema() {
         title_ru: 'Полуфинал',
         content_en: 'Live blitz questions in real time',
         content_ky: 'Реалдуу убакыт режиминде түз блиц-суроолор',
-        content_ru: 'Живые блиц-вопросы в режиме реального времени'
+        content_ru: 'Живые блиц-вопросы в режиме реального времени',
       },
       {
         block_key: 'stage_3',
@@ -422,7 +430,7 @@ async function ensureSchema() {
         title_ru: 'Финал',
         content_en: 'Final concluding round with top qualifying teams',
         content_ky: 'Эң мыкты командалар менен финалдык раунд',
-        content_ru: 'Финальный раунд с лучшими командами'
+        content_ru: 'Финальный раунд с лучшими командами',
       },
       {
         block_key: 'team_composition',
@@ -434,7 +442,7 @@ async function ensureSchema() {
         title_ru: 'О составе команды',
         content_en: '2–4 students from the same school',
         content_ky: 'Бир мектептен 2–4 адам',
-        content_ru: '2–4 человека из одной школы'
+        content_ru: '2–4 человека из одной школы',
       },
       {
         block_key: 'categories_info',
@@ -446,7 +454,7 @@ async function ensureSchema() {
         title_ru: 'Категории',
         content_en: 'Olympiad disciplines across subjects and academic tracks',
         content_ky: 'Предметтер жана багыттар боюнча олимпиадалык сабактар',
-        content_ru: 'Дисциплины олимпиады по предметам и направлениям'
+        content_ru: 'Дисциплины олимпиады по предметам и направлениям',
       },
       {
         block_key: 'format_info',
@@ -458,7 +466,7 @@ async function ensureSchema() {
         title_ru: 'Формат',
         content_en: 'Stages 1 and 2 are held online. Stage 3 (Final) is held offline at Akylman Presidential Lyceum.',
         content_ky: '1 жана 2-этаптар онлайн форматта өткөрүлөт. Үчүнчү этап оффлайн форматта өтөт.',
-        content_ru: 'Этапы 1 и 2 проводятся в онлайн-формате. Третий этап проводится в оффлайн-формате.'
+        content_ru: 'Этапы 1 и 2 проводятся в онлайн-формате. Третий этап проводится в оффлайн-формате.',
       },
       {
         block_key: 'timeline_stage1',
@@ -470,7 +478,7 @@ async function ensureSchema() {
         title_ru: 'Этап 1 - Отборочный тур',
         content_en: 'Teams take an online test in selected categories with multiple-choice and short-answer questions. Results determine teams advancing to the next round.',
         content_ky: 'Бул этапта командалар тандалган категориялар боюнча онлайн тестирлөөдөн өтүшөт. Катышуучулар бир нече тандоо жана кыска жооптуу суроолорго жооп беришет. Бул этаптын жыйынтыгы боюнча кийинки раундга чыга турган командалар аныкталат.',
-        content_ru: 'На этом этапе команды проходят онлайн-тестирование по выбранным категориям. Участники отвечают на вопросы с множественным выбором и короткими ответами. По результатам этого этапа определяются команды, которые пройдут в следующий раунд.'
+        content_ru: 'На этом этапе команды проходят онлайн-тестирование по выбранным категориям. Участники отвечают на вопросы с множественным выбором и короткими ответами. По результатам этого этапа определяются команды, которые пройдут в следующий раунд.',
       },
       {
         block_key: 'timeline_stage2',
@@ -482,7 +490,7 @@ async function ensureSchema() {
         title_ru: 'Этап 2 - Полуфинал',
         content_en: 'This stage highlights the best teams among successful qualifiers. Teams compete in real time with challenging blitz questions across various domains.',
         content_ky: 'Бул этап ийгиликтүү командалардын арасынан эң мыктыларды аныктайт. Бул этапта татаалыраак суроолор камтылган онлайн тестирлөө өткөрүлөт. Командалар билимдин ар кандай категориялары боюнча блиц-суроолорго реалдуу убакытта жооп берип күч сынашышат.',
-        content_ru: 'Этап выявляет лучшие команды среди уже успешных. На этом этапе проводится онлайн-тестирование с более сложными вопросами. Команды соревнуются в режиме реального времени, отвечая на блиц-вопросы по различным категориям знаний.'
+        content_ru: 'Этап выявляет лучшие команды среди уже успешных. На этом этапе проводится онлайн-тестирование с более сложными вопросами. Команды соревнуются в режиме реального времени, отвечая на блиц-вопросы по различным категориям знаний.',
       },
       {
         block_key: 'timeline_stage3',
@@ -494,7 +502,7 @@ async function ensureSchema() {
         title_ru: 'Этап 3 - Финал',
         content_en: 'The Final is held offline at Akylman Presidential Lyceum (Cholpon-Ata). Concluding test among top teams from semifinals determines winners by total score.',
         content_ky: 'Финал «Акылман» Президенттик лицейинде (Чолпон-Ата ш.) оффлайн форматта өткөрүлөт. Жарым финалдын жыйынтыгы боюнча эң мыкты командалардын ортосунда жыйынтыктоочу тест. Жеңүүчүлөр топтолгон жалпы упайлардын саны боюнча аныкталат.',
-        content_ru: 'Финал проводится в оффлайн формате в Президентском лицее «Акылман» (Чолпон-Ата). Итоговый тест между лучшими командами по результатам полуфинала. Победители определяются по общему количеству набранных баллов.'
+        content_ru: 'Финал проводится в оффлайн формате в Президентском лицее «Акылман» (Чолпон-Ата). Итоговый тест между лучшими командами по результатам полуфинала. Победители определяются по общему количеству набранных баллов.',
       },
       {
         block_key: 'hero_subtitle',
@@ -506,7 +514,7 @@ async function ensureSchema() {
         title_ru: '',
         content_en: 'For middle and high school students',
         content_ky: 'Орто жана жогорку класстын окуучулары үчүн',
-        content_ru: 'Для учеников средней и старшей школы'
+        content_ru: 'Для учеников средней и старшей школы',
       },
       {
         block_key: 'footer_desc',
@@ -518,8 +526,8 @@ async function ensureSchema() {
         title_ru: '',
         content_en: 'Join the intellectual tournament for school students and unlock new opportunities for your team.',
         content_ky: 'Орто жана жогорку класстын окуучулары үчүн интеллектуалдык турнирге кошулуңуз жана командаңыз менен жаңы мүмкүнчүлүктөрдү ачкыла.',
-        content_ru: 'Присоединяйтесь к интеллектуальному турниру для школьников и откройте новые возможности для своей команды.'
-      }
+        content_ru: 'Присоединяйтесь к интеллектуальному турниру для школьников и откройте новые возможности для своей команды.',
+      },
     ];
 
     for (const b of defaultBlocks) {
@@ -527,7 +535,7 @@ async function ensureSchema() {
         `INSERT INTO homepage_blocks (block_key, badge_en, badge_ky, badge_ru, title_en, title_ky, title_ru, content_en, content_ky, content_ru, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
          ON CONFLICT (block_key) DO NOTHING`,
-        [b.block_key, b.badge_en, b.badge_ky, b.badge_ru, b.title_en, b.title_ky, b.title_ru, b.content_en, b.content_ky, b.content_ru]
+        [b.block_key, b.badge_en, b.badge_ky, b.badge_ru, b.title_en, b.title_ky, b.title_ru, b.content_en, b.content_ky, b.content_ru],
       ).catch(() => {});
     }
   }
@@ -541,19 +549,19 @@ async function ensureSchema() {
     if (!existingNames.has('Общая категория')) {
       await runAsync(
         `INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at)
-         VALUES ('Общая категория', 'Жалпы категория', 'Вопросы общей тематики', 'Жалпы темалар боюнча суроолор', NOW())`
+         VALUES ('Общая категория', 'Жалпы категория', 'Вопросы общей тематики', 'Жалпы темалар боюнча суроолор', NOW())`,
       ).catch(() => {});
     }
     if (!existingNames.has('История и культура')) {
       await runAsync(
         `INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at)
-         VALUES ('История и культура', 'Тарых жана маданият', 'Вопросы по истории и культуре', 'Тарых жана маданият боюнча суроолор', NOW())`
+         VALUES ('История и культура', 'Тарых жана маданият', 'Вопросы по истории и культуре', 'Тарых жана маданият боюнча суроолор', NOW())`,
       ).catch(() => {});
     }
     if (!existingNames.has('Наука и природа')) {
       await runAsync(
         `INSERT INTO categories (name_ru, name_ky, desc_ru, desc_ky, created_at)
-         VALUES ('Наука и природа', 'Илим жана жаратылыш', 'Вопросы по науке и природе', 'Илим жана жаратылыш боюнча суроолор', NOW())`
+         VALUES ('Наука и природа', 'Илим жана жаратылыш', 'Вопросы по науке и природе', 'Илим жана жаратылыш боюнча суроолор', NOW())`,
       ).catch(() => {});
     }
   }
@@ -568,7 +576,7 @@ async function ensureSchema() {
         DEFAULT_SETTINGS.day1_date, DEFAULT_SETTINGS.day2_date, DEFAULT_SETTINGS.day3_date,
         DEFAULT_SETTINGS.final_place_ru, DEFAULT_SETTINGS.final_place_ky,
         DEFAULT_SETTINGS.results_published, DEFAULT_SETTINGS.one_submission_allowed,
-      ]
+      ],
     );
   }
 

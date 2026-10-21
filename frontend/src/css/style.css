@@ -4867,3 +4867,41 @@ input:focus-visible {
     animation: none !important;
   }
 }
+
+/* Full focus mode during active testing */
+body.in-active-test-mode .team-app-sidebar,
+body.in-active-test-mode #appSidebar,
+body.in-active-test-mode .team-app-topbar,
+body.in-active-test-mode .mobile-menu-toggle,
+body.in-active-test-mode .sidebar-nav,
+body.in-active-test-mode .sidebar-footer,
+body.in-active-test-mode footer,
+body.in-active-test-mode .app-footer {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body.in-active-test-mode .team-app-layout {
+  display: block !important;
+  grid-template-columns: 1fr !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 100vh !important;
+}
+
+body.in-active-test-mode .team-app-main {
+  width: 100% !important;
+  max-width: 960px !important;
+  margin: 0 auto !important;
+  padding: 24px 16px !important;
+}
+
+body.in-active-test-mode .team-app-content {
+  padding: 0 !important;
+}
+
+body.in-active-test-mode #quizBackBtn,
+body.in-active-test-mode .btn-cancel-quiz {
+  display: none !important;
+}

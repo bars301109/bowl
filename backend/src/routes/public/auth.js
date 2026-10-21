@@ -38,33 +38,33 @@ router.post('/api/register', async (req, res) => {
     const branch = canonicalBranch(rawBranch);
 
     if (!fullName || !email || !password || !grade || !branch) {
-      return res.status(400).json({ 
-        error: isKy 
-          ? 'Аты-жөнүңүздү, email, сырсөз, класс жана филиалды толтуруңуз' 
-          : 'Please fill in full name, email, password, grade, and branch' 
+      return res.status(400).json({
+        error: isKy
+          ? 'Аты-жөнүңүздү, email, сырсөз, класс жана филиалды толтуруңуз'
+          : 'Please fill in full name, email, password, grade, and branch',
       });
     }
 
     if (!isValidEmail(email)) {
-      return res.status(400).json({ 
-        error: isKy ? 'Туура эмес email дареги' : 'Invalid email address' 
+      return res.status(400).json({
+        error: isKy ? 'Туура эмес email дареги' : 'Invalid email address',
       });
     }
 
     if (!isStrongPassword(password)) {
-      return res.status(400).json({ 
-        error: isKy 
-          ? 'Сырсөз кеминде 8 белгиден туруп, коопсуздук талаптарына жооп бериши керек' 
-          : 'Password must be at least 8 characters and meet security requirements' 
+      return res.status(400).json({
+        error: isKy
+          ? 'Сырсөз кеминде 8 белгиден туруп, коопсуздук талаптарына жооп бериши керек'
+          : 'Password must be at least 8 characters and meet security requirements',
       });
     }
 
     const exists = await getAsync('SELECT id FROM participants WHERE LOWER(email) = $1', [email]);
     if (exists) {
-      return res.status(400).json({ 
-        error: isKy 
-          ? 'Бул email менен катышуучу буга чейин катталган' 
-          : 'A participant with this email is already registered' 
+      return res.status(400).json({
+        error: isKy
+          ? 'Бул email менен катышуучу буга чейин катталган'
+          : 'A participant with this email is already registered',
       });
     }
 
@@ -73,7 +73,7 @@ router.post('/api/register', async (req, res) => {
     const insertRes = await runAsync(
       `INSERT INTO participants (full_name, email, password_hash, grade, school, city, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id`,
-      [fullName, email, hashed, grade, branch, branch]
+      [fullName, email, hashed, grade, branch, branch],
     );
 
     const participantId = insertRes.lastID || insertRes.rows?.[0]?.id;
@@ -100,26 +100,26 @@ router.post('/api/login', rateLimit(RATE_LIMITS.login), async (req, res) => {
     const email = String(req.body?.email || req.body?.login || req.body?.team_email || '').trim().toLowerCase();
     const password = String(req.body?.password || '');
     if (!email || !password) {
-      return res.status(400).json({ 
-        error: isKy ? 'Email жана сырсөз талап кылынат' : 'Email and password are required' 
+      return res.status(400).json({
+        error: isKy ? 'Email жана сырсөз талап кылынат' : 'Email and password are required',
       });
     }
 
     const participant = await getAsync(
       'SELECT id, full_name, email, password_hash, grade, school, city, team_id, category_id, category_confirmed FROM participants WHERE LOWER(email) = $1',
-      [email]
+      [email],
     );
 
     if (!participant) {
-      return res.status(401).json({ 
-        error: isKy ? 'Email же сырсөз туура эмес' : 'Invalid email or password' 
+      return res.status(401).json({
+        error: isKy ? 'Email же сырсөз туура эмес' : 'Invalid email or password',
       });
     }
 
     const matchBcrypt = await bcrypt.compare(password, participant.password_hash);
     if (!matchBcrypt) {
-      return res.status(401).json({ 
-        error: isKy ? 'Email же сырсөз туура эмес' : 'Invalid email or password' 
+      return res.status(401).json({
+        error: isKy ? 'Email же сырсөз туура эмес' : 'Invalid email or password',
       });
     }
 
@@ -149,7 +149,7 @@ router.post('/api/password-reset/request', rateLimit(RATE_LIMITS.reset), async (
     const participant = await getAsync('SELECT id, full_name, email FROM participants WHERE LOWER(email) = $1', [cleanEmail]);
     const team = await getAsync(
       'SELECT id, team_name, team_email, email FROM teams WHERE LOWER(COALESCE(team_email, \'\')) = $1 OR LOWER(COALESCE(email, \'\')) = $1 OR LOWER(COALESCE(login, \'\')) = $1',
-      [cleanEmail]
+      [cleanEmail],
     );
     if (!participant && !team) {
       return res.status(404).json({ error: isKy ? 'Бул email менен аккаунт табылган жок' : 'Account with this email not found.' });
@@ -161,7 +161,7 @@ router.post('/api/password-reset/request', rateLimit(RATE_LIMITS.reset), async (
     await runAsync('DELETE FROM password_reset_codes WHERE LOWER(email) = $1', [cleanEmail]);
     await runAsync(
       'INSERT INTO password_reset_codes (email, code, expires_at, created_at) VALUES ($1,$2,$3,NOW())',
-      [cleanEmail, code, expiresAt]
+      [cleanEmail, code, expiresAt],
     );
 
     let sendResult = { success: false };
@@ -200,7 +200,7 @@ router.post('/api/password-reset/verify-code', rateLimit(RATE_LIMITS.reset), asy
 
     const resetCode = await getAsync(
       'SELECT * FROM password_reset_codes WHERE LOWER(email) = $1 AND code = $2 AND used = 0 AND expires_at::timestamp > NOW()',
-      [cleanEmail, code]
+      [cleanEmail, code],
     );
 
     if (!resetCode) {
@@ -231,7 +231,7 @@ router.post('/api/password-reset/verify', rateLimit(RATE_LIMITS.reset), async (r
 
     const resetCode = await getAsync(
       'SELECT * FROM password_reset_codes WHERE LOWER(email) = $1 AND code = $2 AND used = 0 AND expires_at::timestamp > NOW()',
-      [cleanEmail, code]
+      [cleanEmail, code],
     );
 
     if (!resetCode) {
@@ -242,7 +242,7 @@ router.post('/api/password-reset/verify', rateLimit(RATE_LIMITS.reset), async (r
     await runAsync('UPDATE participants SET password_hash = $1 WHERE LOWER(email) = $2', [hashed, cleanEmail]);
     await runAsync(
       'UPDATE teams SET password = $1 WHERE LOWER(COALESCE(team_email, \'\')) = $2 OR LOWER(COALESCE(email, \'\')) = $2 OR LOWER(COALESCE(login, \'\')) = $2',
-      [hashed, cleanEmail]
+      [hashed, cleanEmail],
     );
     await runAsync('UPDATE password_reset_codes SET used = 1 WHERE id = $1', [resetCode.id]);
 

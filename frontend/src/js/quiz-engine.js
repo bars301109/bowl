@@ -1021,6 +1021,7 @@ class QuizRunner {
 
       // Clear draft on successful submission
       DraftManager.clear(this.testId);
+      localStorage.removeItem('active_quiz_test_id');
 
       this.isFinished = true;
       this.teardownLockdown();
